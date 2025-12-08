@@ -111,7 +111,7 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="flex items-center justify-end gap-4 ml-auto">
+        <div className="flex flex-1 items-center justify-end gap-4">
           <div className="hidden md:flex items-center gap-2">
             <a
               href="https://instagram.com"
