@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Menu, User, LogOut, Instagram, Youtube, Facebook } from 'lucide-react';
+import { Menu, User, LogOut, Instagram, Youtube, Facebook, Shield } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import {
   Sheet,
@@ -39,8 +39,6 @@ function AuthButton() {
   }, []);
 
   if (!isClient || isUserLoading) {
-    // Render a placeholder or nothing during server render and initial client load
-    // to prevent hydration mismatch.
     return (
       <div className="hidden md:flex items-center gap-2 h-9 w-56 justify-end" />
     );
@@ -75,6 +73,13 @@ function AuthButton() {
             </p>
           </div>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/profile">
+            <User className="mr-2 h-4 w-4" />
+            <span>Profile</span>
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => auth.signOut()}>
           <LogOut className="mr-2 h-4 w-4" />
@@ -120,7 +125,7 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="flex items-center justify-end ml-auto">
+        <div className="flex flex-1 items-center justify-end gap-4">
           <div className="hidden md:flex items-center gap-2">
             <a
               href="https://instagram.com"
@@ -153,7 +158,7 @@ export function Header() {
               </Button>
             </a>
           </div>
-           <div className="hidden md:block ml-4">
+           <div className="hidden md:block">
             <AuthButton />
           </div>
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
