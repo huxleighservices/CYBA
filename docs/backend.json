@@ -4,7 +4,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "BlogPost",
       "type": "object",
-      "description": "Represents a blog post on the CYBA Galaxy website.",
+      "description": "Represents a blog post on the CYBA family website.",
       "properties": {
         "id": {
           "type": "string",
@@ -47,7 +47,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Merchandise",
       "type": "object",
-      "description": "Represents a merchandise item available in the CYBA Galaxy store.",
+      "description": "Represents a merchandise item available in the CYBA family store.",
       "properties": {
         "id": {
           "type": "string",
@@ -88,7 +88,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Represents a user of the CYBA Galaxy platform.",
+      "description": "Represents a user of the CYBA family platform.",
       "properties": {
         "id": {
           "type": "string",
@@ -118,7 +118,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Membership",
       "type": "object",
-      "description": "Represents a membership plan offered by CYBA Galaxy.",
+      "description": "Represents a membership plan offered by CYBA family.",
       "properties": {
         "id": {
           "type": "string",
@@ -314,6 +314,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to support the CYBA Galaxy website, encompassing user data, blog posts, merchandise, memberships, and forum posts. The structure prioritizes simplicity and open access, given the initial requirement for open Firestore rules.  User data is stored under `/users/{userId}` using path-based ownership. Blog posts are stored in a single `/blogPosts` collection. Merchandise is stored in a single `/merchandise` collection. Membership plans are stored in `/memberships`. Forum posts are stored in a single `/forumPosts` collection. Categories for blog posts are stored in a single `/categories` collection."
+    "reasoning": "The Firestore structure is designed to support the CYBA family website, encompassing user data, blog posts, merchandise, memberships, and forum posts. The structure prioritizes simplicity and open access, given the initial requirement for open Firestore rules.  User data is stored under `/users/{userId}` using path-based ownership. Blog posts are stored in a single `/blogPosts` collection. Merchandise is stored in a single `/merchandise` collection. Membership plans are stored in `/memberships`. Forum posts are stored in a single `/forumPosts` collection. Categories for blog posts are stored in a single `/categories` collection."
   }
 }

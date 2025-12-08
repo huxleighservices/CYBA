@@ -7,7 +7,7 @@ import { FirebaseClientProvider } from '@/firebase';
 import { Footer } from '@/components/layout/footer';
 
 export const metadata: Metadata = {
-  title: 'CYBA Galaxy',
+  title: 'CYBA family',
   description: 'CYBA Music Marketing Agency',
 };
 

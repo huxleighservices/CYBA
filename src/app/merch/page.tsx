@@ -9,7 +9,7 @@ export default function MerchPage() {
           Merch Page In Development
         </h1>
         <p className="text-lg text-foreground/80">
-          Our team is working hard to bring you exclusive CYBA Galaxy gear.
+          Our team is working hard to bring you exclusive CYBA family gear.
           Please check back soon!
         </p>
       </div>

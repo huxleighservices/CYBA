@@ -55,7 +55,7 @@ export default function CybaboardPage() {
           Cybaboard
         </h1>
         <p className="text-lg text-foreground/80 mb-12">
-          The central hub for the CYBA Galaxy. Connect, collaborate, and create.
+          The central hub for the CYBA family. Connect, collaborate, and create.
         </p>
       </div>
 

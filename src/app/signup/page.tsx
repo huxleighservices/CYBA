@@ -83,7 +83,7 @@ export default function SignupPage() {
             CREATE ACCOUNT
           </CardTitle>
           <CardDescription>
-            Join the CYBA Galaxy for free.
+            Join the CYBA family for free.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -118,7 +118,7 @@ export default function SignupPage() {
                         {...field}
                         autoComplete="email"
                       />
-FormControl>
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

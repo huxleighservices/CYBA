@@ -21,7 +21,7 @@ export default function Home() {
             className="font-bold group"
           >
             <Link href="/membership">
-              Join the Galaxy{' '}
+              Join the family{' '}
               <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Link>
           </Button>

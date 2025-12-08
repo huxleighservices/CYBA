@@ -65,7 +65,7 @@ export default function LoginPage() {
             SIGN IN
           </CardTitle>
           <CardDescription>
-            Access your CYBA Galaxy account.
+            Access your CYBA family account.
           </CardDescription>
         </CardHeader>
         <CardContent>
