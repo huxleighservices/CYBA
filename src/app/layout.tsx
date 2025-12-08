@@ -3,6 +3,7 @@ import './globals.css';
 import { Header } from '@/components/layout/header';
 import { Toaster } from '@/components/ui/toaster';
 import { VideoBackground } from '@/components/layout/VideoBackground';
+import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
   title: 'CYBA Galaxy',
@@ -29,12 +30,14 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased min-h-screen bg-background text-foreground flex flex-col">
-        <VideoBackground />
-        <div className="relative z-10 flex flex-col flex-grow">
-          <Header />
-          <main className="flex-grow">{children}</main>
-          <Toaster />
-        </div>
+        <FirebaseClientProvider>
+          <VideoBackground />
+          <div className="relative z-10 flex flex-col flex-grow">
+            <Header />
+            <main className="flex-grow">{children}</main>
+            <Toaster />
+          </div>
+        </FirebaseClientProvider>
       </body>
     </html>
   );
