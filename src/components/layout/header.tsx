@@ -27,7 +27,7 @@ export function Header() {
       <div className="container flex h-16 max-w-screen-2xl items-center justify-between">
         <div className="flex-1 md:flex-none">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/cyblogo.png" alt="CYBA Logo" width={30} height={30} />
+            <Image src="/cyblogo.png" alt="CYBA Logo" width={40} height={40} />
           </Link>
         </div>
         <nav className="hidden md:flex flex-1 justify-center items-center gap-6 text-sm">
@@ -58,7 +58,7 @@ export function Header() {
               <div className="flex flex-col h-full">
                 <div className="flex justify-between items-center border-b pb-4">
                   <Link href="/" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Image src="/cyblogo.png" alt="CYBA Logo" width={30} height={30} />
+                    <Image src="/cyblogo.png" alt="CYBA Logo" width={40} height={40} />
                   </Link>
                 </div>
                 <nav className="flex flex-col gap-6 text-lg mt-8">
