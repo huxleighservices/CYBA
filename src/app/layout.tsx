@@ -9,6 +9,9 @@ import { Footer } from '@/components/layout/footer';
 export const metadata: Metadata = {
   title: 'CYBA family',
   description: 'CYBA Music Marketing Agency',
+  icons: {
+    icon: '/cybaswirl.png',
+  },
 };
 
 export default function RootLayout({
