@@ -1,0 +1,319 @@
+{
+  "entities": {
+    "BlogPost": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "BlogPost",
+      "type": "object",
+      "description": "Represents a blog post on the CYBA Galaxy website.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the blog post."
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the blog post."
+        },
+        "content": {
+          "type": "string",
+          "description": "The main text content of the blog post."
+        },
+        "author": {
+          "type": "string",
+          "description": "Reference to the user who authored the blog post. (Relationship: User 1:N BlogPost)"
+        },
+        "publicationDate": {
+          "type": "string",
+          "description": "Date and time the blog post was published.",
+          "format": "date-time"
+        },
+        "tags": {
+          "type": "array",
+          "description": "Reference to the categories to which this blog post belongs. (Relationship: Category N:N BlogPost)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "content",
+        "author",
+        "publicationDate"
+      ]
+    },
+    "Merchandise": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Merchandise",
+      "type": "object",
+      "description": "Represents a merchandise item available in the CYBA Galaxy store.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the merchandise item."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the merchandise item."
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the merchandise item."
+        },
+        "price": {
+          "type": "number",
+          "description": "Price of the merchandise item."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL of the image representing the merchandise item.",
+          "format": "uri"
+        },
+        "stockQuantity": {
+          "type": "number",
+          "description": "The number of items currently in stock"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "price",
+        "imageUrl",
+        "stockQuantity"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the CYBA Galaxy platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "username": {
+          "type": "string",
+          "description": "User's username."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        },
+        "membershipId": {
+          "type": "string",
+          "description": "Reference to the user's membership plan. (Relationship: Membership 1:N User)"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "email"
+      ]
+    },
+    "Membership": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Membership",
+      "type": "object",
+      "description": "Represents a membership plan offered by CYBA Galaxy.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the membership plan."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the membership plan (e.g., 'Basic', 'Premium')."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the membership plan and its benefits."
+        },
+        "price": {
+          "type": "number",
+          "description": "Price of the membership plan."
+        },
+        "features": {
+          "type": "array",
+          "description": "List of features included in the membership plan.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "price",
+        "features"
+      ]
+    },
+    "ForumPost": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ForumPost",
+      "type": "object",
+      "description": "Represents a post on the Cybaboard forum.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the forum post."
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the forum post."
+        },
+        "content": {
+          "type": "string",
+          "description": "Content of the forum post."
+        },
+        "authorId": {
+          "type": "string",
+          "description": "Reference to the user who created the forum post. (Relationship: User 1:N ForumPost)"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Date and time the forum post was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "content",
+        "authorId",
+        "timestamp"
+      ]
+    },
+    "Category": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Category",
+      "type": "object",
+      "description": "Represents a category for blog posts.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the category."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the category."
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user data. Path-based ownership for user-specific data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/blogPosts/{blogPostId}",
+        "definition": {
+          "entityName": "BlogPost",
+          "schema": {
+            "$ref": "#/backend/entities/BlogPost"
+          },
+          "description": "Stores blog post data.",
+          "params": [
+            {
+              "name": "blogPostId",
+              "description": "The unique identifier of the blog post."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/merchandise/{merchandiseId}",
+        "definition": {
+          "entityName": "Merchandise",
+          "schema": {
+            "$ref": "#/backend/entities/Merchandise"
+          },
+          "description": "Stores merchandise data.",
+          "params": [
+            {
+              "name": "merchandiseId",
+              "description": "The unique identifier of the merchandise item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/memberships/{membershipId}",
+        "definition": {
+          "entityName": "Membership",
+          "schema": {
+            "$ref": "#/backend/entities/Membership"
+          },
+          "description": "Stores membership plan data.",
+          "params": [
+            {
+              "name": "membershipId",
+              "description": "The unique identifier of the membership plan."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/forumPosts/{forumPostId}",
+        "definition": {
+          "entityName": "ForumPost",
+          "schema": {
+            "$ref": "#/backend/entities/ForumPost"
+          },
+          "description": "Stores forum post data.",
+          "params": [
+            {
+              "name": "forumPostId",
+              "description": "The unique identifier of the forum post."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/categories/{categoryId}",
+        "definition": {
+          "entityName": "Category",
+          "schema": {
+            "$ref": "#/backend/entities/Category"
+          },
+          "description": "Stores categories for blog posts.",
+          "params": [
+            {
+              "name": "categoryId",
+              "description": "The unique identifier of the category."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support the CYBA Galaxy website, encompassing user data, blog posts, merchandise, memberships, and forum posts. The structure prioritizes simplicity and open access, given the initial requirement for open Firestore rules.  User data is stored under `/users/{userId}` using path-based ownership. Blog posts are stored in a single `/blogPosts` collection. Merchandise is stored in a single `/merchandise` collection. Membership plans are stored in `/memberships`. Forum posts are stored in a single `/forumPosts` collection. Categories for blog posts are stored in a single `/categories` collection."
+  }
+}

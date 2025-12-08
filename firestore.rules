@@ -1,0 +1,150 @@
+/**
+ * Core Philosophy:
+ * This ruleset is designed for rapid prototyping, balancing open access for public content
+ * with strict, ownership-based security for user-specific data and actions. The primary
+ * goal is to allow public, read-only access to a majority of the app's content, such as
+ * blog posts, merchandise, and forum discussions, reflecting an open platform. However,
+ * all write operations (creating, editing, deleting) are strictly controlled, requiring
+
+ * user authentication and ownership of the content.
+ *
+ * Data Structure:
+ * The data model uses a flat hierarchy with distinct top-level collections for each major
+ * entity: `/users`, `/blogPosts`, `/merchandise`, `/memberships`, `/forumPosts`, and `/categories`.
+ * User-specific data is located at `/users/{userId}`, with security rules enforcing that
+ * only the authenticated user matching the `{userId}` can access or modify that document.
+ *
+ * Key Security Decisions:
+ * - Public Read, Owner Write: Collections like `/blogPosts` and `/forumPosts` are publicly readable
+ *   by anyone, but creating, updating, or deleting a document requires the user to be
+ *   authenticated as the document's original author.
+ * - Read-Only Public Data: Collections like `/merchandise`, `/memberships`, and `/categories` are
+ *   treated as public, read-only data. Client-side writes are disabled entirely, as this
+ *   content is assumed to be managed by administrators via a backend process (e.g., the Admin SDK).
+ * - No User Enumeration: Listing documents from the top-level `/users` collection is explicitly
+ *   disallowed to protect user privacy and prevent scraping of user data.
+ * - Strict User Profile Security: A user can only create, read, update, or delete their own
+ *   profile document within the `/users` collection.
+ *
+ * Denormalization for Authorization:
+ * To ensure fast and secure authorization checks, this ruleset relies on denormalized
+ * ownership fields. Documents in user-generated content collections (like `/blogPosts`
+ * and `/forumPosts`) must contain an `author` or `authorId` field storing the UID of the
+ * user who created it. This avoids slow and costly `get()` calls to other documents
+ * during rule evaluation.
+ *
+ * Structural Segregation:
+ * This ruleset does not currently use structural segregation (e.g., separate 'drafts'
+ * and 'published' collections) for simplicity. All content within a collection shares
+ * the same access control pattern.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for reusable logic
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Checks if the requesting user's UID matches the provided userId.
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Checks for ownership on an existing document. Used for update/delete.
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Controls access to user profile data.
+     * @path /users/{userId}
+     * @allow (create) An authenticated user creating their own profile document.
+     * @deny (get) An authenticated user trying to read another user's profile.
+     * @principle Restricts access to a user's own data tree and prevents user enumeration.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to blog posts. Publicly readable, but writes are restricted to authors.
+     * @path /blogPosts/{blogPostId}
+     * @allow (get) Any user, signed in or not, reading a blog post.
+     * @deny (update) A signed-in user trying to edit a blog post they did not author.
+     * @principle Implements a "Public Read with Owner-Only Writes" pattern.
+     */
+    match /blogPosts/{blogPostId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.author == request.auth.uid;
+      allow update: if isExistingOwner(resource.data.author) && request.resource.data.author == resource.data.author;
+      allow delete: if isExistingOwner(resource.data.author);
+    }
+
+    /**
+     * @description Controls access to merchandise. This is public, read-only data.
+     * @path /merchandise/{merchandiseId}
+     * @allow (list) Any user listing all merchandise items.
+     * @deny (create) Any user trying to create a new merchandise item from the client.
+     * @principle Secures data that should only be managed by a trusted backend or admin.
+     */
+    match /merchandise/{merchandiseId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false; // Managed by admin SDK
+      allow update: if false; // Managed by admin SDK
+      allow delete: if false; // Managed by admin SDK
+    }
+
+    /**
+     * @description Controls access to membership plans. This is public, read-only data.
+     * @path /memberships/{membershipId}
+     * @allow (get) Any user viewing the details of a membership plan.
+     * @deny (update) Any user trying to change the price of a membership plan.
+     * @principle Secures data that should only be managed by a trusted backend or admin.
+     */
+    match /memberships/{membershipId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false; // Managed by admin SDK
+      allow update: if false; // Managed by admin SDK
+      allow delete: if false; // Managed by admin SDK
+    }
+
+    /**
+     * @description Controls access to forum posts. Publicly readable, but writes are restricted to authors.
+     * @path /forumPosts/{forumPostId}
+     * @allow (create) A signed-in user creating a new forum post.
+     * @deny (delete) A signed-in user trying to delete a forum post written by someone else.
+     * @principle Implements a "Public Read with Owner-Only Writes" pattern for user-generated content.
+     */
+    match /forumPosts/{forumPostId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      allow update: if isExistingOwner(resource.data.authorId) && request.resource.data.authorId == resource.data.authorId;
+      allow delete: if isExistingOwner(resource.data.authorId);
+    }
+
+    /**
+     * @description Controls access to blog post categories. This is public, read-only data.
+     * @path /categories/{categoryId}
+     * @allow (list) Any user listing all available categories.
+     * @deny (create) Any user trying to create a new category from the client.
+     * @principle Secures data that should only be managed by a trusted backend or admin.
+     */
+    match /categories/{categoryId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false; // Managed by admin SDK
+      allow update: if false; // Managed by admin SDK
+      allow delete: if false; // Managed by admin SDK
+    }
+  }
+}
