@@ -111,7 +111,7 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="flex items-center justify-end gap-4 ml-auto">
+        <div className="flex items-center justify-end ml-auto">
           <div className="hidden md:flex items-center gap-2">
             <a
               href="https://instagram.com"
@@ -144,7 +144,7 @@ export function Header() {
               </Button>
             </a>
           </div>
-           <div className="hidden md:block">
+           <div className="hidden md:block ml-4">
             <AuthButton />
           </div>
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
