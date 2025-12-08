@@ -19,39 +19,41 @@ export function Footer() {
             Huxleigh
           </a>
         </div>
-        <div className="hidden md:flex items-center justify-center gap-4">
-          <a
-            href="https://instagram.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Instagram"
-            className="text-foreground/60 hover:text-primary transition-colors"
-          >
-            <Instagram className="h-6 w-6" />
-          </a>
-          <a
-            href="https://youtube.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="YouTube"
-            className="text-foreground/60 hover:text-primary transition-colors"
-          >
-            <Youtube className="h-6 w-6" />
-          </a>
-          <a
-            href="https://facebook.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Facebook"
-            className="text-foreground/60 hover:text-primary transition-colors"
-          >
-            <Facebook className="h-6 w-6" />
-          </a>
-        </div>
-        <div>
-          <Button asChild>
-            <Link href="/contact">Get in Touch</Link>
-          </Button>
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center justify-center gap-2">
+            <a
+              href="https://instagram.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Instagram"
+              className="text-foreground/60 hover:text-primary transition-colors p-2"
+            >
+              <Instagram className="h-5 w-5" />
+            </a>
+            <a
+              href="https://youtube.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="YouTube"
+              className="text-foreground/60 hover:text-primary transition-colors p-2"
+            >
+              <Youtube className="h-5 w-5" />
+            </a>
+            <a
+              href="https://facebook.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Facebook"
+              className="text-foreground/60 hover:text-primary transition-colors p-2"
+            >
+              <Facebook className="h-5 w-5" />
+            </a>
+          </div>
+          <div>
+            <Button asChild>
+              <Link href="/contact">Get in Touch</Link>
+            </Button>
+          </div>
         </div>
       </div>
     </footer>
