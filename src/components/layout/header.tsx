@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import Image from 'next/image';
@@ -25,10 +25,7 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 max-w-screen-2xl items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <Image src="/cybalogo.svg" alt="CYBA Logo" width={32} height={32} className="text-primary" />
-          <span className="font-headline text-2xl font-bold text-glow">
-            CYBA
-          </span>
+          <Image src="/cyblogo.png" alt="CYBA Logo" width={120} height={32} className="text-primary" />
         </Link>
         <nav className="hidden md:flex items-center gap-6 text-sm">
           {navLinks.map((link) => (
@@ -58,10 +55,7 @@ export function Header() {
               <div className="flex flex-col h-full">
                 <div className="flex justify-between items-center border-b pb-4">
                   <Link href="/" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Image src="/cybalogo.svg" alt="CYBA Logo" width={32} height={32} className="text-primary" />
-                    <span className="font-headline text-2xl font-bold text-glow">
-                      CYBA
-                    </span>
+                    <Image src="/cyblogo.png" alt="CYBA Logo" width={120} height={32} className="text-primary" />
                   </Link>
                 </div>
                 <nav className="flex flex-col gap-6 text-lg mt-8">
