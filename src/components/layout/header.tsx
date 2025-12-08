@@ -25,7 +25,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 max-w-screen-2xl items-center justify-between">
-        <div className="flex-1">
+        <div className="flex-1 md:flex-none">
           <Link href="/" className="flex items-center gap-2">
             <Image src="/cyblogo.png" alt="CYBA Logo" width={30} height={30} />
           </Link>
@@ -46,7 +46,7 @@ export function Header() {
             </Link>
           ))}
         </nav>
-        <div className="flex-1 flex justify-end md:hidden">
+        <div className="flex-1 justify-end md:hidden">
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -82,6 +82,8 @@ export function Header() {
             </SheetContent>
           </Sheet>
         </div>
+        {/* Empty div to balance flexbox */}
+        <div className="hidden md:flex flex-1 justify-end"></div>
       </div>
     </header>
   );
