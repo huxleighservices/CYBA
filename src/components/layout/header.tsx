@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -24,10 +25,12 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 max-w-screen-2xl items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <Image src="/cyblogo.png" alt="CYBA Logo" width={80} height={21} className="text-primary" />
-        </Link>
-        <nav className="hidden md:flex items-center gap-6 text-sm">
+        <div className="flex-1">
+          <Link href="/" className="flex items-center gap-2">
+            <Image src="/cyblogo.png" alt="CYBA Logo" width={30} height={30} />
+          </Link>
+        </div>
+        <nav className="hidden md:flex flex-1 justify-center items-center gap-6 text-sm">
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -43,7 +46,7 @@ export function Header() {
             </Link>
           ))}
         </nav>
-        <div className="md:hidden">
+        <div className="flex-1 flex justify-end md:hidden">
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -55,7 +58,7 @@ export function Header() {
               <div className="flex flex-col h-full">
                 <div className="flex justify-between items-center border-b pb-4">
                   <Link href="/" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Image src="/cyblogo.png" alt="CYBA Logo" width={80} height={21} className="text-primary" />
+                    <Image src="/cyblogo.png" alt="CYBA Logo" width={30} height={30} />
                   </Link>
                 </div>
                 <nav className="flex flex-col gap-6 text-lg mt-8">
