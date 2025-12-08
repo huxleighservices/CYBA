@@ -1,3 +1,46 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero",
+      "description": "Abstract futuristic background with neon lights",
+      "imageUrl": "https://images.unsplash.com/photo-1550275994-cdc89cd1948f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMG5lb258ZW58MHx8fHwxNzY1MTM2NzIzfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract neon"
+    },
+    {
+      "id": "merch-hoodie",
+      "description": "Black hoodie with CYBA logo",
+      "imageUrl": "https://images.unsplash.com/photo-1561151593-7059b6b4ff57?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxibGFjayUyMGhvb2RpZXxlbnwwfHx8fDE3NjUxMzE3NzF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "black hoodie"
+    },
+    {
+      "id": "merch-cap",
+      "description": "Black cap with CYBA logo",
+      "imageUrl": "https://images.unsplash.com/photo-1640614315283-c8321e845dad?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8YmxhY2slMjBjYXB8ZW58MHx8fHwxNzY1MjI5ODg1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "black cap"
+    },
+    {
+      "id": "merch-tshirt",
+      "description": "T-shirt with retro graphic",
+      "imageUrl": "https://images.unsplash.com/photo-1758267928367-35886ad47bc4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxncmFwaGljJTIwdC1zaGlydHxlbnwwfHx8fDE3NjUxMjczNzN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "graphic t-shirt"
+    },
+    {
+      "id": "blog-1",
+      "description": "Vintage synthesizer equipment",
+      "imageUrl": "https://images.unsplash.com/photo-1732282343119-163df43f9677?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx2aW50YWdlJTIwc3ludGhlc2l6ZXJ8ZW58MHx8fHwxNzY1MjI5ODg1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "vintage synthesizer"
+    },
+    {
+      "id": "blog-2",
+      "description": "A crowd at a music festival",
+      "imageUrl": "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtdXNpYyUyMGZlc3RpdmFsfGVufDB8fHx8MTc2NTE0NDg0Nnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music festival"
+    },
+    {
+      "id": "blog-3",
+      "description": "A person listening to music with headphones",
+      "imageUrl": "https://images.unsplash.com/photo-1598488035252-042a85bc8e5a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxoZWFkcGhvbmVzJTIwbXVzaWN8ZW58MHx8fHwxNzY1MTQ5Mjc2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "headphones music"
+    }
+  ]
 }
