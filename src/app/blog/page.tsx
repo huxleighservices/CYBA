@@ -1,7 +1,6 @@
 'use client';
 
 import Image from 'next/image';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Link from 'next/link';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -61,7 +60,6 @@ export default function BlogPage() {
       ) : blogPosts && blogPosts.length > 0 ? (
         <div className="grid lg:grid-cols-3 gap-8">
           {blogPosts.map((post) => {
-            const image = PlaceHolderImages.find((p) => p.id === post.imageId);
             const slug = createSlug(post.title);
             return (
               <Link
@@ -71,15 +69,14 @@ export default function BlogPage() {
               >
                 <Card className="h-full flex flex-col overflow-hidden border-primary/20 bg-card/50 transition-all duration-300 group-hover:border-primary">
                   <CardHeader className="p-0">
-                    {image && (
+                    {post.imageUrl && (
                       <div className="aspect-video overflow-hidden">
                         <Image
-                          src={image.imageUrl}
+                          src={post.imageUrl}
                           alt={post.title}
                           width={800}
                           height={450}
                           className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
-                          data-ai-hint={image.imageHint}
                         />
                       </div>
                     )}
@@ -118,3 +115,5 @@ export default function BlogPage() {
     </div>
   );
 }
+
+    

@@ -73,7 +73,7 @@ const blogPostSchema = z.object({
   content: z.string().min(1, 'Content is required.'),
   category: z.string().min(1, 'Category is required.'),
   excerpt: z.string().min(1, 'Excerpt is required.'),
-  imageId: z.string().min(1, 'Image ID is required.'),
+  imageUrl: z.string().url('Must be a valid URL.'),
 });
 
 const merchandiseSchema = z.object({
@@ -287,7 +287,7 @@ function BlogPostForm({
       content: '',
       category: '',
       excerpt: '',
-      imageId: '',
+      imageUrl: '',
     },
   });
 
@@ -390,14 +390,14 @@ function BlogPostForm({
             />
             <FormField
               control={form.control}
-              name="imageId"
+              name="imageUrl"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Image ID</FormLabel>
+                  <FormLabel>Image URL</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
-                      placeholder="e.g., 'blog-1' from placeholder-images.json"
+                      placeholder="https://example.com/image.png"
                     />
                   </FormControl>
                   <FormMessage />
@@ -677,3 +677,5 @@ export default function AdminPage() {
 
   return <AdminPanel />;
 }
+
+    

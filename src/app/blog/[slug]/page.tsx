@@ -1,7 +1,6 @@
 'use client';
 
 import Image from 'next/image';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { ArrowLeft, Loader2 } from 'lucide-react';
@@ -60,8 +59,6 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
     );
   }
 
-  const image = PlaceHolderImages.find((p) => p.id === post.imageId);
-
   return (
     <div className="container mx-auto px-4 py-16 max-w-4xl">
       <div className="mb-8">
@@ -83,14 +80,13 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
         </h1>
         <p className="text-sm text-foreground/60 mb-8">{formatDate(post.publicationDate)}</p>
 
-        {image && (
+        {post.imageUrl && (
           <div className="relative aspect-video rounded-lg overflow-hidden mb-8 shadow-lg shadow-primary/10">
             <Image
-              src={image.imageUrl}
+              src={post.imageUrl}
               alt={post.title}
               fill
               className="object-cover"
-              data-ai-hint={image.imageHint}
             />
           </div>
         )}
@@ -103,3 +99,5 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
     </div>
   );
 }
+
+    

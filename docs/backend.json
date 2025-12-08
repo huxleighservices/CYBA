@@ -42,9 +42,10 @@
           "type": "string",
           "description": "The category of the blog post."
         },
-        "imageId": {
+        "imageUrl": {
           "type": "string",
-          "description": "The ID of the placeholder image for the blog post."
+          "description": "The URL of the image for the blog post.",
+          "format": "uri"
         }
       },
       "required": [
@@ -348,3 +349,5 @@
     "reasoning": "The Firestore structure is designed to support the CYBA family website, encompassing user data, blog posts, merchandise, memberships, and forum posts. The structure prioritizes simplicity and open access, given the initial requirement for open Firestore rules.  User data is stored under `/users/{userId}` using path-based ownership. Blog posts are stored in a single `/blogPosts` collection. Merchandise is stored in a single `/merchandise` collection. Membership plans are stored in `/memberships`. Forum posts are stored in a single `/forumPosts` collection. Categories for blog posts are stored in a single `/categories` collection."
   }
 }
+
+    
