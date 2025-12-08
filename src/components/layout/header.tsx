@@ -24,13 +24,13 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 max-w-screen-2xl items-center justify-between">
-        <div className="flex-1 md:flex-none">
+      <div className="container flex h-16 max-w-screen-2xl items-center">
+        <div className="flex-1 flex justify-start">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/cyblogo.png" alt="CYBA Logo" width={40} height={40} />
+            <Image src="/cyblogo.png" alt="CYBA Logo" width={50} height={50} />
           </Link>
         </div>
-        <nav className="hidden md:flex flex-1 justify-center items-center gap-6 text-sm">
+        <nav className="hidden md:flex flex-[2] justify-center items-center gap-6 text-sm">
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -58,7 +58,7 @@ export function Header() {
               <div className="flex flex-col h-full">
                 <div className="flex justify-between items-center border-b pb-4">
                   <Link href="/" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Image src="/cyblogo.png" alt="CYBA Logo" width={40} height={40} />
+                    <Image src="/cyblogo.png" alt="CYBA Logo" width={50} height={50} />
                   </Link>
                 </div>
                 <nav className="flex flex-col gap-6 text-lg mt-8">
