@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Menu, User, LogOut, Instagram, Youtube, Facebook } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -32,9 +32,18 @@ const navLinks = [
 
 function AuthButton() {
   const { auth, user, isUserLoading } = useFirebase();
+  const [isClient, setIsClient] = useState(false);
 
-  if (isUserLoading) {
-    return <Button variant="ghost" size="icon" className="animate-pulse" />;
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient || isUserLoading) {
+    // Render a placeholder or nothing during server render and initial client load
+    // to prevent hydration mismatch.
+    return (
+      <div className="hidden md:flex items-center gap-2 h-9 w-56 justify-end" />
+    );
   }
 
   if (!user) {
