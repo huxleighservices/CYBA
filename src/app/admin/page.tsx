@@ -73,15 +73,15 @@ const blogPostSchema = z.object({
   content: z.string().min(1, 'Content is required.'),
   category: z.string().min(1, 'Category is required.'),
   excerpt: z.string().min(1, 'Excerpt is required.'),
-  imageUrl: z.string().url('Must be a valid URL.'),
+  imageUrl: z.string().url('Must be a valid URL.').or(z.literal('')),
 });
 
 const merchandiseSchema = z.object({
   name: z.string().min(1, 'Name is required.'),
   description: z.string().min(1, 'Description is required.'),
   price: z.coerce.number().min(0, 'Price must be a positive number.'),
-  imageUrl: z.string().url('Must be a valid URL.'),
-  buyNowUrl: z.string().url('Must be a valid URL.'),
+  imageUrl: z.string().url('Must be a valid URL.').or(z.literal('')),
+  buyNowUrl: z.string().url('Must be a valid URL.').or(z.literal('')),
   stockQuantity: z.coerce.number().int().min(0, 'Stock must be a positive integer.'),
 });
 
@@ -282,7 +282,10 @@ function BlogPostForm({
 
   const form = useForm<z.infer<typeof blogPostSchema>>({
     resolver: zodResolver(blogPostSchema),
-    defaultValues: post || {
+    defaultValues: post ? {
+      ...post,
+      imageUrl: post.imageUrl || '',
+    } : {
       title: '',
       content: '',
       category: '',
@@ -293,9 +296,20 @@ function BlogPostForm({
 
   useEffect(() => {
     if (post) {
-      form.reset(post);
+      form.reset({
+        ...post,
+        imageUrl: post.imageUrl || '',
+      });
+    } else {
+        form.reset({
+            title: '',
+            content: '',
+            category: '',
+            excerpt: '',
+            imageUrl: '',
+        });
     }
-  }, [post, form]);
+  }, [post, form, open]);
 
   const onSubmit = (values: z.infer<typeof blogPostSchema>) => {
     if (post) {
@@ -489,7 +503,11 @@ function MerchForm({ item }: { item?: any }) {
 
   const form = useForm<z.infer<typeof merchandiseSchema>>({
     resolver: zodResolver(merchandiseSchema),
-    defaultValues: item || {
+    defaultValues: item ? {
+        ...item,
+        imageUrl: item.imageUrl || '',
+        buyNowUrl: item.buyNowUrl || '',
+    } : {
       name: '',
       description: '',
       price: 0,
@@ -500,10 +518,25 @@ function MerchForm({ item }: { item?: any }) {
   });
 
   useEffect(() => {
-    if (item) {
-      form.reset(item);
+    if (open) {
+        if (item) {
+          form.reset({
+            ...item,
+            imageUrl: item.imageUrl || '',
+            buyNowUrl: item.buyNowUrl || '',
+          });
+        } else {
+          form.reset({
+            name: '',
+            description: '',
+            price: 0,
+            imageUrl: '',
+            buyNowUrl: '',
+            stockQuantity: 0,
+          });
+        }
     }
-  }, [item, form]);
+  }, [item, form, open]);
 
   const onSubmit = (values: z.infer<typeof merchandiseSchema>) => {
     if (item) {
@@ -677,5 +710,3 @@ export default function AdminPage() {
 
   return <AdminPanel />;
 }
-
-    
