@@ -157,6 +157,7 @@ export default function ProfilePage() {
                 <>
                   <Button
                     variant="ghost"
+                    type="button"
                     onClick={() => {
                       setIsEditing(false);
                       form.reset({
@@ -170,7 +171,7 @@ export default function ProfilePage() {
                   <Button type="submit">Save</Button>
                 </>
               ) : (
-                <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
+                <Button type="button" onClick={() => setIsEditing(true)}>Edit Profile</Button>
               )}
             </CardFooter>
           </form>
