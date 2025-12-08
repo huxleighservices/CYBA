@@ -25,7 +25,7 @@ export default function MembershipPage() {
     <div className="container mx-auto px-4 py-16">
       <div className="text-center max-w-3xl mx-auto">
         <h1 className="text-4xl md:text-6xl font-headline font-bold text-glow mb-4">
-          Join the Galaxy
+          Join our CYBA Family
         </h1>
         <p className="text-lg text-foreground/80 mb-12">
           Choose the plan that's right for your journey. Start for free or
