@@ -26,8 +26,9 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User as UserIcon, Loader2 } from 'lucide-react';
+import { User as UserIcon, Loader2, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 const profileSchema = z.object({
   username: z.string().min(2, 'Username must be at least 2 characters.'),
@@ -92,9 +93,11 @@ export default function ProfilePage() {
   }
 
   if (!userProfile) {
+    // This can briefly happen during signup while the user document is being created.
+    // A loading state or a specific message for this case might be better.
     return (
       <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center">
-        <p>Could not load user profile.</p>
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
@@ -152,7 +155,11 @@ export default function ProfilePage() {
                 </div>
               )}
             </CardContent>
-            <CardFooter className="flex justify-end gap-2">
+            <CardFooter className="flex justify-between">
+              <Button variant="outline" asChild>
+                <Link href="/admin"><Shield className="mr-2 h-4 w-4"/>Admin</Link>
+              </Button>
+              <div className="flex justify-end gap-2">
               {isEditing ? (
                 <>
                   <Button
@@ -173,6 +180,7 @@ export default function ProfilePage() {
               ) : (
                 <Button type="button" onClick={() => setIsEditing(true)}>Edit Profile</Button>
               )}
+              </div>
             </CardFooter>
           </form>
         </Form>
