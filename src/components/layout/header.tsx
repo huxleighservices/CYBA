@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Menu, User, LogOut } from 'lucide-react';
+import { Menu, User, LogOut, Instagram, Youtube, Facebook } from 'lucide-react';
 import { useState } from 'react';
 import {
   Sheet,
@@ -85,7 +85,13 @@ export function Header() {
       <div className="container flex h-16 max-w-screen-2xl items-center">
         <div className="flex-none">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/cyblogo.png" alt="CYBA Logo" width={50} height={50} />
+            <Image
+              src="/cyblogo.png"
+              alt="CYBA Logo"
+              width={70}
+              height={70}
+              className="mr-6"
+            />
           </Link>
         </div>
 
@@ -107,6 +113,38 @@ export function Header() {
         </nav>
 
         <div className="flex flex-1 items-center justify-end gap-4">
+          <div className="hidden md:flex items-center gap-2">
+            <a
+              href="https://instagram.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="ghost" size="icon">
+                <Instagram className="h-5 w-5" />
+                <span className="sr-only">Instagram</span>
+              </Button>
+            </a>
+            <a
+              href="https://youtube.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="ghost" size="icon">
+                <Youtube className="h-5 w-5" />
+                <span className="sr-only">YouTube</span>
+              </Button>
+            </a>
+            <a
+              href="https://facebook.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="ghost" size="icon">
+                <Facebook className="h-5 w-5" />
+                <span className="sr-only">Facebook</span>
+              </Button>
+            </a>
+          </div>
            <div className="hidden md:block">
             <AuthButton />
           </div>

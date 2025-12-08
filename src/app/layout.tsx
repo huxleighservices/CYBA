@@ -4,6 +4,7 @@ import { Header } from '@/components/layout/header';
 import { Toaster } from '@/components/ui/toaster';
 import { VideoBackground } from '@/components/layout/VideoBackground';
 import { FirebaseClientProvider } from '@/firebase';
+import { Footer } from '@/components/layout/footer';
 
 export const metadata: Metadata = {
   title: 'CYBA Galaxy',
@@ -35,6 +36,7 @@ export default function RootLayout({
           <div className="relative z-10 flex flex-col flex-grow">
             <Header />
             <main className="flex-grow">{children}</main>
+            <Footer />
             <Toaster />
           </div>
         </FirebaseClientProvider>

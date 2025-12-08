@@ -57,7 +57,7 @@ export default function MembershipPage() {
           <CardContent className="flex-grow"></CardContent>
           <CardFooter>
             <Button className="w-full" variant="outline" asChild>
-              <a href="mailto:sales@cyba-galaxy.com">Get in Touch</a>
+              <Link href="/contact">Get in Touch</Link>
             </Button>
           </CardFooter>
         </Card>
