@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Link from 'next/link';
@@ -45,7 +46,7 @@ export default function BlogPage() {
     <div className="container mx-auto px-4 py-16">
       <div className="text-center max-w-3xl mx-auto">
         <h1 className="text-4xl md:text-6xl font-headline font-bold text-glow mb-4">
-          CYBA LOG
+          CYBA BLOG
         </h1>
         <p className="text-lg text-foreground/80 mb-12">
           Insights, news, and transmissions from the heart of the music
