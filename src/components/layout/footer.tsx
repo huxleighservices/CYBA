@@ -7,18 +7,7 @@ import Link from 'next/link';
 export function Footer() {
   return (
     <footer className="w-full border-t border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex flex-col md:flex-row items-center justify-between py-6 gap-6 text-sm">
-        <div className="text-foreground/60 order-last md:order-first">
-          Website developed by{' '}
-          <a
-            href="https://www.huxleigh.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:text-primary"
-          >
-            Huxleigh
-          </a>
-        </div>
+      <div className="container flex flex-col items-center justify-center py-6 gap-6 text-sm">
         <div className="flex items-center gap-4">
           <a
             href="https://instagram.com"
@@ -52,6 +41,17 @@ export function Footer() {
           <Button asChild>
             <Link href="/contact">Get in Touch</Link>
           </Button>
+        </div>
+        <div className="text-foreground/60">
+          Website developed by{' '}
+          <a
+            href="https://www.huxleigh.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-primary"
+          >
+            Huxleigh
+          </a>
         </div>
       </div>
     </footer>
