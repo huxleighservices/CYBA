@@ -40,14 +40,9 @@ export default function Home() {
           />
         )}
         <div className="relative z-10 px-6 py-24 md:py-32">
-          <h1 className="text-4xl md:text-7xl font-headline font-bold mb-4 tracking-tighter animate-text-glow">
-            Navigate the Music Cosmos
+          <h1 className="text-4xl md:text-7xl font-headline font-bold mb-8 tracking-tighter animate-text-glow">
+            Welcome to the CYBAVerse
           </h1>
-          <p className="text-lg md:text-xl text-foreground/80 max-w-3xl mx-auto mb-8">
-            CYBA is your launchpad to stardom. We are a full-service music
-            marketing agency dedicated to helping artists shine in the digital
-            universe.
-          </p>
           <Button
             asChild
             size="lg"
