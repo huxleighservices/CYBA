@@ -100,7 +100,7 @@ export function Header() {
         <div className="mr-4 flex">
           <Link href="/" className="flex items-center gap-2">
             <Image
-              src="/cybaswirl.png"
+              src="/cyblogo.png"
               alt="CYBA Logo"
               width={70}
               height={70}
@@ -177,7 +177,7 @@ export function Header() {
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <Image
-                      src="/cybaswirl.png"
+                      src="/cyblogo.png"
                       alt="CYBA Logo"
                       width={50}
                       height={50}
