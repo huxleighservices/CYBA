@@ -1,23 +1,63 @@
+'use client';
+
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { notFound } from 'next/navigation';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
 
-const blogPosts: any[] = [];
+// Function to create a slug from a title (must be identical to the one on the blog list page)
+const createSlug = (title: string) => {
+  if (!title) return '';
+  return title
+    .toLowerCase()
+    .replace(/ /g, '-')
+    .replace(/[^\w-]+/g, '');
+};
 
-export async function generateStaticParams() {
-  return blogPosts.map((post) => ({
-    slug: post.slug,
-  }));
-}
+const formatDate = (timestamp: any) => {
+    if (!timestamp || !timestamp.toDate) {
+      return 'Just now';
+    }
+    return new Date(timestamp.toDate()).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
 
 export default function BlogPostPage({ params }: { params: { slug: string } }) {
-  const post = blogPosts.find((p) => p.slug === params.slug);
+  const { firestore } = useFirebase();
+  const blogPostsRef = useMemoFirebase(
+    () => collection(firestore, 'blogPosts'),
+    [firestore]
+  );
+  const { data: blogPosts, isLoading } = useCollection(blogPostsRef);
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  const post = blogPosts?.find((p) => createSlug(p.title) === params.slug);
 
   if (!post) {
-    notFound();
+    // Wait for loading to finish before showing notFound
+    if (!isLoading) {
+      notFound();
+    }
+    // Can show a loading skeleton here as well
+    return (
+      <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
   const image = PlaceHolderImages.find((p) => p.id === post.imageId);
@@ -41,7 +81,7 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
         <h1 className="text-4xl md:text-5xl font-headline font-bold text-glow mb-4">
           {post.title}
         </h1>
-        <p className="text-sm text-foreground/60 mb-8">{post.date}</p>
+        <p className="text-sm text-foreground/60 mb-8">{formatDate(post.publicationDate)}</p>
 
         {image && (
           <div className="relative aspect-video rounded-lg overflow-hidden mb-8 shadow-lg shadow-primary/10">
@@ -56,7 +96,7 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
         )}
 
         <div
-          className="text-lg"
+          className="prose prose-invert prose-lg max-w-none text-foreground/90 prose-headings:text-glow prose-a:text-primary prose-strong:text-foreground"
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
       </article>

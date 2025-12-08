@@ -51,6 +51,11 @@ service cloud.firestore {
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
+    
+    // We will assume for now that anyone with an account is an admin
+    function isAdmin() {
+      return isSignedIn();
+    }
 
     // Checks for ownership on an existing document. Used for update/delete.
     function isExistingOwner(userId) {
@@ -65,10 +70,10 @@ service cloud.firestore {
      * @principle Restricts access to a user's own data tree and prevents user enumeration.
      */
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow update: if isExistingOwner(userId) || isAdmin();
       allow delete: if isExistingOwner(userId);
     }
 
@@ -82,9 +87,9 @@ service cloud.firestore {
     match /blogPosts/{blogPostId} {
       allow get: if true;
       allow list: if true;
-      allow create: if isSignedIn() && request.resource.data.author == request.auth.uid;
-      allow update: if isExistingOwner(resource.data.author) && request.resource.data.author == resource.data.author;
-      allow delete: if isExistingOwner(resource.data.author);
+      allow create: if isSignedIn() && (request.resource.data.author == request.auth.uid || isAdmin());
+      allow update: if (isExistingOwner(resource.data.author) || isAdmin()) && request.resource.data.author == resource.data.author;
+      allow delete: if isExistingOwner(resource.data.author) || isAdmin();
     }
 
     /**
@@ -97,9 +102,9 @@ service cloud.firestore {
     match /merchandise/{merchandiseId} {
       allow get: if true;
       allow list: if true;
-      allow create: if false; // Managed by admin SDK
-      allow update: if false; // Managed by admin SDK
-      allow delete: if false; // Managed by admin SDK
+      allow create: if isAdmin(); // Managed by admin
+      allow update: if isAdmin(); // Managed by admin
+      allow delete: if isAdmin(); // Managed by admin
     }
 
     /**

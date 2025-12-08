@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,26 +21,78 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Shield } from 'lucide-react';
+import { Shield, PlusCircle, Trash2, Edit, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {
+  useFirebase,
+  useCollection,
+  useMemoFirebase,
+  setDocumentNonBlocking,
+  addDocumentNonBlocking,
+  deleteDocumentNonBlocking,
+} from '@/firebase';
+import {
+  collection,
+  doc,
+  serverTimestamp,
+} from 'firebase/firestore';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 
+// Schemas
 const passwordSchema = z.object({
   password: z.string().min(1, 'Password is required.'),
 });
 
+const blogPostSchema = z.object({
+  title: z.string().min(1, 'Title is required.'),
+  content: z.string().min(1, 'Content is required.'),
+  category: z.string().min(1, 'Category is required.'),
+  excerpt: z.string().min(1, 'Excerpt is required.'),
+  imageId: z.string().min(1, 'Image ID is required.'),
+});
+
+const merchandiseSchema = z.object({
+  name: z.string().min(1, 'Name is required.'),
+  description: z.string().min(1, 'Description is required.'),
+  price: z.coerce.number().min(0, 'Price must be a positive number.'),
+  imageUrl: z.string().url('Must be a valid URL.'),
+  buyNowUrl: z.string().url('Must be a valid URL.'),
+  stockQuantity: z.coerce.number().int().min(0, 'Stock must be a positive integer.'),
+});
+
 const ADMIN_PASSWORD = 'VIOLETCYBA';
 
-function PasswordForm({
-  onSuccess,
-}: {
-  onSuccess: () => void;
-}) {
+// --- Reusable Components ---
+function PasswordForm({ onSuccess }: { onSuccess: () => void }) {
   const { toast } = useToast();
   const form = useForm<z.infer<typeof passwordSchema>>({
     resolver: zodResolver(passwordSchema),
-    defaultValues: {
-      password: '',
-    },
+    defaultValues: { password: '' },
   });
 
   function onSubmit(values: z.infer<typeof passwordSchema>) {
@@ -65,9 +117,7 @@ function PasswordForm({
         <CardTitle className="text-2xl font-bold tracking-widest mt-4">
           Admin Access
         </CardTitle>
-        <CardDescription>
-          This page requires authentication.
-        </CardDescription>
+        <CardDescription>This page requires authentication.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -100,10 +150,492 @@ function PasswordForm({
   );
 }
 
+// --- User Management ---
+function UserManagement() {
+  const { firestore } = useFirebase();
+  const usersRef = useMemoFirebase(() => collection(firestore, 'users'), [
+    firestore,
+  ]);
+  const { data: users, isLoading } = useCollection<{
+    username: string;
+    email: string;
+    membershipTier?: 'free' | 'pro';
+  }>(usersRef);
+
+  const handleTierChange = (userId: string, isPro: boolean) => {
+    const userDocRef = doc(firestore, 'users', userId);
+    setDocumentNonBlocking(
+      userDocRef,
+      { membershipTier: isPro ? 'pro' : 'free' },
+      { merge: true }
+    );
+  };
+
+  if (isLoading) return <Loader2 className="animate-spin" />;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>User Management</CardTitle>
+        <CardDescription>Upgrade users to Cyba-Pro.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Username</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead className="text-right">Cyba-Pro</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users?.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell>{user.username}</TableCell>
+                <TableCell>{user.email}</TableCell>
+                <TableCell className="text-right">
+                  <Checkbox
+                    checked={user.membershipTier === 'pro'}
+                    onCheckedChange={(checked) =>
+                      handleTierChange(user.id, !!checked)
+                    }
+                  />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Blog Management ---
+function BlogManagement() {
+  const { firestore, user } = useFirebase();
+  const blogPostsRef = useMemoFirebase(
+    () => collection(firestore, 'blogPosts'),
+    [firestore]
+  );
+  const { data: blogPosts, isLoading } = useCollection(blogPostsRef);
+
+  const handleDelete = (id: string) => {
+    if (confirm('Are you sure you want to delete this post?')) {
+      deleteDocumentNonBlocking(doc(firestore, 'blogPosts', id));
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Blog Management</CardTitle>
+          <CardDescription>Create, edit, and delete blog posts.</CardDescription>
+        </div>
+        <BlogPostForm user={user} />
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <Loader2 className="animate-spin" />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Title</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {blogPosts?.map((post) => (
+                <TableRow key={post.id}>
+                  <TableCell>{post.title}</TableCell>
+                  <TableCell className="text-right space-x-2">
+                    <BlogPostForm post={post} user={user} />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={() => handleDelete(post.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function BlogPostForm({
+  post,
+  user,
+}: {
+  post?: any;
+  user: any;
+}) {
+  const [open, setOpen] = useState(false);
+  const { firestore } = useFirebase();
+  const { toast } = useToast();
+
+  const form = useForm<z.infer<typeof blogPostSchema>>({
+    resolver: zodResolver(blogPostSchema),
+    defaultValues: post || {
+      title: '',
+      content: '',
+      category: '',
+      excerpt: '',
+      imageId: '',
+    },
+  });
+
+  useEffect(() => {
+    if (post) {
+      form.reset(post);
+    }
+  }, [post, form]);
+
+  const onSubmit = (values: z.infer<typeof blogPostSchema>) => {
+    if (post) {
+      // Update
+      setDocumentNonBlocking(doc(firestore, 'blogPosts', post.id), values, {
+        merge: true,
+      });
+      toast({ title: 'Blog post updated!' });
+    } else {
+      // Create
+      addDocumentNonBlocking(collection(firestore, 'blogPosts'), {
+        ...values,
+        author: user.uid,
+        publicationDate: serverTimestamp(),
+      });
+      toast({ title: 'Blog post created!' });
+    }
+    setOpen(false);
+    form.reset();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {post ? (
+          <Button variant="outline" size="icon">
+            <Edit className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button>
+            <PlusCircle className="mr-2 h-4 w-4" /> New Post
+          </Button>
+        )}
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{post ? 'Edit' : 'Create'} Blog Post</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Title</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="content"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Content (HTML supported)</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} rows={10} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="excerpt"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Excerpt</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="imageId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Image ID</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="e.g., 'blog-1' from placeholder-images.json"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="secondary">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button type="submit">Save</Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// --- Merch Management ---
+function MerchManagement() {
+  const { firestore } = useFirebase();
+  const merchRef = useMemoFirebase(
+    () => collection(firestore, 'merchandise'),
+    [firestore]
+  );
+  const { data: merchandise, isLoading } = useCollection(merchRef);
+
+  const handleDelete = (id: string) => {
+    if (confirm('Are you sure you want to delete this item?')) {
+      deleteDocumentNonBlocking(doc(firestore, 'merchandise', id));
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Merchandise Management</CardTitle>
+          <CardDescription>
+            Create, edit, and delete merchandise.
+          </CardDescription>
+        </div>
+        <MerchForm />
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <Loader2 className="animate-spin" />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Price</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {merchandise?.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>{item.name}</TableCell>
+                  <TableCell>${item.price.toFixed(2)}</TableCell>
+                  <TableCell className="text-right space-x-2">
+                    <MerchForm item={item} />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={() => handleDelete(item.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function MerchForm({ item }: { item?: any }) {
+  const [open, setOpen] = useState(false);
+  const { firestore } = useFirebase();
+  const { toast } = useToast();
+
+  const form = useForm<z.infer<typeof merchandiseSchema>>({
+    resolver: zodResolver(merchandiseSchema),
+    defaultValues: item || {
+      name: '',
+      description: '',
+      price: 0,
+      imageUrl: '',
+      buyNowUrl: '',
+      stockQuantity: 0,
+    },
+  });
+
+  useEffect(() => {
+    if (item) {
+      form.reset(item);
+    }
+  }, [item, form]);
+
+  const onSubmit = (values: z.infer<typeof merchandiseSchema>) => {
+    if (item) {
+      setDocumentNonBlocking(doc(firestore, 'merchandise', item.id), values, {
+        merge: true,
+      });
+      toast({ title: 'Merchandise updated!' });
+    } else {
+      addDocumentNonBlocking(collection(firestore, 'merchandise'), values);
+      toast({ title: 'Merchandise created!' });
+    }
+    setOpen(false);
+    form.reset();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {item ? (
+          <Button variant="outline" size="icon">
+            <Edit className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button>
+            <PlusCircle className="mr-2 h-4 w-4" /> New Item
+          </Button>
+        )}
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{item ? 'Edit' : 'Create'} Merchandise</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="price"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Price</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="0.01" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="stockQuantity"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Stock Quantity</FormLabel>
+                  <FormControl>
+                    <Input type="number" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="imageUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Image URL</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="buyNowUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Buy Now URL</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="secondary">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button type="submit">Save</Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// --- Main Admin Panel ---
 function AdminPanel() {
   return (
     <div className="container mx-auto px-4 py-16">
-      <div className="text-center max-w-3xl mx-auto">
+      <div className="text-center max-w-3xl mx-auto mb-12">
         <h1 className="text-4xl md:text-6xl font-headline font-bold text-glow mb-4">
           Admin Panel
         </h1>
@@ -111,7 +643,23 @@ function AdminPanel() {
           Welcome to the admin dashboard.
         </p>
       </div>
-      {/* Admin content goes here */}
+
+      <Tabs defaultValue="users" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="blog">Blog</TabsTrigger>
+          <TabsTrigger value="merch">Merchandise</TabsTrigger>
+        </TabsList>
+        <TabsContent value="users" className="mt-6">
+          <UserManagement />
+        </TabsContent>
+        <TabsContent value="blog" className="mt-6">
+          <BlogManagement />
+        </TabsContent>
+        <TabsContent value="merch" className="mt-6">
+          <MerchManagement />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

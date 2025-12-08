@@ -33,6 +33,18 @@
           "items": {
             "type": "string"
           }
+        },
+        "excerpt": {
+          "type": "string",
+          "description": "A short summary of the blog post."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the blog post."
+        },
+        "imageId": {
+          "type": "string",
+          "description": "The ID of the placeholder image for the blog post."
         }
       },
       "required": [
@@ -73,6 +85,11 @@
         "stockQuantity": {
           "type": "number",
           "description": "The number of items currently in stock"
+        },
+        "buyNowUrl": {
+          "type": "string",
+          "description": "URL for the 'Buy Now' button.",
+          "format": "uri"
         }
       },
       "required": [
@@ -81,7 +98,8 @@
         "description",
         "price",
         "imageUrl",
-        "stockQuantity"
+        "stockQuantity",
+        "buyNowUrl"
       ]
     },
     "User": {
@@ -111,6 +129,14 @@
           "type": "string",
           "description": "URL of the user's profile picture.",
           "format": "uri"
+        },
+        "membershipTier": {
+          "type": "string",
+          "description": "The membership tier of the user.",
+          "enum": [
+            "free",
+            "pro"
+          ]
         }
       },
       "required": [
