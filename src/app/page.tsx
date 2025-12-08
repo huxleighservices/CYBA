@@ -29,16 +29,6 @@ export default function Home() {
   return (
     <div className="container mx-auto px-4 py-8 md:py-16">
       <section className="relative text-center rounded-lg overflow-hidden mb-16">
-        {heroImage && (
-          <Image
-            src={heroImage.imageUrl}
-            alt={heroImage.description}
-            fill
-            className="object-cover opacity-20"
-            data-ai-hint={heroImage.imageHint}
-            priority
-          />
-        )}
         <div className="relative z-10 px-6 py-24 md:py-32">
           <h1 className="text-4xl md:text-7xl font-headline font-bold mb-8 tracking-tighter animate-text-glow">
             Welcome to the CYBAVerse

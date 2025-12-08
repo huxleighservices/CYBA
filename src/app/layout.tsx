@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Header } from '@/components/layout/header';
 import { Toaster } from '@/components/ui/toaster';
+import { VideoBackground } from '@/components/layout/VideoBackground';
 
 export const metadata: Metadata = {
   title: 'CYBA Galaxy',
@@ -27,10 +28,13 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-body antialiased min-h-screen bg-background text-foreground flex flex-col grain">
-        <Header />
-        <main className="flex-grow">{children}</main>
-        <Toaster />
+      <body className="font-body antialiased min-h-screen bg-background text-foreground flex flex-col">
+        <VideoBackground />
+        <div className="relative z-10 flex flex-col flex-grow">
+          <Header />
+          <main className="flex-grow">{children}</main>
+          <Toaster />
+        </div>
       </body>
     </html>
   );
