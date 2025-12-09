@@ -30,8 +30,7 @@ export default function RootLayout({
             <VideoBackground />
             <AppSidebar />
             <div
-              className="relative flex flex-col flex-1 md:ml-[var(--sidebar-width)]"
-              style={{ '--sidebar-width': '16rem' } as React.CSSProperties}
+              className="relative flex flex-col flex-1 md:ml-[16rem]"
             >
               <Header />
               <main className="flex-grow">{children}</main>

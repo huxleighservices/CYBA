@@ -58,7 +58,7 @@ const SidebarProvider = React.forwardRef<
     <SidebarContext.Provider value={contextValue}>
       <TooltipProvider delayDuration={0}>
         <div
-          data-sidebar-state="expanded" // Always expanded on desktop
+          data-sidebar-state="expanded" 
           className={cn("group/sidebar-wrapper", className)}
           ref={ref}
           {...props}
@@ -90,7 +90,7 @@ const Sidebar = React.forwardRef<
         <SheetContent
           data-sidebar="sidebar"
           data-mobile="true"
-          className="w-[var(--sidebar-width)] bg-sidebar/80 p-0 text-sidebar-foreground backdrop-blur-sm [&>button]:hidden"
+          className="w-[var(--sidebar-width)] bg-black p-0 text-sidebar-foreground [&>button]:hidden"
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -108,8 +108,8 @@ const Sidebar = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "group fixed top-0 left-0 z-20 hidden h-screen flex-col bg-background/80 text-sidebar-foreground backdrop-blur-sm md:flex",
-        "w-[var(--sidebar-width)] border-r border-sidebar-border",
+        "group fixed top-0 left-0 z-20 hidden h-screen flex-col bg-black text-sidebar-foreground md:flex",
+        "w-[16rem] border-r border-sidebar-border",
         className
       )}
       data-side={side}
