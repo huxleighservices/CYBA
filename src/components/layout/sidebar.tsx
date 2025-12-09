@@ -36,7 +36,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
           <Image
             src="/cyblogo.png"
             alt="CYBA Logo"
