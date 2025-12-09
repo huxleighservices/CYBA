@@ -9,6 +9,12 @@ import {
   Youtube,
   Facebook,
   Coins,
+  Home,
+  Users,
+  ShoppingBag,
+  PenSquare,
+  MessageSquare,
+  Menu,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
@@ -21,7 +27,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { SidebarTrigger } from '../ui/sidebar';
+import Image from 'next/image';
+import { usePathname } from 'next/navigation';
+import { cn } from '@/lib/utils';
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetClose,
+} from '@/components/ui/sheet';
+
+const navLinks = [
+  { href: '/', label: 'Home', icon: Home },
+  { href: '/membership', label: 'Membership', icon: Users },
+  { href: '/merch', label: 'Merch', icon: ShoppingBag },
+  { href: '/blog', label: 'Blog', icon: PenSquare },
+  { href: '/cybaboard', label: 'Cybaboard', icon: MessageSquare },
+];
 
 function AuthButton() {
   const { firestore, auth, user, isUserLoading } = useFirebase();
@@ -93,50 +115,109 @@ function AuthButton() {
   );
 }
 
+function MainNav() {
+  const pathname = usePathname();
+  return (
+    <nav className="hidden md:flex items-center space-x-6 lg:space-x-8">
+      {navLinks.map((link) => (
+        <Link
+          key={link.href}
+          href={link.href}
+          className={cn(
+            'text-sm font-medium transition-colors hover:text-primary',
+            pathname === link.href ? 'text-primary' : 'text-foreground/60'
+          )}
+        >
+          {link.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+function MobileNav() {
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" className="md:hidden">
+          <Menu />
+          <span className="sr-only">Toggle Menu</span>
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="bg-background/80 backdrop-blur-xl">
+        <div className="flex flex-col h-full p-6">
+          <Link href="/" className="flex items-center gap-2 mb-8">
+            <Image src="/cyblogo.png" alt="CYBA Logo" width={30} height={30} />
+            <span className="text-xl font-bold">CYBA</span>
+          </Link>
+          <nav className="flex flex-col space-y-4">
+            {navLinks.map((link) => (
+              <SheetClose asChild key={link.href}>
+                <Link
+                  href={link.href}
+                  className="flex items-center gap-3 text-lg font-medium text-foreground/80 hover:text-primary"
+                >
+                  <link.icon className="h-5 w-5" />
+                  {link.label}
+                </Link>
+              </SheetClose>
+            ))}
+          </nav>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 export function Header() {
   return (
-    <header className="sticky top-0 z-20 w-full bg-transparent">
+    <header className="sticky top-0 z-20 w-full bg-background/80 backdrop-blur-md">
       <div className="container flex h-16 max-w-screen-2xl items-center">
-        <div className="mr-4 flex items-center">
-           <SidebarTrigger className="md:hidden"/>
+        <div className="mr-4 md:hidden">
+          <MobileNav />
         </div>
+        <Link href="/" className="mr-6 flex items-center space-x-2">
+          <Image src="/cyblogo.png" alt="CYBA Logo" width={40} height={40} />
+          <span className="hidden font-bold sm:inline-block">CYBA</span>
+        </Link>
 
-        <div className="flex-1" />
-
-        <div className="flex items-center justify-end gap-4">
-          <div className="hidden md:flex items-center gap-2">
-            <a
-              href="https://instagram.com"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button variant="ghost" size="icon">
-                <Instagram className="h-5 w-5" />
-                <span className="sr-only">Instagram</span>
-              </Button>
-            </a>
-            <a
-              href="https://youtube.com"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button variant="ghost" size="icon">
-                <Youtube className="h-5 w-5" />
-                <span className="sr-only">YouTube</span>
-              </Button>
-            </a>
-            <a
-              href="https://facebook.com"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button variant="ghost" size="icon">
-                <Facebook className="h-5 w-5" />
-                <span className="sr-only">Facebook</span>
-              </Button>
-            </a>
+        <div className="flex flex-1 items-center justify-between">
+          <MainNav />
+          <div className="flex flex-1 items-center justify-end gap-4">
+            <div className="hidden md:flex items-center gap-2">
+              <a
+                href="https://instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="ghost" size="icon">
+                  <Instagram className="h-5 w-5" />
+                  <span className="sr-only">Instagram</span>
+                </Button>
+              </a>
+              <a
+                href="https://youtube.com"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="ghost" size="icon">
+                  <Youtube className="h-5 w-5" />
+                  <span className="sr-only">YouTube</span>
+                </Button>
+              </a>
+              <a
+                href="https://facebook.com"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="ghost" size="icon">
+                  <Facebook className="h-5 w-5" />
+                  <span className="sr-only">Facebook</span>
+                </Button>
+              </a>
+            </div>
+            <AuthButton />
           </div>
-          <AuthButton />
         </div>
       </div>
     </header>
