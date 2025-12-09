@@ -155,11 +155,10 @@ export default function ProfilePage() {
                 </div>
               )}
             </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline" asChild>
-                <Link href="/admin"><Shield className="mr-2 h-4 w-4"/>Admin</Link>
+            <CardFooter className="flex justify-end gap-2">
+              <Button asChild variant="outline" className="mr-auto">
+                 <Link href="/admin"><Shield className="mr-2 h-4 w-4"/>Admin</Link>
               </Button>
-              <div className="flex justify-end gap-2">
               {isEditing ? (
                 <>
                   <Button
@@ -180,7 +179,6 @@ export default function ProfilePage() {
               ) : (
                 <Button type="button" onClick={() => setIsEditing(true)}>Edit Profile</Button>
               )}
-              </div>
             </CardFooter>
           </form>
         </Form>

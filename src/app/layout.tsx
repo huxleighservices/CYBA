@@ -5,6 +5,8 @@ import { Toaster } from '@/components/ui/toaster';
 import { VideoBackground } from '@/components/layout/VideoBackground';
 import { FirebaseClientProvider } from '@/firebase';
 import { Footer } from '@/components/layout/footer';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/layout/sidebar';
 
 export const metadata: Metadata = {
   title: 'CYBA family',
@@ -36,13 +38,18 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased min-h-screen bg-background text-foreground flex flex-col">
         <FirebaseClientProvider>
-          <VideoBackground />
-          <div className="relative z-10 flex flex-col flex-grow">
-            <Header />
-            <main className="flex-grow">{children}</main>
-            <Footer />
-            <Toaster />
-          </div>
+          <SidebarProvider>
+            <AppSidebar />
+            <div className="relative flex flex-col flex-1">
+              <VideoBackground />
+              <SidebarInset className="relative z-10 flex flex-col flex-grow">
+                <Header />
+                <main className="flex-grow">{children}</main>
+                <Footer />
+                <Toaster />
+              </SidebarInset>
+            </div>
+          </SidebarProvider>
         </FirebaseClientProvider>
       </body>
     </html>
