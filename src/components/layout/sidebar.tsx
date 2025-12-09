@@ -40,8 +40,8 @@ export function AppSidebar() {
           <Image
             src="/cyblogo.png"
             alt="CYBA Logo"
-            width={50}
-            height={50}
+            width={30}
+            height={30}
             className="group-data-[collapsible=icon]:mx-auto"
           />
           <span className="text-xl font-bold group-data-[collapsible=icon]:hidden">
