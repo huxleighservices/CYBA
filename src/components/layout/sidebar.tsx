@@ -7,6 +7,8 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarTrigger,
+  SidebarFooter,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -16,6 +18,7 @@ import {
   ShoppingBag,
   PenSquare,
   MessageSquare,
+  PanelLeft,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
@@ -64,6 +67,16 @@ export function AppSidebar() {
           ))}
         </SidebarMenu>
       </SidebarContent>
+      <SidebarFooter className="hidden md:flex">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarTrigger>
+                <PanelLeft className="h-5 w-5" />
+                <span>Collapse</span>
+            </SidebarTrigger>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }

@@ -39,15 +39,13 @@ export default function RootLayout({
       <body className="font-body antialiased min-h-screen bg-background text-foreground flex flex-col">
         <FirebaseClientProvider>
           <SidebarProvider>
+            <VideoBackground />
             <AppSidebar />
-            <div className="relative flex flex-col flex-1 ml-0 md:ml-[3rem] group-data-[sidebar-state=expanded]/sidebar-wrapper:md:ml-[16rem] transition-[margin-left] duration-200 ease-linear">
-              <VideoBackground />
-              <SidebarInset className="relative z-10 flex flex-col flex-grow bg-transparent">
-                <Header />
-                <main className="flex-grow">{children}</main>
-                <Footer />
-                <Toaster />
-              </SidebarInset>
+            <div className="relative flex flex-col flex-1 md:ml-[var(--sidebar-width-icon)] group-data-[sidebar-state=expanded]/sidebar-wrapper:md:ml-[var(--sidebar-width)] transition-[margin-left] duration-200 ease-linear">
+              <Header />
+              <main className="flex-grow">{children}</main>
+              <Footer />
+              <Toaster />
             </div>
           </SidebarProvider>
         </FirebaseClientProvider>
