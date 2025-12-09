@@ -18,7 +18,6 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
 
 const navLinks = [
   { href: '/', label: 'Home', icon: Home },
@@ -32,10 +31,16 @@ export function AppSidebar() {
   const pathname = usePathname();
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       <SidebarHeader>
         <Link href="/" className="flex items-center gap-2">
-          <Image src="/cyblogo.png" alt="CYBA Logo" width={50} height={50} />
+          <Image
+            src="/cyblogo.png"
+            alt="CYBA Logo"
+            width={50}
+            height={50}
+            className="group-data-[collapsible=icon]:mx-auto"
+          />
           <span className="text-xl font-bold group-data-[collapsible=icon]:hidden">
             CYBA
           </span>

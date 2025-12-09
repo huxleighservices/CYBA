@@ -40,7 +40,7 @@ export default function RootLayout({
         <FirebaseClientProvider>
           <SidebarProvider>
             <AppSidebar />
-            <div className="relative flex flex-col flex-1">
+            <div className="relative flex flex-col flex-1 ml-[3rem]">
               <VideoBackground />
               <SidebarInset className="relative z-10 flex flex-col flex-grow bg-transparent">
                 <Header />
