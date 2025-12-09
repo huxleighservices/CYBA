@@ -60,15 +60,19 @@ export default function SignupPage() {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
+        // Check if the user document is being created to avoid overwriting on simple auth state changes
         const { username, email } = form.getValues();
-        const userRef = doc(firestore, 'users', firebaseUser.uid);
-        const userData = {
-          id: firebaseUser.uid,
-          username,
-          email,
-        };
-        setDocumentNonBlocking(userRef, userData, { merge: true });
-        router.push('/');
+        if (username && email) { // Only create doc if form has been filled
+            const userRef = doc(firestore, 'users', firebaseUser.uid);
+            const userData = {
+              id: firebaseUser.uid,
+              username,
+              email,
+              cybaCoinBalance: 0, // Initialize CybaCoin balance
+            };
+            setDocumentNonBlocking(userRef, userData, { merge: true });
+            router.push('/');
+        }
       }
     });
     return () => unsubscribe();
