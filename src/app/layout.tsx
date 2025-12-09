@@ -42,7 +42,7 @@ export default function RootLayout({
             <AppSidebar />
             <div className="relative flex flex-col flex-1">
               <VideoBackground />
-              <SidebarInset className="relative z-10 flex flex-col flex-grow">
+              <SidebarInset className="relative z-10 flex flex-col flex-grow bg-transparent">
                 <Header />
                 <main className="flex-grow">{children}</main>
                 <Footer />
