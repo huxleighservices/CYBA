@@ -22,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head />
       <body className="font-body antialiased min-h-screen bg-background text-foreground flex flex-col">
         <FirebaseClientProvider>

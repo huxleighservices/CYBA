@@ -58,7 +58,7 @@ const SidebarProvider = React.forwardRef<
     <SidebarContext.Provider value={contextValue}>
       <TooltipProvider delayDuration={0}>
         <div
-          data-sidebar-state="expanded" 
+          suppressHydrationWarning
           className={cn("group/sidebar-wrapper", className)}
           ref={ref}
           {...props}
@@ -106,9 +106,10 @@ const Sidebar = React.forwardRef<
 
   return (
     <div
+      suppressHydrationWarning
       ref={ref}
       className={cn(
-        "group fixed top-0 left-0 z-20 hidden h-screen flex-col bg-black text-sidebar-foreground md:flex",
+        "group fixed top-0 left-0 z-30 hidden h-screen flex-col bg-black text-sidebar-foreground md:flex",
         "w-[16rem] border-r border-sidebar-border",
         className
       )}
