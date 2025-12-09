@@ -176,12 +176,11 @@ const Sidebar = React.forwardRef<
     ref
   ) => {
     const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
-    const [isClient, setIsClient] = React.useState(false);
+    const [isClient, setIsClient] = React.useState(false)
 
     React.useEffect(() => {
-      setIsClient(true);
-    }, []);
-
+      setIsClient(true)
+    }, [])
 
     if (collapsible === "none") {
       return (
@@ -198,7 +197,12 @@ const Sidebar = React.forwardRef<
       )
     }
 
-    if (isMobile && isClient) {
+    if (!isClient) {
+      // Render nothing on the server for the mobile sidebar to prevent hydration mismatch
+      return null
+    }
+
+    if (isMobile) {
       return (
         <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
           <SheetContent
@@ -222,8 +226,7 @@ const Sidebar = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "group hidden md:block text-sidebar-foreground",
-           variant === "inset" && "peer" // This was the cause of the alignment issue
+          "group hidden md:block text-sidebar-foreground"
         )}
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
@@ -321,7 +324,8 @@ const SidebarInset = React.forwardRef<
       ref={ref}
       className={cn(
         "relative flex min-h-svh flex-1 flex-col bg-background",
-        "peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
+        "md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
+        "peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))]",
         className
       )}
       {...props}
@@ -759,5 +763,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-
-    
