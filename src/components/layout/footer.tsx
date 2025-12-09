@@ -6,7 +6,7 @@ import Link from 'next/link';
 
 export function Footer() {
   return (
-    <footer className="w-full bg-transparent text-white">
+    <footer className="w-full bg-black text-white">
       <div className="container mx-auto flex items-center justify-between py-4 text-sm">
         <div className="text-foreground/60">
           Website developed by{' '}

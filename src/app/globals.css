@@ -52,10 +52,10 @@
     --border: 271 76% 25%;
     --input: 271 76% 25%;
     --ring: 195 53% 79%;
-    --sidebar-background: 0 0% 0%;
+    --sidebar-background: 0 0% 5%;
     --sidebar-foreground: 0 0% 98%;
     --sidebar-border: 0 0% 15%;
-    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent: 0 0% 20%;
     --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-ring: 195 53% 79%;
   }

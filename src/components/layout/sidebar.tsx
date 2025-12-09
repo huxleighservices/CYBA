@@ -7,8 +7,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarTrigger,
-  SidebarFooter,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -18,7 +16,6 @@ import {
   ShoppingBag,
   PenSquare,
   MessageSquare,
-  PanelLeft,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
@@ -34,33 +31,18 @@ export function AppSidebar() {
   const pathname = usePathname();
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar>
       <SidebarHeader>
-        <Link
-          href="/"
-          className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center"
-        >
-          <Image
-            src="/cyblogo.png"
-            alt="CYBA Logo"
-            width={30}
-            height={30}
-            className="group-data-[collapsible=icon]:mx-auto"
-          />
-          <span className="text-xl font-bold group-data-[collapsible=icon]:hidden">
-            CYBA
-          </span>
+        <Link href="/" className="flex items-center gap-2">
+          <Image src="/cyblogo.png" alt="CYBA Logo" width={30} height={30} />
+          <span className="text-xl font-bold">CYBA</span>
         </Link>
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
           {navLinks.map((link) => (
             <SidebarMenuItem key={link.href}>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname === link.href}
-                tooltip={link.label}
-              >
+              <SidebarMenuButton asChild isActive={pathname === link.href}>
                 <Link href={link.href}>
                   <link.icon className="h-5 w-5" />
                   <span>{link.label}</span>
@@ -70,16 +52,6 @@ export function AppSidebar() {
           ))}
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter className="hidden md:flex">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarTrigger>
-              <PanelLeft className="h-5 w-5" />
-              <span>Collapse</span>
-            </SidebarTrigger>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
     </Sidebar>
   );
 }
