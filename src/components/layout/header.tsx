@@ -172,15 +172,16 @@ function MobileNav() {
 export function Header() {
   return (
     <header className="sticky top-0 z-20 w-full bg-background/80 backdrop-blur-md">
-      <div className="container flex h-16 items-center justify-between">
+      <div className="container mx-auto flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
-          <div className="md:hidden">
-            <MobileNav />
-          </div>
+          <MobileNav />
           <Link href="/" className="flex items-center space-x-2">
             <Image src="/cyblogo.png" alt="CYBA Logo" width={40} height={40} />
             <span className="hidden font-bold sm:inline-block">CYBA</span>
           </Link>
+        </div>
+
+        <div className="hidden md:flex flex-1 items-center justify-center">
           <MainNav />
         </div>
 
