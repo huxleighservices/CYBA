@@ -5,7 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { VideoBackground } from '@/components/layout/VideoBackground';
 import { FirebaseClientProvider } from '@/firebase';
 import { Footer } from '@/components/layout/footer';
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/sidebar';
 
 export const metadata: Metadata = {
@@ -24,7 +24,6 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
-        <link rel="icon" href="/cybaswirl.png" sizes="any" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"
