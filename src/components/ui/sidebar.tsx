@@ -133,6 +133,7 @@ const SidebarProvider = React.forwardRef<
       <SidebarContext.Provider value={contextValue}>
         <TooltipProvider delayDuration={0}>
           <div
+            data-sidebar-state={state}
             style={
               {
                 "--sidebar-width": SIDEBAR_WIDTH,
@@ -196,13 +197,9 @@ const Sidebar = React.forwardRef<
         </div>
       )
     }
-
-    if (!isClient) {
-      // Render nothing on the server for the mobile sidebar to prevent hydration mismatch
-      return null
-    }
-
+    
     if (isMobile) {
+      if (!isClient) return null;
       return (
         <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
           <SheetContent
@@ -226,7 +223,8 @@ const Sidebar = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "group hidden md:block text-sidebar-foreground"
+          "group hidden md:block text-sidebar-foreground",
+          className
         )}
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
@@ -243,7 +241,6 @@ const Sidebar = React.forwardRef<
             variant === "floating" || variant === "inset"
               ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
               : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
-            className
           )}
           {...props}
         >
@@ -324,8 +321,8 @@ const SidebarInset = React.forwardRef<
       ref={ref}
       className={cn(
         "relative flex min-h-svh flex-1 flex-col bg-background",
-        "md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
-        "peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))]",
+        "md:m-2 md:ml-0 md:rounded-xl md:shadow",
+        "min-h-[calc(100svh-theme(spacing.4))]",
         className
       )}
       {...props}

@@ -21,7 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { SidebarTrigger } from '../ui/sidebar';
+import { SidebarTrigger, useSidebar } from '../ui/sidebar';
 
 function AuthButton() {
   const { firestore, auth, user, isUserLoading } = useFirebase();
@@ -94,11 +94,18 @@ function AuthButton() {
 }
 
 export function Header() {
+  const { isMobile } = useSidebar();
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+
   return (
     <header className="sticky top-0 z-50 w-full bg-transparent">
       <div className="container flex h-16 max-w-screen-2xl items-center">
         <div className="mr-4 flex items-center">
-           <SidebarTrigger className="md:hidden"/>
+          {isClient && isMobile && <SidebarTrigger className="md:hidden"/>}
         </div>
 
         <div className="flex-1" />
