@@ -159,6 +159,7 @@ const SidebarProvider = React.forwardRef<
               className
             )}
             ref={ref}
+            suppressHydrationWarning
             {...props}
           >
             {children}
@@ -211,8 +212,7 @@ const Sidebar = React.forwardRef<
       )
     }
     
-    if (isMobile) {
-      if (!isClient) return null;
+    if (isClient && isMobile) {
       return (
         <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
           <SheetContent
@@ -244,6 +244,7 @@ const Sidebar = React.forwardRef<
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
         data-side={side}
+        suppressHydrationWarning
         {...props}
       >
         {children}
