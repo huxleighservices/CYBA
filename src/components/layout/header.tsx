@@ -172,52 +172,52 @@ function MobileNav() {
 export function Header() {
   return (
     <header className="sticky top-0 z-20 w-full bg-background/80 backdrop-blur-md">
-      <div className="container flex h-16 max-w-screen-2xl items-center">
-        <div className="mr-4 md:hidden">
-          <MobileNav />
-        </div>
-        <Link href="/" className="mr-6 flex items-center space-x-2">
-          <Image src="/cyblogo.png" alt="CYBA Logo" width={40} height={40} />
-          <span className="hidden font-bold sm:inline-block">CYBA</span>
-        </Link>
-
-        <div className="flex flex-1 items-center justify-between">
-          <MainNav />
-          <div className="flex flex-1 items-center justify-end gap-4">
-            <div className="hidden md:flex items-center gap-2">
-              <a
-                href="https://instagram.com"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button variant="ghost" size="icon">
-                  <Instagram className="h-5 w-5" />
-                  <span className="sr-only">Instagram</span>
-                </Button>
-              </a>
-              <a
-                href="https://youtube.com"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button variant="ghost" size="icon">
-                  <Youtube className="h-5 w-5" />
-                  <span className="sr-only">YouTube</span>
-                </Button>
-              </a>
-              <a
-                href="https://facebook.com"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button variant="ghost" size="icon">
-                  <Facebook className="h-5 w-5" />
-                  <span className="sr-only">Facebook</span>
-                </Button>
-              </a>
-            </div>
-            <AuthButton />
+      <div className="container flex h-16 items-center justify-between">
+        <div className="flex items-center gap-6">
+          <div className="md:hidden">
+            <MobileNav />
           </div>
+          <Link href="/" className="flex items-center space-x-2">
+            <Image src="/cyblogo.png" alt="CYBA Logo" width={40} height={40} />
+            <span className="hidden font-bold sm:inline-block">CYBA</span>
+          </Link>
+          <MainNav />
+        </div>
+
+        <div className="flex items-center justify-end gap-4">
+          <div className="hidden md:flex items-center gap-2">
+            <a
+              href="https://instagram.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="ghost" size="icon">
+                <Instagram className="h-5 w-5" />
+                <span className="sr-only">Instagram</span>
+              </Button>
+            </a>
+            <a
+              href="https://youtube.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="ghost" size="icon">
+                <Youtube className="h-5 w-5" />
+                <span className="sr-only">YouTube</span>
+              </Button>
+            </a>
+            <a
+              href="https://facebook.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="ghost" size="icon">
+                <Facebook className="h-5 w-5" />
+                <span className="sr-only">Facebook</span>
+              </Button>
+            </a>
+          </div>
+          <AuthButton />
         </div>
       </div>
     </header>
