@@ -176,6 +176,12 @@ const Sidebar = React.forwardRef<
     ref
   ) => {
     const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+    const [isClient, setIsClient] = React.useState(false);
+
+    React.useEffect(() => {
+      setIsClient(true);
+    }, []);
+
 
     if (collapsible === "none") {
       return (
@@ -192,7 +198,7 @@ const Sidebar = React.forwardRef<
       )
     }
 
-    if (isMobile) {
+    if (isMobile && isClient) {
       return (
         <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
           <SheetContent
@@ -215,7 +221,10 @@ const Sidebar = React.forwardRef<
     return (
       <div
         ref={ref}
-        className="group hidden md:block text-sidebar-foreground"
+        className={cn(
+          "group hidden md:block text-sidebar-foreground",
+           variant === "inset" && "peer" // This was the cause of the alignment issue
+        )}
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
@@ -750,3 +759,5 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
+    
