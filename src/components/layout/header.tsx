@@ -13,7 +13,7 @@ import {
   Users,
   ShoppingBag,
   PenSquare,
-  MessageSquare,
+  Trophy,
   Menu,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -42,7 +42,7 @@ const navLinks = [
   { href: '/membership', label: 'Membership', icon: Users },
   { href: '/merch', label: 'Merch', icon: ShoppingBag },
   { href: '/blog', label: 'Blog', icon: PenSquare },
-  { href: '/cybaboard', label: 'Cybaboard', icon: MessageSquare },
+  { href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
 ];
 
 function AuthButton() {
@@ -172,7 +172,8 @@ function MobileNav() {
 export function Header() {
   return (
     <header className="sticky top-0 z-20 w-full bg-background/80 backdrop-blur-md">
-      <div className="container mx-auto flex h-16 items-center justify-between">
+      <div className="container mx-auto flex h-16 items-center">
+        {/* Left side */}
         <div className="flex items-center gap-6">
           <MobileNav />
           <Link href="/" className="flex items-center space-x-2">
@@ -181,10 +182,12 @@ export function Header() {
           </Link>
         </div>
 
-        <div className="hidden md:flex flex-1 items-center justify-center">
+        {/* Center */}
+        <div className="flex flex-1 items-center justify-center">
           <MainNav />
         </div>
 
+        {/* Right side */}
         <div className="flex items-center justify-end gap-4">
           <div className="hidden md:flex items-center gap-2">
             <a

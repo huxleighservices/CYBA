@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useFirebase } from '@/firebase';
 import { Loader2, HardHat } from 'lucide-react';
 
-export default function CybaboardPage() {
+export default function LeaderboardPage() {
   const { user, isUserLoading } = useFirebase();
   const router = useRouter();
 
@@ -33,7 +33,7 @@ export default function CybaboardPage() {
       <div className="container mx-auto px-4 py-16">
         <div className="text-center max-w-3xl mx-auto">
           <h1 className="text-4xl md:text-6xl font-headline font-bold text-glow mb-4">
-            Cybaboard
+            Leaderboard
           </h1>
           <p className="text-lg text-foreground/80 mb-12">
             The central hub for the CYBA family. Connect, collaborate, and create.
