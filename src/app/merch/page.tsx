@@ -30,7 +30,7 @@ export default function MerchPage() {
           CYBAMERCH
         </h1>
         <p className="text-lg text-foreground/80 mb-12">
-          Exclusive gear from the CYBA family.
+          Exclusive gear from the CYBAZONE
         </p>
       </div>
 
