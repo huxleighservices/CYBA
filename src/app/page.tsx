@@ -13,7 +13,7 @@ export default function Home() {
       <section className="relative text-center rounded-lg overflow-hidden mb-16">
         <div className="relative z-10 px-6 py-24 md:py-32">
           <h1 className="text-4xl md:text-7xl font-headline font-bold mb-8 tracking-tighter animate-text-glow">
-            Welcome to the CYBAVerse
+            WELCOME TO THE CYBAZONE
           </h1>
           <Button
             asChild
