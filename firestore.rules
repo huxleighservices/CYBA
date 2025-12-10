@@ -117,9 +117,9 @@ service cloud.firestore {
     match /memberships/{membershipId} {
       allow get: if true;
       allow list: if true;
-      allow create: if false; // Managed by admin SDK
-      allow update: if false; // Managed by admin SDK
-      allow delete: if false; // Managed by admin SDK
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     /**

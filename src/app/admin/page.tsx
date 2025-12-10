@@ -31,11 +31,7 @@ import {
   addDocumentNonBlocking,
   deleteDocumentNonBlocking,
 } from '@/firebase';
-import {
-  collection,
-  doc,
-  serverTimestamp,
-} from 'firebase/firestore';
+import { collection, doc, serverTimestamp } from 'firebase/firestore';
 import {
   Tabs,
   TabsContent,
@@ -82,7 +78,19 @@ const merchandiseSchema = z.object({
   price: z.coerce.number().min(0, 'Price must be a positive number.'),
   imageUrl: z.string().url('Must be a valid URL.').or(z.literal('')),
   buyNowUrl: z.string().url('Must be a valid URL.').or(z.literal('')),
-  stockQuantity: z.coerce.number().int().min(0, 'Stock must be a positive integer.'),
+  stockQuantity: z.coerce
+    .number()
+    .int()
+    .min(0, 'Stock must be a positive integer.'),
+});
+
+const membershipSchema = z.object({
+  name: z.string().min(1, 'Name is required.'),
+  description: z.string().min(1, 'Description is required.'),
+  price: z.coerce.number().min(0, 'Price must be a positive number.'),
+  features: z.string().min(1, 'Add at least one feature.'),
+  buttonText: z.string().min(1, 'Button text is required.'),
+  buttonLink: z.string().min(1, 'Button link is required.'),
 });
 
 const ADMIN_PASSWORD = 'VIOLETCYBA';
@@ -230,7 +238,9 @@ function BlogManagement() {
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Blog Management</CardTitle>
-          <CardDescription>Create, edit, and delete blog posts.</CardDescription>
+          <CardDescription>
+            Create, edit, and delete blog posts.
+          </CardDescription>
         </div>
         <BlogPostForm user={user} />
       </CardHeader>
@@ -269,29 +279,25 @@ function BlogManagement() {
   );
 }
 
-function BlogPostForm({
-  post,
-  user,
-}: {
-  post?: any;
-  user: any;
-}) {
+function BlogPostForm({ post, user }: { post?: any; user: any }) {
   const [open, setOpen] = useState(false);
   const { firestore } = useFirebase();
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof blogPostSchema>>({
     resolver: zodResolver(blogPostSchema),
-    defaultValues: post ? {
-      ...post,
-      imageUrl: post.imageUrl || '',
-    } : {
-      title: '',
-      content: '',
-      category: '',
-      excerpt: '',
-      imageUrl: '',
-    },
+    defaultValues: post
+      ? {
+          ...post,
+          imageUrl: post.imageUrl || '',
+        }
+      : {
+          title: '',
+          content: '',
+          category: '',
+          excerpt: '',
+          imageUrl: '',
+        },
   });
 
   useEffect(() => {
@@ -301,13 +307,13 @@ function BlogPostForm({
         imageUrl: post.imageUrl || '',
       });
     } else {
-        form.reset({
-            title: '',
-            content: '',
-            category: '',
-            excerpt: '',
-            imageUrl: '',
-        });
+      form.reset({
+        title: '',
+        content: '',
+        category: '',
+        excerpt: '',
+        imageUrl: '',
+      });
     }
   }, [post, form, open]);
 
@@ -503,38 +509,40 @@ function MerchForm({ item }: { item?: any }) {
 
   const form = useForm<z.infer<typeof merchandiseSchema>>({
     resolver: zodResolver(merchandiseSchema),
-    defaultValues: item ? {
-        ...item,
-        imageUrl: item.imageUrl || '',
-        buyNowUrl: item.buyNowUrl || '',
-    } : {
-      name: '',
-      description: '',
-      price: 0,
-      imageUrl: '',
-      buyNowUrl: '',
-      stockQuantity: 0,
-    },
+    defaultValues: item
+      ? {
+          ...item,
+          imageUrl: item.imageUrl || '',
+          buyNowUrl: item.buyNowUrl || '',
+        }
+      : {
+          name: '',
+          description: '',
+          price: 0,
+          imageUrl: '',
+          buyNowUrl: '',
+          stockQuantity: 0,
+        },
   });
 
   useEffect(() => {
     if (open) {
-        if (item) {
-          form.reset({
-            ...item,
-            imageUrl: item.imageUrl || '',
-            buyNowUrl: item.buyNowUrl || '',
-          });
-        } else {
-          form.reset({
-            name: '',
-            description: '',
-            price: 0,
-            imageUrl: '',
-            buyNowUrl: '',
-            stockQuantity: 0,
-          });
-        }
+      if (item) {
+        form.reset({
+          ...item,
+          imageUrl: item.imageUrl || '',
+          buyNowUrl: item.buyNowUrl || '',
+        });
+      } else {
+        form.reset({
+          name: '',
+          description: '',
+          price: 0,
+          imageUrl: '',
+          buyNowUrl: '',
+          stockQuantity: 0,
+        });
+      }
     }
   }, [item, form, open]);
 
@@ -610,7 +618,7 @@ function MerchForm({ item }: { item?: any }) {
                 </FormItem>
               )}
             />
-             <FormField
+            <FormField
               control={form.control}
               name="stockQuantity"
               render={({ field }) => (
@@ -664,6 +672,228 @@ function MerchForm({ item }: { item?: any }) {
   );
 }
 
+// --- Membership Management ---
+function MembershipManagement() {
+  const { firestore } = useFirebase();
+  const membershipsRef = useMemoFirebase(
+    () => collection(firestore, 'memberships'),
+    [firestore]
+  );
+  const { data: memberships, isLoading } = useCollection(membershipsRef);
+
+  const handleDelete = (id: string) => {
+    if (confirm('Are you sure you want to delete this membership tier?')) {
+      deleteDocumentNonBlocking(doc(firestore, 'memberships', id));
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Membership Management</CardTitle>
+          <CardDescription>
+            Create, edit, and delete membership tiers.
+          </CardDescription>
+        </div>
+        <MembershipForm />
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <Loader2 className="animate-spin" />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Price</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {memberships?.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>{item.name}</TableCell>
+                  <TableCell>${item.price.toFixed(2)}</TableCell>
+                  <TableCell className="text-right space-x-2">
+                    <MembershipForm item={item} />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={() => handleDelete(item.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function MembershipForm({ item }: { item?: any }) {
+  const [open, setOpen] = useState(false);
+  const { firestore } = useFirebase();
+  const { toast } = useToast();
+
+  const defaultValues = item
+    ? {
+        ...item,
+        features: Array.isArray(item.features) ? item.features.join('\n') : '',
+      }
+    : {
+        name: '',
+        description: '',
+        price: 0,
+        features: '',
+        buttonText: '',
+        buttonLink: '',
+      };
+
+  const form = useForm<z.infer<typeof membershipSchema>>({
+    resolver: zodResolver(membershipSchema),
+    defaultValues,
+  });
+
+  useEffect(() => {
+    if (open) {
+      form.reset(defaultValues);
+    }
+  }, [item, form, open]);
+
+  const onSubmit = (values: z.infer<typeof membershipSchema>) => {
+    const featuresArray = values.features.split('\n').filter(f => f.trim() !== '');
+    const dataToSave = { ...values, features: featuresArray };
+
+    if (item) {
+      setDocumentNonBlocking(doc(firestore, 'memberships', item.id), dataToSave, {
+        merge: true,
+      });
+      toast({ title: 'Membership tier updated!' });
+    } else {
+      addDocumentNonBlocking(collection(firestore, 'memberships'), dataToSave);
+      toast({ title: 'Membership tier created!' });
+    }
+    setOpen(false);
+    form.reset();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {item ? (
+          <Button variant="outline" size="icon">
+            <Edit className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button>
+            <PlusCircle className="mr-2 h-4 w-4" /> New Tier
+          </Button>
+        )}
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{item ? 'Edit' : 'Create'} Membership Tier</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="price"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Price</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="0.01" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="features"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Features (one per line)</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} rows={5} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="buttonText"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Button Text</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="buttonLink"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Button Link</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="secondary">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button type="submit">Save</Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // --- Main Admin Panel ---
 function AdminPanel() {
   return (
@@ -678,10 +908,11 @@ function AdminPanel() {
       </div>
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="blog">Blog</TabsTrigger>
           <TabsTrigger value="merch">Merchandise</TabsTrigger>
+          <TabsTrigger value="memberships">Memberships</TabsTrigger>
         </TabsList>
         <TabsContent value="users" className="mt-6">
           <UserManagement />
@@ -691,6 +922,9 @@ function AdminPanel() {
         </TabsContent>
         <TabsContent value="merch" className="mt-6">
           <MerchManagement />
+        </TabsContent>
+        <TabsContent value="memberships" className="mt-6">
+          <MembershipManagement />
         </TabsContent>
       </Tabs>
     </div>
