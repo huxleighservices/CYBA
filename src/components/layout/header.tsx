@@ -201,7 +201,7 @@ export function Header() {
               </Button>
             </a>
             <a
-              href="https://youtube.com"
+              href="https://www.youtube.com/hashtag/cyba"
               target="_blank"
               rel="noopener noreferrer"
             >

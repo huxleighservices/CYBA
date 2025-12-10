@@ -37,7 +37,7 @@ export function Footer() {
             <Instagram className="h-5 w-5" />
           </a>
           <a
-            href="https://youtube.com"
+            href="https://www.youtube.com/hashtag/cyba"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="YouTube"
