@@ -211,7 +211,7 @@ export function Header() {
               </Button>
             </a>
             <a
-              href="https://facebook.com"
+              href="https://www.facebook.com/people/Cybazone/61570841902450/"
               target="_blank"
               rel="noopener noreferrer"
             >

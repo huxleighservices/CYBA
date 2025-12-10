@@ -46,7 +46,7 @@ export function Footer() {
             <Youtube className="h-5 w-5" />
           </a>
           <a
-            href="https://facebook.com"
+            href="https://www.facebook.com/people/Cybazone/61570841902450/"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Facebook"
