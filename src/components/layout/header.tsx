@@ -191,7 +191,7 @@ export function Header() {
         <div className="flex items-center justify-end gap-4">
           <div className="hidden md:flex items-center gap-2">
             <a
-              href="https://instagram.com"
+              href="https://www.instagram.com/cybazone/?hl=en"
               target="_blank"
               rel="noopener noreferrer"
             >
