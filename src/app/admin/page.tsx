@@ -46,7 +46,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -58,6 +57,13 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 // Schemas
 const passwordSchema = z.object({
@@ -164,28 +170,35 @@ function UserManagement() {
   const usersRef = useMemoFirebase(() => collection(firestore, 'users'), [
     firestore,
   ]);
-  const { data: users, isLoading } = useCollection<{
+  const { data: users, isLoading: usersLoading } = useCollection<{
     username: string;
     email: string;
-    membershipTier?: 'free' | 'pro';
+    membershipTier?: string;
   }>(usersRef);
 
-  const handleTierChange = (userId: string, isPro: boolean) => {
+  const membershipsRef = useMemoFirebase(
+    () => collection(firestore, 'memberships'),
+    [firestore]
+  );
+  const { data: memberships, isLoading: membershipsLoading } =
+    useCollection<{ name: string }>(membershipsRef);
+
+  const handleTierChange = (userId: string, tierName: string) => {
     const userDocRef = doc(firestore, 'users', userId);
     setDocumentNonBlocking(
       userDocRef,
-      { membershipTier: isPro ? 'pro' : 'free' },
+      { membershipTier: tierName },
       { merge: true }
     );
   };
 
-  if (isLoading) return <Loader2 className="animate-spin" />;
+  if (usersLoading || membershipsLoading) return <Loader2 className="animate-spin" />;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>User Management</CardTitle>
-        <CardDescription>Upgrade users to Cyba-Pro.</CardDescription>
+        <CardDescription>Assign membership tiers to users.</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
@@ -193,7 +206,7 @@ function UserManagement() {
             <TableRow>
               <TableHead>Username</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead className="text-right">Cyba-Pro</TableHead>
+              <TableHead className="text-right">Membership Tier</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -202,12 +215,22 @@ function UserManagement() {
                 <TableCell>{user.username}</TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell className="text-right">
-                  <Checkbox
-                    checked={user.membershipTier === 'pro'}
-                    onCheckedChange={(checked) =>
-                      handleTierChange(user.id, !!checked)
-                    }
-                  />
+                  <Select
+                    value={user.membershipTier || ''}
+                    onValueChange={(value) => handleTierChange(user.id, value)}
+                  >
+                    <SelectTrigger className="w-[180px] float-right">
+                      <SelectValue placeholder="Select a tier" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value=" ">None</SelectItem>
+                      {memberships?.map((tier) => (
+                        <SelectItem key={tier.id} value={tier.name}>
+                          {tier.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </TableCell>
               </TableRow>
             ))}
@@ -944,3 +967,5 @@ export default function AdminPage() {
 
   return <AdminPanel />;
 }
+
+    
