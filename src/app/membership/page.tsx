@@ -29,8 +29,7 @@ export default function MembershipPage() {
           JOIN THE CYBAZONE
         </h1>
         <p className="text-lg text-foreground/80 mb-12">
-          Choose the plan that's right for your journey. Start for free or
-          unlock professional tools.
+          Choose the plan that's right for your journey.
         </p>
       </div>
 
