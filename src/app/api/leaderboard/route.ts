@@ -7,27 +7,35 @@ import { getFirestore, Firestore, CollectionReference } from 'firebase-admin/fir
 let adminApp: App;
 let db: Firestore;
 
+// This pattern prevents re-initializing the app on every hot-reload
 if (!getApps().length) {
+  // Try to initialize with default credentials (ideal for deployed environments)
   try {
     adminApp = initializeApp();
   } catch (error) {
-    console.error("Firebase Admin initialization failed:", error);
-    // Fallback for local dev if needed, but primarily rely on ADC
+    console.error("Default Firebase Admin initialization failed, trying service account key.", error);
+    // Fallback for local development if SERVICE_ACCOUNT_KEY is set
     if (process.env.SERVICE_ACCOUNT_KEY) {
+      try {
+        const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
         adminApp = initializeApp({
-            credential: cert(JSON.parse(process.env.SERVICE_ACCOUNT_KEY))
+          credential: cert(serviceAccount)
         });
+      } catch (e) {
+        console.error("Firebase Admin initialization with service account key failed.", e);
+      }
     } else {
-         // In a deployed environment, this should ideally not be reached.
-         // If it is, the service account permissions/setup are likely incorrect.
-         // Let the request fail later with a clear DB connection error.
+        console.warn("SERVICE_ACCOUNT_KEY environment variable not set. Firebase Admin may not be initialized.");
     }
   }
 } else {
   adminApp = getApps()[0];
 }
-db = getFirestore(adminApp);
 
+// Only get firestore instance if the app was initialized
+if (adminApp) {
+    db = getFirestore(adminApp);
+}
 
 // --- Helper function to delete all documents in a collection ---
 async function deleteCollection(collectionRef: CollectionReference, batchSize: number = 100) {
@@ -67,14 +75,21 @@ export async function POST(request: Request) {
   const expectedToken = `Bearer ${process.env.LEADERBOARD_API_SECRET}`;
 
   if (!authToken || authToken !== expectedToken) {
+    console.warn('Unauthorized access attempt');
     return new NextResponse(JSON.stringify({ message: 'Unauthorized' }), { status: 401 });
+  }
+
+  // Check if DB is initialized
+  if (!db) {
+    console.error('Firestore database is not initialized. Check Firebase Admin setup.');
+    return new NextResponse(JSON.stringify({ message: 'Internal Server Error: Database connection failed.'}), { status: 500 });
   }
 
   try {
     // 2. Process incoming data
     const rawData = await request.json();
     if (!Array.isArray(rawData)) {
-      return new NextResponse(JSON.stringify({ message: 'Request body must be an array.' }), { status: 400 });
+      return new NextResponse(JSON.stringify({ message: 'Request body must be an array of leaderboard entries.' }), { status: 400 });
     }
 
     const leaderboardCollection = db.collection('leaderboard');
@@ -91,8 +106,8 @@ export async function POST(request: Request) {
     for (const entry of rawData) {
         // Use header names from Google Sheet. Make sure "Table contains headers" is YES.
         const cybaName = entry.cybaName;
-        if (!cybaName || typeof cybaName !== 'string') {
-            console.warn('Skipping entry with invalid cybaName:', entry);
+        if (!cybaName || typeof cybaName !== 'string' || cybaName.trim() === '') {
+            console.warn('Skipping entry with invalid or empty cybaName:', entry);
             continue;
         }
 
