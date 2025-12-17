@@ -3,18 +3,12 @@ import { NextResponse } from 'next/server';
 import { initializeApp, getApps, App } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 
-// IMPORTANT: Do not use client-side Firebase libraries in server-side code.
-// Use firebase-admin instead.
-
 // --- Firebase Admin Initialization ---
-// This ensures we have a single instance of the Firebase Admin SDK.
 let adminApp: App;
 let db: Firestore;
 
+// This pattern ensures we initialize the app only once in a serverless environment
 if (!getApps().length) {
-  // In a deployed Vercel/Firebase Hosting environment, GOOGLE_APPLICATION_CREDENTIALS
-  // are automatically set up. In local development, you need to set this
-  // environment variable to point to your service account key file.
   adminApp = initializeApp();
 } else {
   adminApp = getApps()[0];
@@ -29,7 +23,8 @@ export async function POST(request: Request) {
   const authToken = request.headers.get('Authorization');
   const expectedToken = `Bearer ${process.env.LEADERBOARD_API_SECRET}`;
 
-  if (authToken !== expectedToken) {
+  if (!authToken || authToken !== expectedToken) {
+    console.warn('Unauthorized request received.');
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
@@ -38,11 +33,11 @@ export async function POST(request: Request) {
     const rawData = await request.json();
 
     // Make works with "bundles". If it sends one row, it's an object.
-    // If it sends multiple, it's an array of objects. We'll handle both.
+    // If it sends multiple (especially after an aggregator), it's an array of objects. We'll handle both.
     const data = Array.isArray(rawData) ? rawData : [rawData];
 
     if (data.length === 0) {
-        return new NextResponse(JSON.stringify({ message: 'Request body was empty.' }), {
+        return new NextResponse(JSON.stringify({ message: 'Request body was empty or not an array.' }), {
             status: 400,
             headers: { 'Content-Type': 'application/json' },
         });
@@ -54,17 +49,23 @@ export async function POST(request: Request) {
     // 3. Prepare to write to Firestore
     for (const entry of data) {
         // Data from "Search Rows" often uses column letters or numbers as keys.
-        // We'll assume the order from the sheet: A=cybaName, B=cybaIg, etc.
+        // We'll check for headers (A, B, C), numeric keys (0, 1, 2), and named keys.
         const cybaName = entry.A || entry.cybaName || entry['0'];
         
         // Use cybaName as the document ID for easy updates.
         // Ensure cybaName is a clean, valid string for a document ID.
-        const docId = cybaName?.toString().replace(/\s+/g, '-').toLowerCase();
-
-        if (!docId) {
-            console.warn('Skipping entry with missing cybaName:', entry);
+        if (!cybaName || typeof cybaName !== 'string') {
+            console.warn('Skipping entry with missing or invalid cybaName:', entry);
             continue; // Skip entries without a valid name
         }
+        
+        const docId = cybaName.trim().replace(/[.\s#$/[\]]/g, '-').toLowerCase();
+
+        if (!docId) {
+            console.warn('Skipping entry - generated docId is empty from cybaName:', cybaName);
+            continue;
+        }
+
 
         const docRef = leaderboardCollection.doc(docId);
 
@@ -72,10 +73,10 @@ export async function POST(request: Request) {
             cybaName: cybaName,
             cybaIg: entry.B || entry.cybaIg || entry['1'] || '',
             tier: entry.C || entry.tier || entry['2'] || '',
-            outwardEngagement: Number(entry.D || entry.outwardEngagement || entry['3']) || 0,
-            inwardEngagement: Number(entry.E || entry.inwardEngagement || entry['4']) || 0,
-            features: Number(entry.F || entry.features || entry['5']) || 0,
-            cybaCoin: Number(entry.G || entry.cybaCoin || entry['6']) || 0,
+            outwardEngagement: Number(entry.D || entry.outwardEngagement || entry['3'] || 0),
+            inwardEngagement: Number(entry.E || entry.inwardEngagement || entry['4'] || 0),
+            features: Number(entry.F || entry.features || entry['5'] || 0),
+            cybaCoin: Number(entry.G || entry.cybaCoin || entry['6'] || 0),
         };
 
         // Use set with merge to create or update the document.
