@@ -1,14 +1,17 @@
 
 import { NextResponse } from 'next/server';
-import { initializeApp, getApps, App } from 'firebase-admin/app';
+import { initializeApp, getApps, App, cert } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 
 // --- Firebase Admin Initialization ---
 let adminApp: App;
 let db: Firestore;
 
-// This pattern ensures we initialize the app only once in a serverless environment
+// This improved pattern ensures we initialize the app only once in a serverless environment.
 if (!getApps().length) {
+  // When running on App Hosting, GOOGLE_APPLICATION_CREDENTIALS is not set.
+  // initializeApp() with no arguments will automatically use Application Default Credentials.
+  // In a local or other environment, you might need service account credentials.
   adminApp = initializeApp();
 } else {
   adminApp = getApps()[0];
@@ -25,19 +28,17 @@ export async function POST(request: Request) {
 
   if (!authToken || authToken !== expectedToken) {
     console.warn('Unauthorized request received.');
-    return new NextResponse('Unauthorized', { status: 401 });
+    return new NextResponse(JSON.stringify({ message: 'Unauthorized' }), { status: 401 });
   }
 
   // 2. Process the incoming data
   try {
     const rawData = await request.json();
 
-    // Make works with "bundles". If it sends one row, it's an object.
-    // If it sends multiple (especially after an aggregator), it's an array of objects. We'll handle both.
-    const data = Array.isArray(rawData) ? rawData : [rawData];
-
-    if (data.length === 0) {
-        return new NextResponse(JSON.stringify({ message: 'Request body was empty or not an array.' }), {
+    // Make works with "bundles". The Array Aggregator should send an array.
+    // We'll double-check it's an array.
+    if (!Array.isArray(rawData) || rawData.length === 0) {
+        return new NextResponse(JSON.stringify({ message: 'Request body must be an array of leaderboard entries.' }), {
             status: 400,
             headers: { 'Content-Type': 'application/json' },
         });
@@ -45,48 +46,59 @@ export async function POST(request: Request) {
 
     const leaderboardCollection = db.collection('leaderboard');
     const batch = db.batch();
+    const processedNames = new Set();
 
     // 3. Prepare to write to Firestore
-    for (const entry of data) {
-        // Data from "Search Rows" often uses column letters or numbers as keys.
-        // We'll check for headers (A, B, C), numeric keys (0, 1, 2), and named keys.
-        const cybaName = entry.A || entry.cybaName || entry['0'];
+    for (const entry of rawData) {
+        // Data from "Search Rows" can have keys as header names (e.g., 'cybaName')
+        // or as column letters ('A', 'B') if headers are off. We will handle both.
+        // We'll also handle the numeric keys from the aggregator ('0', '1', etc).
+        const cybaName = entry.cybaName || entry.A || entry['0'];
         
-        // Use cybaName as the document ID for easy updates.
+        // Use cybaName as the basis for the document ID for easy updates.
         // Ensure cybaName is a clean, valid string for a document ID.
         if (!cybaName || typeof cybaName !== 'string') {
             console.warn('Skipping entry with missing or invalid cybaName:', entry);
             continue; // Skip entries without a valid name
         }
         
-        const docId = cybaName.trim().replace(/[.\s#$/[\]]/g, '-').toLowerCase();
+        // Sanitize the name to create a Firestore-safe document ID
+        const docId = cybaName.trim().replace(/[^a-zA-Z0-9-]/g, '_').toLowerCase();
 
-        if (!docId) {
-            console.warn('Skipping entry - generated docId is empty from cybaName:', cybaName);
+        if (!docId || processedNames.has(docId)) {
+            console.warn('Skipping entry - generated docId is empty or a duplicate:', cybaName);
             continue;
         }
-
+        processedNames.add(docId);
 
         const docRef = leaderboardCollection.doc(docId);
 
+        // Map data, checking for all possible key formats from Make.com
         const dataToSave = {
             cybaName: cybaName,
-            cybaIg: entry.B || entry.cybaIg || entry['1'] || '',
-            tier: entry.C || entry.tier || entry['2'] || '',
-            outwardEngagement: Number(entry.D || entry.outwardEngagement || entry['3'] || 0),
-            inwardEngagement: Number(entry.E || entry.inwardEngagement || entry['4'] || 0),
-            features: Number(entry.F || entry.features || entry['5'] || 0),
-            cybaCoin: Number(entry.G || entry.cybaCoin || entry['6'] || 0),
+            cybaIg: entry.cybaIg || entry.B || entry['1'] || '',
+            tier: entry.tier || entry.C || entry['2'] || '',
+            outwardEngagement: Number(entry.outwardEngagement || entry.D || entry['3'] || 0),
+            inwardEngagement: Number(entry.inwardEngagement || entry.E || entry['4'] || 0),
+            features: Number(entry.features || entry.F || entry['5'] || 0),
+            cybaCoin: Number(entry.cybaCoin || entry.G || entry['6'] || 0),
         };
-
+        
         // Use set with merge to create or update the document.
         batch.set(docRef, dataToSave, { merge: true });
     }
 
     // 4. Commit the batch write
+    if (processedNames.size === 0) {
+        return new NextResponse(JSON.stringify({ message: 'No valid entries to process.' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    }
+
     await batch.commit();
 
-    return new NextResponse(JSON.stringify({ message: `Leaderboard updated successfully with ${data.length} entries.` }), {
+    return new NextResponse(JSON.stringify({ message: `Leaderboard updated successfully with ${processedNames.size} entries.` }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
     });
