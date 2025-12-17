@@ -35,11 +35,14 @@ export async function POST(request: Request) {
 
   // 2. Process the incoming data
   try {
-    const data = await request.json();
+    const rawData = await request.json();
 
-    // Expect data to be an array of leaderboard entries from Make.com
-    if (!Array.isArray(data)) {
-        return new NextResponse(JSON.stringify({ message: 'Request body must be an array of leaderboard entries.' }), {
+    // Make works with "bundles". If it sends one row, it's an object.
+    // If it sends multiple, it's an array of objects. We'll handle both.
+    const data = Array.isArray(rawData) ? rawData : [rawData];
+
+    if (data.length === 0) {
+        return new NextResponse(JSON.stringify({ message: 'Request body was empty.' }), {
             status: 400,
             headers: { 'Content-Type': 'application/json' },
         });
@@ -50,9 +53,13 @@ export async function POST(request: Request) {
 
     // 3. Prepare to write to Firestore
     for (const entry of data) {
+        // Data from "Search Rows" often uses column letters or numbers as keys.
+        // We'll assume the order from the sheet: A=cybaName, B=cybaIg, etc.
+        const cybaName = entry.A || entry.cybaName || entry['0'];
+        
         // Use cybaName as the document ID for easy updates.
         // Ensure cybaName is a clean, valid string for a document ID.
-        const docId = entry.cybaName?.toString().replace(/\s+/g, '-').toLowerCase();
+        const docId = cybaName?.toString().replace(/\s+/g, '-').toLowerCase();
 
         if (!docId) {
             console.warn('Skipping entry with missing cybaName:', entry);
@@ -62,13 +69,13 @@ export async function POST(request: Request) {
         const docRef = leaderboardCollection.doc(docId);
 
         const dataToSave = {
-            cybaName: entry.cybaName || '',
-            cybaIg: entry.cybaIg || '',
-            tier: entry.tier || '',
-            outwardEngagement: Number(entry.outwardEngagement) || 0,
-            inwardEngagement: Number(entry.inwardEngagement) || 0,
-            features: Number(entry.features) || 0,
-            cybaCoin: Number(entry.cybaCoin) || 0,
+            cybaName: cybaName,
+            cybaIg: entry.B || entry.cybaIg || entry['1'] || '',
+            tier: entry.C || entry.tier || entry['2'] || '',
+            outwardEngagement: Number(entry.D || entry.outwardEngagement || entry['3']) || 0,
+            inwardEngagement: Number(entry.E || entry.inwardEngagement || entry['4']) || 0,
+            features: Number(entry.F || entry.features || entry['5']) || 0,
+            cybaCoin: Number(entry.G || entry.cybaCoin || entry['6']) || 0,
         };
 
         // Use set with merge to create or update the document.
@@ -78,7 +85,7 @@ export async function POST(request: Request) {
     // 4. Commit the batch write
     await batch.commit();
 
-    return new NextResponse(JSON.stringify({ message: 'Leaderboard updated successfully.' }), {
+    return new NextResponse(JSON.stringify({ message: `Leaderboard updated successfully with ${data.length} entries.` }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
     });
