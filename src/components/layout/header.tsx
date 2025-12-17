@@ -35,6 +35,9 @@ import {
   SheetContent,
   SheetTrigger,
   SheetClose,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
 } from '@/components/ui/sheet';
 
 const navLinks = [
@@ -144,12 +147,18 @@ function MobileNav() {
           <span className="sr-only">Toggle Menu</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="bg-background/80 backdrop-blur-xl">
-        <div className="flex flex-col h-full p-6">
-          <Link href="/" className="flex items-center gap-2 mb-8">
-            <Image src="/cyblogo.png" alt="CYBA Logo" width={30} height={30} />
-            <span className="text-xl font-bold">CYBA</span>
-          </Link>
+      <SheetContent side="left" className="bg-background/80 backdrop-blur-xl p-0">
+        <SheetHeader className="p-6">
+          <SheetTitle className="sr-only">Mobile Menu</SheetTitle>
+          <SheetDescription className="sr-only">Main navigation links for CYBA.</SheetDescription>
+          <SheetClose asChild>
+             <Link href="/" className="flex items-center gap-2">
+              <Image src="/cyblogo.png" alt="CYBA Logo" width={30} height={30} />
+              <span className="text-xl font-bold">CYBA</span>
+            </Link>
+          </SheetClose>
+        </SheetHeader>
+        <div className="flex flex-col h-full px-6 py-4">
           <nav className="flex flex-col space-y-4">
             {navLinks.map((link) => (
               <SheetClose asChild key={link.href}>
@@ -168,6 +177,7 @@ function MobileNav() {
     </Sheet>
   );
 }
+
 
 export function Header() {
   return (
