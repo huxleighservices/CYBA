@@ -20,11 +20,11 @@ runConfig:
 
     # --- Plain Text Variables ---
     # You can set these values directly or in the Google Cloud Console.
-    - variable: google_sheet_id
+    - variable: 1LvD9pa_-dDRSmoVMfi7UWZRtefGPlsnmESgVdxCXQn4
       availability:
       - BUILD
       - RUNTIME
-    - variable: google_sheet_range
+    - variable: Sheet1!A:G
       availability:
       - BUILD
       - RUNTIME

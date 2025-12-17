@@ -13,7 +13,6 @@ function getFirebaseAdmin(): App {
     return adminApp;
   }
   
-  // This should only run once.
   try {
     const serviceAccount = JSON.parse(process.env.firebase_service_account_key!);
     adminApp = initializeApp({ credential: cert(serviceAccount) });
@@ -27,7 +26,7 @@ function getFirebaseAdmin(): App {
 // --- Helper to delete all documents in a collection ---
 async function deleteCollection(db: Firestore, collectionPath: string) {
     const collectionRef = db.collection(collectionPath);
-    const snapshot = await collectionRef.limit(500).get(); // Read up to 500 docs
+    const snapshot = await collectionRef.limit(500).get(); 
     if (snapshot.empty) return;
 
     const batch = db.batch();
@@ -36,7 +35,6 @@ async function deleteCollection(db: Firestore, collectionPath: string) {
     });
     await batch.commit();
 
-    // Recurse if there are more documents to delete
     if (snapshot.size === 500) {
         await deleteCollection(db, collectionPath);
     }
@@ -44,12 +42,22 @@ async function deleteCollection(db: Firestore, collectionPath: string) {
 
 // --- API Endpoint ---
 export async function GET(request: Request) {
-  // 1. Secure the endpoint with the original secret
-  const authToken = request.headers.get('Authorization');
-  const expectedToken = `Bearer ${process.env.leaderboard_api_secret}`;
+  // 1. Secure the endpoint
+  const secret = process.env.leaderboard_api_secret?.trim();
+  const authHeader = request.headers.get('Authorization');
   
-  if (!process.env.leaderboard_api_secret || !authToken || authToken !== expectedToken) {
-    return new NextResponse(JSON.stringify({ message: 'Unauthorized' }), { status: 401 });
+  if (!secret) {
+    return new NextResponse(JSON.stringify({ message: 'Server secret not configured.' }), { status: 500 });
+  }
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return new NextResponse(JSON.stringify({ message: 'Unauthorized: Missing or invalid Authorization header.' }), { status: 401 });
+  }
+
+  const providedToken = authHeader.substring(7).trim(); // Remove "Bearer "
+  
+  if (providedToken !== secret) {
+    return new NextResponse(JSON.stringify({ message: 'Unauthorized: Invalid token.' }), { status: 401 });
   }
 
   // 2. Check for required Google Sheets environment variables
@@ -76,7 +84,7 @@ export async function GET(request: Request) {
     });
 
     const rows = response.data.values;
-    if (!rows || rows.length < 2) { // Expecting header + at least one data row
+    if (!rows || rows.length < 2) { 
       return new NextResponse(JSON.stringify({ message: 'No data found in spreadsheet or only headers present.' }), { status: 200 });
     }
     
@@ -91,7 +99,6 @@ export async function GET(request: Request) {
         const entry: { [key: string]: any } = {};
         headers.forEach((header, index) => {
             const value = row[index];
-            // Convert specific numeric fields, treat others as strings
             if (['outwardEngagement', 'inwardEngagement', 'features', 'cybaCoin'].includes(header)) {
                 entry[header] = Number(value) || 0;
             } else {
@@ -99,7 +106,7 @@ export async function GET(request: Request) {
             }
         });
         return entry;
-    }).filter(entry => entry.cybaName); // Filter out rows without a name
+    }).filter(entry => entry.cybaName);
 
     // 7. Clear the existing leaderboard & write new data
     const leaderboardCollection = db.collection('leaderboard');
@@ -109,7 +116,6 @@ export async function GET(request: Request) {
     let entriesWritten = 0;
 
     for (const entry of entries) {
-        // Create a more robust document ID
         const docId = String(entry.cybaName).trim().replace(/[^a-zA-Z0-9-]/g, '_').toLowerCase();
         if (!docId) continue;
         const docRef = leaderboardCollection.doc(docId);
