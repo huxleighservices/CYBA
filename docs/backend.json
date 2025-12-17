@@ -243,6 +243,48 @@
         "id",
         "name"
       ]
+    },
+    "LeaderboardEntry": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LeaderboardEntry",
+      "type": "object",
+      "description": "Represents a single entry on the CYBA leaderboard.",
+      "properties": {
+        "cybaName": {
+          "type": "string",
+          "description": "The CYBANAME of the user."
+        },
+        "cybaIg": {
+          "type": "string",
+          "description": "The Instagram handle for the user."
+        },
+        "tier": {
+          "type": "string",
+          "description": "The user's membership tier."
+        },
+        "outwardEngagement": {
+          "type": "number",
+          "description": "The user's outward engagement score."
+        },
+        "inwardEngagement": {
+          "type": "number",
+          "description": "The user's inward engagement score."
+        },
+        "features": {
+          "type": "number",
+          "description": "The user's features score."
+        },
+        "cybaCoin": {
+          "type": "number",
+          "description": "The user's CybaCoin balance."
+        }
+      },
+      "required": [
+        "cybaName",
+        "cybaIg",
+        "tier",
+        "cybaCoin"
+      ]
     }
   },
   "auth": {
@@ -348,8 +390,24 @@
             }
           ]
         }
+      },
+       {
+        "path": "/leaderboard/{leaderboardEntryId}",
+        "definition": {
+          "entityName": "LeaderboardEntry",
+          "schema": {
+            "$ref": "#/backend/entities/LeaderboardEntry"
+          },
+          "description": "Stores leaderboard data from the Google Sheet.",
+          "params": [
+            {
+              "name": "leaderboardEntryId",
+              "description": "The unique identifier of the leaderboard entry."
+            }
+          ]
+        }
       }
     ],
-    "reasoning": "The Firestore structure is designed to support the CYBA family website, encompassing user data, blog posts, merchandise, memberships, and forum posts. The structure prioritizes simplicity and open access, given the initial requirement for open Firestore rules.  User data is stored under `/users/{userId}` using path-based ownership. Blog posts are stored in a single `/blogPosts` collection. Merchandise is stored in a single `/merchandise` collection. Membership plans are stored in `/memberships`. Forum posts are stored in a single `/forumPosts` collection. Categories for blog posts are stored in a single `/categories` collection."
+    "reasoning": "The Firestore structure is designed to support the CYBA family website, encompassing user data, blog posts, merchandise, memberships, and forum posts. The structure prioritizes simplicity and open access, given the initial requirement for open Firestore rules.  User data is stored under `/users/{userId}` using path-based ownership. Blog posts are stored in a single `/blogPosts` collection. Merchandise is stored in a single `/merchandise` collection. Membership plans are stored in `/memberships`. Forum posts are stored in a single `/forumPosts` collection. Categories for blog posts are stored in a single `/categories` collection. A new `leaderboard` collection is added to store data from the Google Sheet."
   }
 }

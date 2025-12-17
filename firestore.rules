@@ -151,5 +151,20 @@ service cloud.firestore {
       allow update: if false; // Managed by admin SDK
       allow delete: if false; // Managed by admin SDK
     }
+    
+    /**
+     * @description Controls access to the leaderboard. Publicly readable, admin write.
+     * @path /leaderboard/{entryId}
+     * @allow (list) Any signed-in user can read the leaderboard.
+     * @deny (create) Any client trying to create a new entry.
+     * @principle Secures data that should only be managed by a trusted backend process.
+     */
+    match /leaderboard/{entryId} {
+        allow get: if isSignedIn();
+        allow list: if isSignedIn();
+        allow create: if isAdmin();
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
+    }
   }
 }
