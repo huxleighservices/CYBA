@@ -8,22 +8,6 @@ import { google } from 'googleapis';
 let adminApp: App | null = null;
 let firestore: Firestore | null = null;
 
-function initializeAdmin() {
-  if (getApps().length === 0) {
-    try {
-      const serviceAccount = JSON.parse(process.env.firebase_service_account_key!);
-      adminApp = initializeApp({ credential: cert(serviceAccount) });
-      firestore = getFirestore(adminApp);
-    } catch (e: any) {
-      console.error("Fatal: Could not initialize Firebase Admin SDK.", e.message);
-      // We can't proceed without the admin SDK
-    }
-  } else {
-    adminApp = getApps()[0];
-    firestore = getFirestore(adminApp!);
-  }
-}
-
 // --- Helper to delete all documents in a collection ---
 async function deleteCollection(db: Firestore, collectionPath: string) {
     const collectionRef = db.collection(collectionPath);
@@ -43,21 +27,33 @@ async function deleteCollection(db: Firestore, collectionPath: string) {
 
 // --- API Endpoint ---
 export async function GET(request: Request) {
-  initializeAdmin();
+
+  // --- Initialize Firebase Admin ---
+  if (getApps().length === 0) {
+    try {
+      const serviceAccount = JSON.parse(process.env.firebase_service_account_key!);
+      adminApp = initializeApp({ credential: cert(serviceAccount) });
+      firestore = getFirestore(adminApp);
+    } catch (e) {
+        console.error("Fatal: Could not initialize Firebase Admin SDK from environment variable.", e);
+        // Fallback or failure is handled below
+    }
+  } else {
+    adminApp = getApps()[0];
+    firestore = getFirestore(adminApp!);
+  }
+
   if (!adminApp || !firestore) {
     return new NextResponse(JSON.stringify({ message: 'Server configuration error: Firebase Admin failed to initialize.' }), { status: 500 });
   }
 
   // 1. Initialize Google Sheets API
   const serviceAccountJson = process.env.google_sheets_service_account;
-  const sheetId = process.env['1LvD9pa_-dDRSmoVMfi7UWZRtefGPlsnmESgVdxCXQn4']; // Hardcoded from apphosting.yaml
-  const sheetRange = process.env['Sheet1!A:G']; // Hardcoded from apphosting.yaml
+  const sheetId = '1LvD9pa_-dDRSmoVMfi7UWZRtefGPlsnmESgVdxCXQn4';
+  const sheetRange = 'Sheet1!A:G';
 
   if (!serviceAccountJson) {
      return new NextResponse(JSON.stringify({ message: 'Google Sheets service account secret is not configured.' }), { status: 500 });
-  }
-   if (!sheetId || !sheetRange) {
-     return new NextResponse(JSON.stringify({ message: 'Google Sheet ID or Range is not configured.' }), { status: 500 });
   }
 
   const serviceAccount = JSON.parse(serviceAccountJson);
