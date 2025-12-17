@@ -15,11 +15,11 @@ function getFirebaseAdmin(): App {
   
   // This should only run once.
   try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY!);
+    const serviceAccount = JSON.parse(process.env.firebase_service_account_key!);
     adminApp = initializeApp({ credential: cert(serviceAccount) });
     return adminApp;
   } catch (e: any) {
-    console.error("Fatal: Could not initialize Firebase Admin SDK. Make sure FIREBASE_SERVICE_ACCOUNT_KEY is set correctly in your environment.", e.message);
+    console.error("Fatal: Could not initialize Firebase Admin SDK. Make sure firebase_service_account_key is set correctly in your environment.", e.message);
     throw new Error("Server configuration error: Firebase Admin SDK failed to initialize.");
   }
 }
@@ -46,22 +46,22 @@ async function deleteCollection(db: Firestore, collectionPath: string) {
 export async function GET(request: Request) {
   // 1. Secure the endpoint with the original secret
   const authToken = request.headers.get('Authorization');
-  const expectedToken = `Bearer ${process.env.LEADERBOARD_API_SECRET}`;
+  const expectedToken = `Bearer ${process.env.leaderboard_api_secret}`;
   
-  if (!process.env.LEADERBOARD_API_SECRET || !authToken || authToken !== expectedToken) {
+  if (!process.env.leaderboard_api_secret || !authToken || authToken !== expectedToken) {
     return new NextResponse(JSON.stringify({ message: 'Unauthorized' }), { status: 401 });
   }
 
   // 2. Check for required Google Sheets environment variables
-  const { GOOGLE_SHEETS_SERVICE_ACCOUNT, GOOGLE_SHEET_ID, GOOGLE_SHEET_RANGE } = process.env;
-  if (!GOOGLE_SHEETS_SERVICE_ACCOUNT || !GOOGLE_SHEET_ID || !GOOGLE_SHEET_RANGE) {
+  const { google_sheets_service_account, google_sheet_id, google_sheet_range } = process.env;
+  if (!google_sheets_service_account || !google_sheet_id || !google_sheet_range) {
     console.error('Missing Google Sheets environment variables.');
     return new NextResponse(JSON.stringify({ message: 'Server is not configured for Google Sheets access.' }), { status: 500 });
   }
 
   try {
     // 3. Authenticate with Google Sheets
-    const serviceAccount = JSON.parse(GOOGLE_SHEETS_SERVICE_ACCOUNT);
+    const serviceAccount = JSON.parse(google_sheets_service_account);
     const auth = new google.auth.GoogleAuth({
       credentials: serviceAccount,
       scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
@@ -71,8 +71,8 @@ export async function GET(request: Request) {
 
     // 4. Fetch data from Google Sheet
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: GOOGLE_SHEET_ID,
-      range: GOOGLE_SHEET_RANGE,
+      spreadsheetId: google_sheet_id,
+      range: google_sheet_range,
     });
 
     const rows = response.data.values;
@@ -91,6 +91,7 @@ export async function GET(request: Request) {
         const entry: { [key: string]: any } = {};
         headers.forEach((header, index) => {
             const value = row[index];
+            // Convert specific numeric fields, treat others as strings
             if (['outwardEngagement', 'inwardEngagement', 'features', 'cybaCoin'].includes(header)) {
                 entry[header] = Number(value) || 0;
             } else {
@@ -108,6 +109,7 @@ export async function GET(request: Request) {
     let entriesWritten = 0;
 
     for (const entry of entries) {
+        // Create a more robust document ID
         const docId = String(entry.cybaName).trim().replace(/[^a-zA-Z0-9-]/g, '_').toLowerCase();
         if (!docId) continue;
         const docRef = leaderboardCollection.doc(docId);

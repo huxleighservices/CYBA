@@ -11,20 +11,20 @@ runConfig:
   environment:
     # --- Secrets ---
     # These variables load their values from Google Secret Manager.
-    - variable: LEADERBOARD_API_SECRET
-      secret: LEADERBOARD_API_SECRET
-    - variable: GOOGLE_SHEETS_SERVICE_ACCOUNT
-      secret: GOOGLE_SHEETS_SERVICE_ACCOUNT
-    - variable: FIREBASE_SERVICE_ACCOUNT_KEY
-      secret: FIREBASE_SERVICE_ACCOUNT_KEY
+    - variable: leaderboard_api_secret
+      secret: leaderboard_api_secret
+    - variable: google_sheets_service_account
+      secret: google_sheets_service_account
+    - variable: firebase_service_account_key
+      secret: firebase_service_account_key
 
     # --- Plain Text Variables ---
     # You can set these values directly or in the Google Cloud Console.
-    - variable: GOOGLE_SHEET_ID
+    - variable: google_sheet_id
       availability:
       - BUILD
       - RUNTIME
-    - variable: GOOGLE_SHEET_RANGE
+    - variable: google_sheet_range
       availability:
       - BUILD
       - RUNTIME
@@ -32,17 +32,17 @@ runConfig:
 # The following are instructions for creating the required secrets in Google Secret
 # Manager. To create a secret, use the gcloud CLI from your terminal:
 #
-# 1. For LEADERBOARD_API_SECRET:
-#    gcloud secrets create LEADERBOARD_API_SECRET --replication-policy="automatic"
-#    gcloud secrets versions add LEADERBOARD_API_SECRET --data-file="/path/to/your/secret_text_file.txt"
+# 1. For leaderboard_api_secret:
+#    gcloud secrets create leaderboard_api_secret --replication-policy="automatic"
+#    gcloud secrets versions add leaderboard_api_secret --data-file="/path/to/your/secret_text_file.txt"
 #
-# 2. For GOOGLE_SHEETS_SERVICE_ACCOUNT:
-#    gcloud secrets create GOOGLE_SHEETS_SERVICE_ACCOUNT --replication-policy="automatic"
-#    gcloud secrets versions add GOOGLE_SHEETS_SERVICE_ACCOUNT --data-file="/path/to/your/google_service_account.json"
+# 2. For google_sheets_service_account:
+#    gcloud secrets create google_sheets_service_account --replication-policy="automatic"
+#    gcloud secrets versions add google_sheets_service_account --data-file="/path/to/your/google_service_account.json"
 #
-# 3. For FIREBASE_SERVICE_ACCOUNT_KEY:
-#    gcloud secrets create FIREBASE_SERVICE_ACCOUNT_KEY --replication-policy="automatic"
-#    gcloud secrets versions add FIREBASE_SERVICE_ACCOUNT_KEY --data-file="/path/to/your/firebase_service_account.json"
+# 3. For firebase_service_account_key:
+#    gcloud secrets create firebase_service_account_key --replication-policy="automatic"
+#    gcloud secrets versions add firebase_service_account_key --data-file="/path/to/your/firebase_service_account.json"
 #
 # For more information on creating and managing secrets, see
 # https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets
