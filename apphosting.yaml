@@ -6,16 +6,43 @@ runConfig:
   # more instances in response to increased traffic.
   maxInstances: 1
   # The following environment variables are available to your application.
-  # These are examples, and should be changed to meet your needs.
   # For more information on defining environment variables, see
   # https://firebase.google.com/docs/app-hosting/configure-backend#environment-variables
   environment:
+    # --- Secrets ---
+    # These variables load their values from Google Secret Manager.
     - variable: LEADERBOARD_API_SECRET
       secret: LEADERBOARD_API_SECRET
+    - variable: GOOGLE_SHEETS_SERVICE_ACCOUNT
+      secret: GOOGLE_SHEETS_SERVICE_ACCOUNT
+    - variable: FIREBASE_SERVICE_ACCOUNT_KEY
+      secret: FIREBASE_SERVICE_ACCOUNT_KEY
 
-# The following is a sample of a secret that can be created in Google Secret
-# Manager. To create a secret, you can use the gcloud CLI:
-# gcloud secrets create LEADERBOARD_API_SECRET --replication-policy="automatic"
-# gcloud secrets versions add LEADERBOARD_API_SECRET --data-file="/path/to/secret.txt"
+    # --- Plain Text Variables ---
+    # You can set these values directly or in the Google Cloud Console.
+    - variable: GOOGLE_SHEET_ID
+      availability:
+      - BUILD
+      - RUNTIME
+    - variable: GOOGLE_SHEET_RANGE
+      availability:
+      - BUILD
+      - RUNTIME
+
+# The following are instructions for creating the required secrets in Google Secret
+# Manager. To create a secret, use the gcloud CLI from your terminal:
+#
+# 1. For LEADERBOARD_API_SECRET:
+#    gcloud secrets create LEADERBOARD_API_SECRET --replication-policy="automatic"
+#    gcloud secrets versions add LEADERBOARD_API_SECRET --data-file="/path/to/your/secret_text_file.txt"
+#
+# 2. For GOOGLE_SHEETS_SERVICE_ACCOUNT:
+#    gcloud secrets create GOOGLE_SHEETS_SERVICE_ACCOUNT --replication-policy="automatic"
+#    gcloud secrets versions add GOOGLE_SHEETS_SERVICE_ACCOUNT --data-file="/path/to/your/google_service_account.json"
+#
+# 3. For FIREBASE_SERVICE_ACCOUNT_KEY:
+#    gcloud secrets create FIREBASE_SERVICE_ACCOUNT_KEY --replication-policy="automatic"
+#    gcloud secrets versions add FIREBASE_SERVICE_ACCOUNT_KEY --data-file="/path/to/your/firebase_service_account.json"
+#
 # For more information on creating and managing secrets, see
 # https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets
