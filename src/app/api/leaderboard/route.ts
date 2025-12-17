@@ -2,50 +2,33 @@
 import { NextResponse } from 'next/server';
 import { initializeApp, getApps, App, cert } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { google } from 'googleapis';
 
 // --- Firebase Admin Initialization ---
-function getFirebaseAdmin(): App | null {
+let adminApp: App | null = null;
+
+function getFirebaseAdmin(): App {
   if (getApps().length > 0) {
-    return getApps()[0];
+    adminApp = getApps()[0];
+    return adminApp;
   }
-
-  // When deployed, App Hosting provides GOOGLE_APPLICATION_CREDENTIALS.
-  // For local dev, you can set FIREBASE_SERVICE_ACCOUNT_KEY in .env.local
-  if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-    try {
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-      return initializeApp({ credential: cert(serviceAccount) });
-    } catch (e) {
-      console.error("Error initializing Firebase Admin with service account key:", e);
-      return null;
-    }
-  }
-
-  // Default for deployed environments, will use Application Default Credentials.
+  
+  // This should only run once.
   try {
-    return initializeApp();
-  } catch(e) {
-    console.error("Default Firebase Admin initialization failed:", e);
-    return null;
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY!);
+    adminApp = initializeApp({ credential: cert(serviceAccount) });
+    return adminApp;
+  } catch (e: any) {
+    console.error("Fatal: Could not initialize Firebase Admin SDK. Make sure FIREBASE_SERVICE_ACCOUNT_KEY is set correctly in your environment.", e.message);
+    throw new Error("Server configuration error: Firebase Admin SDK failed to initialize.");
   }
 }
 
 // --- Helper to delete all documents in a collection ---
-async function deleteCollection(db: Firestore, collectionPath: string, batchSize: number = 100) {
+async function deleteCollection(db: Firestore, collectionPath: string) {
     const collectionRef = db.collection(collectionPath);
-    const query = collectionRef.limit(batchSize);
-
-    return new Promise<void>((resolve, reject) => {
-        deleteQueryBatch(db, query, resolve).catch(reject);
-    });
-}
-
-async function deleteQueryBatch(db: Firestore, query: FirebaseFirestore.Query, resolve: () => void) {
-    const snapshot = await query.get();
-
-    if (snapshot.size === 0) {
-        return resolve();
-    }
+    const snapshot = await collectionRef.limit(500).get(); // Read up to 500 docs
+    if (snapshot.empty) return;
 
     const batch = db.batch();
     snapshot.docs.forEach((doc) => {
@@ -53,98 +36,91 @@ async function deleteQueryBatch(db: Firestore, query: FirebaseFirestore.Query, r
     });
     await batch.commit();
 
-    process.nextTick(() => {
-        deleteQueryBatch(db, query, resolve);
-    });
+    // Recurse if there are more documents to delete
+    if (snapshot.size === 500) {
+        await deleteCollection(db, collectionPath);
+    }
 }
 
 // --- API Endpoint ---
-export async function POST(request: Request) {
-  // 1. Secure the endpoint
+export async function GET(request: Request) {
+  // 1. Secure the endpoint with the original secret
   const authToken = request.headers.get('Authorization');
   const expectedToken = `Bearer ${process.env.LEADERBOARD_API_SECRET}`;
-
-  if (!process.env.LEADERBOARD_API_SECRET) {
-      console.error('LEADERBOARD_API_SECRET is not set on the server.');
-      return new NextResponse(JSON.stringify({ message: 'Internal Server Error: Server is not configured correctly.' }), { status: 500 });
-  }
-
-  if (!authToken || authToken !== expectedToken) {
-    console.warn('Unauthorized access attempt to /api/leaderboard');
+  
+  if (!process.env.LEADERBOARD_API_SECRET || !authToken || authToken !== expectedToken) {
     return new NextResponse(JSON.stringify({ message: 'Unauthorized' }), { status: 401 });
   }
 
-  // 2. Initialize Firebase Admin
-  const adminApp = getFirebaseAdmin();
-  if (!adminApp) {
-    console.error('Failed to initialize Firebase Admin SDK.');
-    return new NextResponse(JSON.stringify({ message: 'Internal Server Error: Database connection failed.' }), { status: 500 });
+  // 2. Check for required Google Sheets environment variables
+  const { GOOGLE_SHEETS_SERVICE_ACCOUNT, GOOGLE_SHEET_ID, GOOGLE_SHEET_RANGE } = process.env;
+  if (!GOOGLE_SHEETS_SERVICE_ACCOUNT || !GOOGLE_SHEET_ID || !GOOGLE_SHEET_RANGE) {
+    console.error('Missing Google Sheets environment variables.');
+    return new NextResponse(JSON.stringify({ message: 'Server is not configured for Google Sheets access.' }), { status: 500 });
   }
-  const db = getFirestore(adminApp);
 
   try {
-    // 3. Process incoming data
-    const rawData = await request.json();
-    
-    // ** ROBUSTNESS FIX **
-    // Make.com might send a single object or an array of objects. Handle both cases.
-    const entries = Array.isArray(rawData) ? rawData : [rawData];
+    // 3. Authenticate with Google Sheets
+    const serviceAccount = JSON.parse(GOOGLE_SHEETS_SERVICE_ACCOUNT);
+    const auth = new google.auth.GoogleAuth({
+      credentials: serviceAccount,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+    });
 
-    if (entries.length === 0 || (entries.length === 1 && Object.keys(entries[0]).length === 0)) {
-       return new NextResponse(JSON.stringify({ message: 'Request body was empty or contained no valid entries.' }), { status: 400 });
+    const sheets = google.sheets({ version: 'v4', auth });
+
+    // 4. Fetch data from Google Sheet
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: GOOGLE_SHEET_ID,
+      range: GOOGLE_SHEET_RANGE,
+    });
+
+    const rows = response.data.values;
+    if (!rows || rows.length < 2) { // Expecting header + at least one data row
+      return new NextResponse(JSON.stringify({ message: 'No data found in spreadsheet or only headers present.' }), { status: 200 });
     }
+    
+    // 5. Initialize Firebase Admin
+    const db = getFirestore(getFirebaseAdmin());
+    
+    // 6. Process and Prepare Data
+    const headers = rows[0].map(h => h.trim());
+    const dataRows = rows.slice(1);
+    
+    const entries = dataRows.map(row => {
+        const entry: { [key: string]: any } = {};
+        headers.forEach((header, index) => {
+            const value = row[index];
+            if (['outwardEngagement', 'inwardEngagement', 'features', 'cybaCoin'].includes(header)) {
+                entry[header] = Number(value) || 0;
+            } else {
+                entry[header] = value || '';
+            }
+        });
+        return entry;
+    }).filter(entry => entry.cybaName); // Filter out rows without a name
 
+    // 7. Clear the existing leaderboard & write new data
     const leaderboardCollection = db.collection('leaderboard');
-
-    // 4. Clear the existing leaderboard
-    console.log('Clearing existing leaderboard...');
     await deleteCollection(db, 'leaderboard');
-    console.log('Leaderboard cleared.');
-
-    // 5. Prepare and write the new batch
-    console.log(`Preparing to write ${entries.length} new entries.`);
+    
     const batch = db.batch();
     let entriesWritten = 0;
-    
+
     for (const entry of entries) {
-        // Handle both header names (cybaName) and non-header columns ('0', '1', 'A', 'B')
-        const cybaName = entry.cybaName || entry['0'] || entry.A;
-
-        if (!cybaName || typeof cybaName !== 'string' || cybaName.trim() === '') {
-            console.warn('Skipping entry with invalid or empty name:', entry);
-            continue;
-        }
-
-        // Sanitize name for a safe document ID
-        const docId = cybaName.trim().replace(/[^a-zA-Z0-9-]/g, '_').toLowerCase();
+        const docId = String(entry.cybaName).trim().replace(/[^a-zA-Z0-9-]/g, '_').toLowerCase();
         if (!docId) continue;
-        
         const docRef = leaderboardCollection.doc(docId);
-        
-        const dataToSave = {
-            cybaName: cybaName,
-            cybaIg: entry.cybaIg || entry['1'] || entry.B || '',
-            tier: entry.tier || entry['2'] || entry.C || '',
-            outwardEngagement: Number(entry.outwardEngagement || entry['3'] || entry.D || 0),
-            inwardEngagement: Number(entry.inwardEngagement || entry['4'] || entry.E || 0),
-            features: Number(entry.features || entry['5'] || entry.F || 0),
-            cybaCoin: Number(entry.cybaCoin || entry['6'] || entry.G || 0),
-        };
-
-        batch.set(docRef, dataToSave);
+        batch.set(docRef, entry);
         entriesWritten++;
     }
-    
-    // 6. Commit the new batch
-    if (entriesWritten > 0) {
-        await batch.commit();
-        console.log(`Leaderboard updated successfully with ${entriesWritten} entries.`);
-    }
 
-    return new NextResponse(JSON.stringify({ message: `Leaderboard updated successfully with ${entriesWritten} entries.` }), { status: 200 });
+    await batch.commit();
+
+    return new NextResponse(JSON.stringify({ message: `Leaderboard synced successfully. ${entriesWritten} entries written.` }), { status: 200 });
 
   } catch (error) {
-    console.error('Error processing leaderboard update:', error);
+    console.error('Error syncing leaderboard from Google Sheet:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
     return new NextResponse(JSON.stringify({ message: 'Internal Server Error', error: errorMessage }), { status: 500 });
   }
