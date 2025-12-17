@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
-import { Loader2, Trophy } from 'lucide-react';
+import { Loader2, Trophy, Coins } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -64,7 +64,11 @@ export default function LeaderboardPage() {
                 <TableHead>Outward</TableHead>
                 <TableHead>Inward</TableHead>
                 <TableHead>Features</TableHead>
-                <TableHead className="text-right">CybaCoin</TableHead>
+                <TableHead className="text-right">
+                  <div className="flex justify-end">
+                    <Coins className="h-5 w-5 text-primary" />
+                  </div>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
