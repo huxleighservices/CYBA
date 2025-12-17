@@ -1,117 +1,128 @@
 
 import { NextResponse } from 'next/server';
 import { initializeApp, getApps, App, cert } from 'firebase-admin/app';
-import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { getFirestore, Firestore, CollectionReference } from 'firebase-admin/firestore';
 
 // --- Firebase Admin Initialization ---
 let adminApp: App;
 let db: Firestore;
 
-// This improved pattern ensures we initialize the app only once in a serverless environment.
 if (!getApps().length) {
-  // When running on App Hosting, GOOGLE_APPLICATION_CREDENTIALS is not set.
-  // initializeApp() with no arguments will automatically use Application Default Credentials.
-  // In a local or other environment, you might need service account credentials.
-  adminApp = initializeApp();
+  try {
+    adminApp = initializeApp();
+  } catch (error) {
+    console.error("Firebase Admin initialization failed:", error);
+    // Fallback for local dev if needed, but primarily rely on ADC
+    if (process.env.SERVICE_ACCOUNT_KEY) {
+        adminApp = initializeApp({
+            credential: cert(JSON.parse(process.env.SERVICE_ACCOUNT_KEY))
+        });
+    } else {
+         // In a deployed environment, this should ideally not be reached.
+         // If it is, the service account permissions/setup are likely incorrect.
+         // Let the request fail later with a clear DB connection error.
+    }
+  }
 } else {
   adminApp = getApps()[0];
 }
 db = getFirestore(adminApp);
 
 
-// --- API Endpoint ---
+// --- Helper function to delete all documents in a collection ---
+async function deleteCollection(collectionRef: CollectionReference, batchSize: number = 100) {
+    const query = collectionRef.limit(batchSize);
 
+    return new Promise((resolve, reject) => {
+        deleteQueryBatch(query, resolve).catch(reject);
+    });
+}
+
+async function deleteQueryBatch(query: FirebaseFirestore.Query, resolve: (value?: unknown) => void) {
+    const snapshot = await query.get();
+
+    if (snapshot.size === 0) {
+        // When there are no documents left, we are done
+        return resolve();
+    }
+
+    // Delete documents in a batch
+    const batch = db.batch();
+    snapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+    });
+    await batch.commit();
+
+    // Recurse on the next process tick, to avoid hitting stack limits
+    process.nextTick(() => {
+        deleteQueryBatch(query, resolve);
+    });
+}
+
+
+// --- API Endpoint ---
 export async function POST(request: Request) {
   // 1. Secure the endpoint
   const authToken = request.headers.get('Authorization');
   const expectedToken = `Bearer ${process.env.LEADERBOARD_API_SECRET}`;
 
   if (!authToken || authToken !== expectedToken) {
-    console.warn('Unauthorized request received.');
     return new NextResponse(JSON.stringify({ message: 'Unauthorized' }), { status: 401 });
   }
 
-  // 2. Process the incoming data
   try {
+    // 2. Process incoming data
     const rawData = await request.json();
-
-    // Make works with "bundles". The Array Aggregator should send an array.
-    // We'll double-check it's an array.
-    if (!Array.isArray(rawData) || rawData.length === 0) {
-        return new NextResponse(JSON.stringify({ message: 'Request body must be an array of leaderboard entries.' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-        });
+    if (!Array.isArray(rawData)) {
+      return new NextResponse(JSON.stringify({ message: 'Request body must be an array.' }), { status: 400 });
     }
 
     const leaderboardCollection = db.collection('leaderboard');
+
+    // 3. Clear the existing leaderboard
+    await deleteCollection(leaderboardCollection);
+
+    // 4. Prepare the new batch
+    if (rawData.length === 0) {
+        return new NextResponse(JSON.stringify({ message: 'Leaderboard cleared. No new entries provided.' }), { status: 200 });
+    }
+
     const batch = db.batch();
-    const processedNames = new Set();
-
-    // 3. Prepare to write to Firestore
     for (const entry of rawData) {
-        // Data from "Search Rows" can have keys as header names (e.g., 'cybaName')
-        // or as column letters ('A', 'B') if headers are off. We will handle both.
-        // We'll also handle the numeric keys from the aggregator ('0', '1', etc).
-        const cybaName = entry.cybaName || entry.A || entry['0'];
-        
-        // Use cybaName as the basis for the document ID for easy updates.
-        // Ensure cybaName is a clean, valid string for a document ID.
+        // Use header names from Google Sheet. Make sure "Table contains headers" is YES.
+        const cybaName = entry.cybaName;
         if (!cybaName || typeof cybaName !== 'string') {
-            console.warn('Skipping entry with missing or invalid cybaName:', entry);
-            continue; // Skip entries without a valid name
-        }
-        
-        // Sanitize the name to create a Firestore-safe document ID
-        const docId = cybaName.trim().replace(/[^a-zA-Z0-9-]/g, '_').toLowerCase();
-
-        if (!docId || processedNames.has(docId)) {
-            console.warn('Skipping entry - generated docId is empty or a duplicate:', cybaName);
+            console.warn('Skipping entry with invalid cybaName:', entry);
             continue;
         }
-        processedNames.add(docId);
 
+        // Sanitize name for a safe document ID
+        const docId = cybaName.trim().replace(/[^a-zA-Z0-9-]/g, '_').toLowerCase();
+        if (!docId) continue;
+        
         const docRef = leaderboardCollection.doc(docId);
-
-        // Map data, checking for all possible key formats from Make.com
+        
         const dataToSave = {
             cybaName: cybaName,
-            cybaIg: entry.cybaIg || entry.B || entry['1'] || '',
-            tier: entry.tier || entry.C || entry['2'] || '',
-            outwardEngagement: Number(entry.outwardEngagement || entry.D || entry['3'] || 0),
-            inwardEngagement: Number(entry.inwardEngagement || entry.E || entry['4'] || 0),
-            features: Number(entry.features || entry.F || entry['5'] || 0),
-            cybaCoin: Number(entry.cybaCoin || entry.G || entry['6'] || 0),
+            cybaIg: entry.cybaIg || '',
+            tier: entry.tier || '',
+            outwardEngagement: Number(entry.outwardEngagement || 0),
+            inwardEngagement: Number(entry.inwardEngagement || 0),
+            features: Number(entry.features || 0),
+            cybaCoin: Number(entry.cybaCoin || 0),
         };
-        
-        // Use set with merge to create or update the document.
-        batch.set(docRef, dataToSave, { merge: true });
-    }
 
-    // 4. Commit the batch write
-    if (processedNames.size === 0) {
-        return new NextResponse(JSON.stringify({ message: 'No valid entries to process.' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-        });
+        batch.set(docRef, dataToSave);
     }
-
+    
+    // 5. Commit the new batch
     await batch.commit();
 
-    return new NextResponse(JSON.stringify({ message: `Leaderboard updated successfully with ${processedNames.size} entries.` }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-    });
+    return new NextResponse(JSON.stringify({ message: `Leaderboard updated successfully with ${rawData.length} entries.` }), { status: 200 });
 
   } catch (error) {
     console.error('Error processing leaderboard update:', error);
-    let errorMessage = 'An unknown error occurred.';
-    if (error instanceof Error) {
-        errorMessage = error.message;
-    }
-    return new NextResponse(JSON.stringify({ message: 'Internal Server Error', error: errorMessage }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-    });
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return new NextResponse(JSON.stringify({ message: 'Internal Server Error', error: errorMessage }), { status: 500 });
   }
 }
