@@ -5,3 +5,17 @@ runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
   maxInstances: 1
+  # The following environment variables are available to your application.
+  # These are examples, and should be changed to meet your needs.
+  # For more information on defining environment variables, see
+  # https://firebase.google.com/docs/app-hosting/configure-backend#environment-variables
+  environment:
+    - variable: LEADERBOARD_API_SECRET
+      secret: LEADERBOARD_API_SECRET
+
+# The following is a sample of a secret that can be created in Google Secret
+# Manager. To create a secret, you can use the gcloud CLI:
+# gcloud secrets create LEADERBOARD_API_SECRET --replication-policy="automatic"
+# gcloud secrets versions add LEADERBOARD_API_SECRET --data-file="/path/to/secret.txt"
+# For more information on creating and managing secrets, see
+# https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets
