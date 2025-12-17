@@ -6,20 +6,21 @@ import { google } from 'googleapis';
 
 // --- Firebase Admin Initialization ---
 let adminApp: App | null = null;
+let firestore: Firestore | null = null;
 
-function getFirebaseAdmin(): App {
-  if (getApps().length > 0) {
+function initializeAdmin() {
+  if (getApps().length === 0) {
+    try {
+      const serviceAccount = JSON.parse(process.env.firebase_service_account_key!);
+      adminApp = initializeApp({ credential: cert(serviceAccount) });
+      firestore = getFirestore(adminApp);
+    } catch (e: any) {
+      console.error("Fatal: Could not initialize Firebase Admin SDK.", e.message);
+      // We can't proceed without the admin SDK
+    }
+  } else {
     adminApp = getApps()[0];
-    return adminApp;
-  }
-  
-  try {
-    const serviceAccount = JSON.parse(process.env.firebase_service_account_key!);
-    adminApp = initializeApp({ credential: cert(serviceAccount) });
-    return adminApp;
-  } catch (e: any) {
-    console.error("Fatal: Could not initialize Firebase Admin SDK. Make sure firebase_service_account_key is set correctly in your environment.", e.message);
-    throw new Error("Server configuration error: Firebase Admin SDK failed to initialize.");
+    firestore = getFirestore(adminApp!);
   }
 }
 
@@ -42,16 +43,24 @@ async function deleteCollection(db: Firestore, collectionPath: string) {
 
 // --- API Endpoint ---
 export async function GET(request: Request) {
-  // NOTE: Authorization has been removed to simplify and resolve deployment issues.
-  
-  // 1. Initialize Google Sheets API
-  const serviceAccount = JSON.parse(process.env.google_sheets_service_account!);
-  const sheetId = process.env.google_sheet_id;
-  const sheetRange = process.env.google_sheet_range;
-
-  if (!serviceAccount || !sheetId || !sheetRange) {
-     return new NextResponse(JSON.stringify({ message: 'Google Sheets API environment variables not configured.' }), { status: 500 });
+  initializeAdmin();
+  if (!adminApp || !firestore) {
+    return new NextResponse(JSON.stringify({ message: 'Server configuration error: Firebase Admin failed to initialize.' }), { status: 500 });
   }
+
+  // 1. Initialize Google Sheets API
+  const serviceAccountJson = process.env.google_sheets_service_account;
+  const sheetId = process.env['1LvD9pa_-dDRSmoVMfi7UWZRtefGPlsnmESgVdxCXQn4']; // Hardcoded from apphosting.yaml
+  const sheetRange = process.env['Sheet1!A:G']; // Hardcoded from apphosting.yaml
+
+  if (!serviceAccountJson) {
+     return new NextResponse(JSON.stringify({ message: 'Google Sheets service account secret is not configured.' }), { status: 500 });
+  }
+   if (!sheetId || !sheetRange) {
+     return new NextResponse(JSON.stringify({ message: 'Google Sheet ID or Range is not configured.' }), { status: 500 });
+  }
+
+  const serviceAccount = JSON.parse(serviceAccountJson);
 
   const auth = new google.auth.GoogleAuth({
     credentials: {
@@ -81,8 +90,8 @@ export async function GET(request: Request) {
       const entry: { [key: string]: any } = {};
       headers.forEach((header, index) => {
         const value = row[index];
-        // Use the correct field names from your Google Sheet
-        if (['outwardEngagement', 'inwardEngagement', 'features', 'cybaCoin'].includes(header)) {
+        const numericHeaders = ['outwardEngagement', 'inwardEngagement', 'features', 'cybaCoin'];
+        if (numericHeaders.includes(header)) {
             entry[header] = Number(value) || 0;
         } else {
             entry[header] = value || '';
@@ -93,15 +102,13 @@ export async function GET(request: Request) {
 
 
     // 4. Clear the existing leaderboard & write new data
-    const db = getFirestore(getFirebaseAdmin());
-    const leaderboardCollection = db.collection('leaderboard');
-    await deleteCollection(db, 'leaderboard');
+    const leaderboardCollection = firestore.collection('leaderboard');
+    await deleteCollection(firestore, 'leaderboard');
     
-    const batch = db.batch();
+    const batch = firestore.batch();
     let entriesWritten = 0;
 
     for (const entry of entries) {
-        // Create a Firestore-safe ID from the name
         const docId = String(entry.cybaName).trim().replace(/[^a-zA-Z0-9-]/g, '_').toLowerCase();
         if (!docId) continue;
         const docRef = leaderboardCollection.doc(docId);
