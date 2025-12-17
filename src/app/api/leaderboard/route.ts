@@ -1,44 +1,40 @@
 
 import { NextResponse } from 'next/server';
 import { initializeApp, getApps, App, cert } from 'firebase-admin/app';
-import { getFirestore, Firestore, CollectionReference } from 'firebase-admin/firestore';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
 
 // --- Firebase Admin Initialization ---
 let adminApp: App;
 let db: Firestore;
 
-// This pattern prevents re-initializing the app on every hot-reload
+// This specific initialization pattern is crucial for serverless environments like App Hosting.
+// It prevents re-initialization on every function invocation.
 if (!getApps().length) {
-  // Try to initialize with default credentials (ideal for deployed environments)
-  try {
-    adminApp = initializeApp();
-  } catch (error) {
-    console.error("Default Firebase Admin initialization failed, trying service account key.", error);
-    // Fallback for local development if SERVICE_ACCOUNT_KEY is set
-    if (process.env.SERVICE_ACCOUNT_KEY) {
-      try {
-        const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
-        adminApp = initializeApp({
-          credential: cert(serviceAccount)
-        });
-      } catch (e) {
-        console.error("Firebase Admin initialization with service account key failed.", e);
-      }
-    } else {
-        console.warn("SERVICE_ACCOUNT_KEY environment variable not set. Firebase Admin may not be initialized.");
+  // When deployed, App Hosting provides GOOGLE_APPLICATION_CREDENTIALS.
+  // In local development, you can set the FIREBASE_SERVICE_ACCOUNT_KEY env var.
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    try {
+        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+        adminApp = initializeApp({ credential: cert(serviceAccount) });
+    } catch(e) {
+        console.error("Error initializing Firebase Admin with service account key:", e);
     }
+  } else {
+    // This is the default for deployed environments.
+    adminApp = initializeApp();
   }
 } else {
   adminApp = getApps()[0];
 }
 
-// Only get firestore instance if the app was initialized
+// Ensure db is initialized only if adminApp was successful.
 if (adminApp) {
     db = getFirestore(adminApp);
 }
 
-// --- Helper function to delete all documents in a collection ---
-async function deleteCollection(collectionRef: CollectionReference, batchSize: number = 100) {
+// --- Helper to delete all documents in a collection ---
+async function deleteCollection(collectionPath: string, batchSize: number = 100) {
+    const collectionRef = db.collection(collectionPath);
     const query = collectionRef.limit(batchSize);
 
     return new Promise((resolve, reject) => {
@@ -50,23 +46,19 @@ async function deleteQueryBatch(query: FirebaseFirestore.Query, resolve: (value?
     const snapshot = await query.get();
 
     if (snapshot.size === 0) {
-        // When there are no documents left, we are done
         return resolve();
     }
 
-    // Delete documents in a batch
     const batch = db.batch();
     snapshot.docs.forEach((doc) => {
         batch.delete(doc.ref);
     });
     await batch.commit();
 
-    // Recurse on the next process tick, to avoid hitting stack limits
     process.nextTick(() => {
         deleteQueryBatch(query, resolve);
     });
 }
-
 
 // --- API Endpoint ---
 export async function POST(request: Request) {
@@ -75,18 +67,18 @@ export async function POST(request: Request) {
   const expectedToken = `Bearer ${process.env.LEADERBOARD_API_SECRET}`;
 
   if (!authToken || authToken !== expectedToken) {
-    console.warn('Unauthorized access attempt');
+    console.warn('Unauthorized access attempt to /api/leaderboard');
     return new NextResponse(JSON.stringify({ message: 'Unauthorized' }), { status: 401 });
   }
 
-  // Check if DB is initialized
+  // 2. Check if DB is initialized
   if (!db) {
     console.error('Firestore database is not initialized. Check Firebase Admin setup.');
     return new NextResponse(JSON.stringify({ message: 'Internal Server Error: Database connection failed.'}), { status: 500 });
   }
 
   try {
-    // 2. Process incoming data
+    // 3. Process incoming data
     const rawData = await request.json();
     if (!Array.isArray(rawData)) {
       return new NextResponse(JSON.stringify({ message: 'Request body must be an array of leaderboard entries.' }), { status: 400 });
@@ -94,17 +86,21 @@ export async function POST(request: Request) {
 
     const leaderboardCollection = db.collection('leaderboard');
 
-    // 3. Clear the existing leaderboard
-    await deleteCollection(leaderboardCollection);
+    // 4. Clear the existing leaderboard
+    console.log('Clearing existing leaderboard...');
+    await deleteCollection('leaderboard');
+    console.log('Leaderboard cleared.');
 
-    // 4. Prepare the new batch
+
     if (rawData.length === 0) {
         return new NextResponse(JSON.stringify({ message: 'Leaderboard cleared. No new entries provided.' }), { status: 200 });
     }
 
+    // 5. Prepare the new batch
+    console.log(`Preparing to write ${rawData.length} new entries.`);
     const batch = db.batch();
     for (const entry of rawData) {
-        // Use header names from Google Sheet. Make sure "Table contains headers" is YES.
+        // Use the header names from the Google Sheet.
         const cybaName = entry.cybaName;
         if (!cybaName || typeof cybaName !== 'string' || cybaName.trim() === '') {
             console.warn('Skipping entry with invalid or empty cybaName:', entry);
@@ -130,8 +126,9 @@ export async function POST(request: Request) {
         batch.set(docRef, dataToSave);
     }
     
-    // 5. Commit the new batch
+    // 6. Commit the new batch
     await batch.commit();
+    console.log(`Leaderboard updated successfully with ${rawData.length} entries.`);
 
     return new NextResponse(JSON.stringify({ message: `Leaderboard updated successfully with ${rawData.length} entries.` }), { status: 200 });
 
