@@ -41,15 +41,14 @@ async function deleteCollection(db: Firestore, collectionPath: string) {
 }
 
 // --- API Endpoint ---
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   // 1. Secure the endpoint
   const secret = process.env.leaderboard_api_secret;
-  
-  if (!secret || secret.trim() === '') {
-    console.error("LEADERBOARD_API_SECRET is not loaded. Check permissions and backend configuration.");
-    return new NextResponse(JSON.stringify({ message: 'Server secret not configured. The API key for this route is missing from the server environment.' }), { status: 500 });
-  }
 
+  if (!secret || secret.trim() === '') {
+    return new NextResponse(JSON.stringify({ message: 'Server secret not configured. Check permissions and backend configuration.' }), { status: 500 });
+  }
+  
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return new NextResponse(JSON.stringify({ message: 'Unauthorized: Missing or invalid Authorization header.' }), { status: 401 });
@@ -60,49 +59,57 @@ export async function POST(request: Request) {
   if (providedToken.trim() !== secret.trim()) {
     return new NextResponse(JSON.stringify({ message: 'Unauthorized: Invalid token.' }), { status: 401 });
   }
+  
+  // 2. Initialize Google Sheets API
+  const serviceAccount = JSON.parse(process.env.google_sheets_service_account!);
+  const sheetId = process.env.google_sheet_id;
+  const sheetRange = process.env.google_sheet_range;
 
-  // 2. Check that the request body is valid
-  let incomingData;
+  if (!serviceAccount || !sheetId || !sheetRange) {
+     return new NextResponse(JSON.stringify({ message: 'Google Sheets API environment variables not configured.' }), { status: 500 });
+  }
+
+  const auth = new google.auth.GoogleAuth({
+    credentials: {
+      client_email: serviceAccount.client_email,
+      private_key: serviceAccount.private_key,
+    },
+    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+  });
+
+  const sheets = google.sheets({ version: 'v4', auth });
+
   try {
-    incomingData = await request.json();
-  } catch (e) {
-    return new NextResponse(JSON.stringify({ message: 'Invalid JSON in request body.' }), { status: 400 });
-  }
+    // 3. Fetch Data from Google Sheet
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: sheetRange,
+    });
+    const rows = response.data.values;
 
-  if (!incomingData) {
-    return new NextResponse(JSON.stringify({ message: 'Request body is empty.' }), { status: 400 });
-  }
+    if (!rows || rows.length < 2) { // < 2 to account for header row
+      return new NextResponse(JSON.stringify({ message: 'No data found in sheet or only a header row exists.' }), { status: 200 });
+    }
 
-  // Make the logic flexible: handle both a single object and an array of objects
-  const entriesToProcess = Array.isArray(incomingData) ? incomingData : [incomingData];
-
-  if (entriesToProcess.length === 0) {
-      return new NextResponse(JSON.stringify({ message: 'No entries to process.' }), { status: 200 });
-  }
-
-  // 3. Initialize Firebase Admin
-  const db = getFirestore(getFirebaseAdmin());
-  
-  // 4. Process and Prepare Data
-  const headers = Object.keys(entriesToProcess[0]);
-  
-  const entries = entriesToProcess.map(rowObject => {
+    // 4. Process and Prepare Data
+    const headers = rows[0].map((header: string) => header.trim());
+    const entries = rows.slice(1).map(row => {
       const entry: { [key: string]: any } = {};
-      headers.forEach(header => {
-          const value = rowObject[header];
-          // Use the correct field names from your Google Sheet
-          if (['outwardEngagement', 'inwardEngagement', 'features', 'cybaCoin'].includes(header)) {
-              entry[header] = Number(value) || 0;
-          } else {
-              entry[header] = value || '';
-          }
+      headers.forEach((header, index) => {
+        const value = row[index];
+        // Use the correct field names from your Google Sheet
+        if (['outwardEngagement', 'inwardEngagement', 'features', 'cybaCoin'].includes(header)) {
+            entry[header] = Number(value) || 0;
+        } else {
+            entry[header] = value || '';
+        }
       });
       return entry;
-  }).filter(entry => entry.cybaName); // Filter out entries without a cybaName
+    }).filter(entry => entry.cybaName); // Filter out entries without a cybaName
 
 
-  // 5. Clear the existing leaderboard & write new data
-  try {
+    // 5. Clear the existing leaderboard & write new data
+    const db = getFirestore(getFirebaseAdmin());
     const leaderboardCollection = db.collection('leaderboard');
     await deleteCollection(db, 'leaderboard');
     
@@ -123,8 +130,8 @@ export async function POST(request: Request) {
     return new NextResponse(JSON.stringify({ message: `Leaderboard synced successfully. ${entriesWritten} entries written.` }), { status: 200 });
 
   } catch (error) {
-    console.error('Error during Firestore operation:', error);
+    console.error('Error during Google Sheet sync:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-    return new NextResponse(JSON.stringify({ message: 'Internal Server Error during database update.', error: errorMessage }), { status: 500 });
+    return new NextResponse(JSON.stringify({ message: 'Internal Server Error during Google Sheet sync.', error: errorMessage }), { status: 500 });
   }
 }
