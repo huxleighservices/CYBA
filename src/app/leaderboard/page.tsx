@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
-import { Loader2, Trophy, Coins } from 'lucide-react';
+import { Loader2, Coins } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -19,9 +19,13 @@ export default function LeaderboardPage() {
   const { firestore, user, isUserLoading } = useFirebase();
   const router = useRouter();
 
+  // Conditionally create the query reference only when the user is available.
   const leaderboardRef = useMemoFirebase(
-    () => query(collection(firestore, 'leaderboard'), orderBy('cybaCoin', 'desc')),
-    [firestore]
+    () =>
+      user
+        ? query(collection(firestore, 'leaderboard'), orderBy('cybaCoin', 'desc'))
+        : null,
+    [firestore, user]
   );
   const { data: leaderboardData, isLoading } = useCollection(leaderboardRef);
 
@@ -33,7 +37,8 @@ export default function LeaderboardPage() {
   }, [isUserLoading, user, router]);
 
   // Show a loading spinner while checking for the user or loading data.
-  if (isUserLoading || isLoading) {
+  // The query will only run when `user` is available, so `isLoading` will be true then.
+  if (isUserLoading || (user && isLoading)) {
     return (
       <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -41,6 +46,7 @@ export default function LeaderboardPage() {
     );
   }
 
+  // This check ensures we only try to render the leaderboard for an authenticated user.
   if (user) {
     return (
       <div className="container mx-auto px-4 py-16">
@@ -54,7 +60,7 @@ export default function LeaderboardPage() {
         </div>
 
         <div className="border border-primary/20 rounded-lg bg-card/50">
-           <Table>
+          <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Rank</TableHead>
@@ -65,7 +71,7 @@ export default function LeaderboardPage() {
                 <TableHead>Inward</TableHead>
                 <TableHead>Features</TableHead>
                 <TableHead className="text-right">
-                  <div className="flex justify-end">
+                  <div className="flex justify-end items-center">
                     <Coins className="h-5 w-5 text-primary" />
                   </div>
                 </TableHead>
@@ -78,17 +84,23 @@ export default function LeaderboardPage() {
                   <TableCell>{entry.cybaName}</TableCell>
                   <TableCell>{entry.cybaIg}</TableCell>
                   <TableCell>
-                     <Badge 
-                        variant={entry.tier === 'Surge' ? 'default' : 'secondary'}
-                        className={entry.tier === 'Surge' ? 'bg-primary' : 'bg-accent text-accent-foreground'}
-                     >
-                        {entry.tier}
-                     </Badge>
+                    <Badge
+                      variant={entry.tier === 'Surge' ? 'default' : 'secondary'}
+                      className={
+                        entry.tier === 'Surge'
+                          ? 'bg-primary'
+                          : 'bg-accent text-accent-foreground'
+                      }
+                    >
+                      {entry.tier}
+                    </Badge>
                   </TableCell>
                   <TableCell>{entry.outwardEngagement}</TableCell>
                   <TableCell>{entry.inwardEngagement}</TableCell>
                   <TableCell>{entry.features}</TableCell>
-                  <TableCell className="text-right font-bold text-primary">{entry.cybaCoin}</TableCell>
+                  <TableCell className="text-right font-bold text-primary">
+                    {entry.cybaCoin}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -98,6 +110,6 @@ export default function LeaderboardPage() {
     );
   }
 
-  // Render nothing while redirecting for non-users.
+  // Render nothing while redirecting for non-users or if user state is not yet determined.
   return null;
 }
