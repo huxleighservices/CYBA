@@ -4,8 +4,7 @@ import { initializeApp, getApps, App, cert } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 
 // --- Firebase Admin Initialization ---
-// This pattern is crucial for serverless environments like App Hosting.
-function getFirebaseAdmin() {
+function getFirebaseAdmin(): App | null {
   if (getApps().length > 0) {
     return getApps()[0];
   }
@@ -22,8 +21,13 @@ function getFirebaseAdmin() {
     }
   }
 
-  // Default for deployed environments.
-  return initializeApp();
+  // Default for deployed environments, will use Application Default Credentials.
+  try {
+    return initializeApp();
+  } catch(e) {
+    console.error("Default Firebase Admin initialization failed:", e);
+    return null;
+  }
 }
 
 // --- Helper to delete all documents in a collection ---
@@ -81,8 +85,13 @@ export async function POST(request: Request) {
   try {
     // 3. Process incoming data
     const rawData = await request.json();
-    if (!Array.isArray(rawData)) {
-      return new NextResponse(JSON.stringify({ message: 'Request body must be an array of leaderboard entries.' }), { status: 400 });
+    
+    // ** ROBUSTNESS FIX **
+    // Make.com might send a single object or an array of objects. Handle both cases.
+    const entries = Array.isArray(rawData) ? rawData : [rawData];
+
+    if (entries.length === 0 || (entries.length === 1 && Object.keys(entries[0]).length === 0)) {
+       return new NextResponse(JSON.stringify({ message: 'Request body was empty or contained no valid entries.' }), { status: 400 });
     }
 
     const leaderboardCollection = db.collection('leaderboard');
@@ -92,22 +101,17 @@ export async function POST(request: Request) {
     await deleteCollection(db, 'leaderboard');
     console.log('Leaderboard cleared.');
 
-
-    if (rawData.length === 0) {
-        console.log('No new entries provided. Leaderboard is now empty.');
-        return new NextResponse(JSON.stringify({ message: 'Leaderboard cleared. No new entries provided.' }), { status: 200 });
-    }
-
     // 5. Prepare and write the new batch
-    console.log(`Preparing to write ${rawData.length} new entries.`);
+    console.log(`Preparing to write ${entries.length} new entries.`);
     const batch = db.batch();
     let entriesWritten = 0;
-    for (const entry of rawData) {
-        // Use the header names from the Google Sheet.
-        // Make.com sends them as properties on the object.
-        const cybaName = entry.cybaName;
+    
+    for (const entry of entries) {
+        // Handle both header names (cybaName) and non-header columns ('0', '1', 'A', 'B')
+        const cybaName = entry.cybaName || entry['0'] || entry.A;
+
         if (!cybaName || typeof cybaName !== 'string' || cybaName.trim() === '') {
-            console.warn('Skipping entry with invalid or empty cybaName:', entry);
+            console.warn('Skipping entry with invalid or empty name:', entry);
             continue;
         }
 
@@ -118,13 +122,13 @@ export async function POST(request: Request) {
         const docRef = leaderboardCollection.doc(docId);
         
         const dataToSave = {
-            cybaName: entry.cybaName,
-            cybaIg: entry.cybaIg || '',
-            tier: entry.tier || '',
-            outwardEngagement: Number(entry.outwardEngagement || 0),
-            inwardEngagement: Number(entry.inwardEngagement || 0),
-            features: Number(entry.features || 0),
-            cybaCoin: Number(entry.cybaCoin || 0),
+            cybaName: cybaName,
+            cybaIg: entry.cybaIg || entry['1'] || entry.B || '',
+            tier: entry.tier || entry['2'] || entry.C || '',
+            outwardEngagement: Number(entry.outwardEngagement || entry['3'] || entry.D || 0),
+            inwardEngagement: Number(entry.inwardEngagement || entry['4'] || entry.E || 0),
+            features: Number(entry.features || entry['5'] || entry.F || 0),
+            cybaCoin: Number(entry.cybaCoin || entry['6'] || entry.G || 0),
         };
 
         batch.set(docRef, dataToSave);
@@ -132,8 +136,10 @@ export async function POST(request: Request) {
     }
     
     // 6. Commit the new batch
-    await batch.commit();
-    console.log(`Leaderboard updated successfully with ${entriesWritten} entries.`);
+    if (entriesWritten > 0) {
+        await batch.commit();
+        console.log(`Leaderboard updated successfully with ${entriesWritten} entries.`);
+    }
 
     return new NextResponse(JSON.stringify({ message: `Leaderboard updated successfully with ${entriesWritten} entries.` }), { status: 200 });
 
