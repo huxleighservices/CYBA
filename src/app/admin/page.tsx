@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,7 +21,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Shield, PlusCircle, Trash2, Edit, Loader2, Link2 } from 'lucide-react';
+import {
+  Shield,
+  PlusCircle,
+  Trash2,
+  Edit,
+  Loader2,
+  Link2,
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   useFirebase,
@@ -64,6 +71,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { debounce } from 'lodash';
 
 // Schemas
 const passwordSchema = z.object({
@@ -261,7 +269,6 @@ function UserVerification() {
     const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
     const [isLoadingSheet, setIsLoadingSheet] = useState(true);
 
-    // Fetch users from Firestore
     const usersRef = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
     const { data: users, isLoading: isLoadingUsers } = useCollection<{
         username: string;
@@ -269,7 +276,6 @@ function UserVerification() {
         leaderboardCybaName?: string;
     }>(usersRef);
 
-    // Fetch leaderboard data from Google Sheet
     useEffect(() => {
         const fetchLeaderboard = async () => {
             setIsLoadingSheet(true);
@@ -295,23 +301,50 @@ function UserVerification() {
         fetchLeaderboard();
     }, [toast]);
 
-    const handleLinkUser = (userId: string, leaderboardName: string) => {
-        const userDocRef = doc(firestore, 'users', userId);
-        const selectedEntry = leaderboardData.find(entry => entry.cybaName === leaderboardName);
-        const cybaCoinBalance = selectedEntry ? selectedEntry.cybaCoin : 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const handleLinkUser = useCallback(
+        debounce((userId: string, leaderboardName: string) => {
+            const userDocRef = doc(firestore, 'users', userId);
+            
+            if (!leaderboardName) {
+                // If the input is cleared, unlink the user
+                const dataToUpdate = {
+                    leaderboardCybaName: '',
+                    cybaCoinBalance: 0,
+                };
+                setDocumentNonBlocking(userDocRef, dataToUpdate, { merge: true });
+                toast({
+                    title: "User Unlinked!",
+                    description: `Cybacoin balance has been reset.`
+                });
+                return;
+            }
 
-        const dataToUpdate = {
-            leaderboardCybaName: leaderboardName,
-            cybaCoinBalance: Number(cybaCoinBalance) || 0,
-        };
+            const selectedEntry = leaderboardData.find(
+                (entry) => entry.cybaName?.toLowerCase() === leaderboardName.toLowerCase()
+            );
 
-        setDocumentNonBlocking(userDocRef, dataToUpdate, { merge: true });
-
-        toast({
-            title: "User Linked!",
-            description: `Cybacoin balance has been updated to ${dataToUpdate.cybaCoinBalance}.`
-        });
-    };
+            if (selectedEntry) {
+                const cybaCoinBalance = selectedEntry.cybaCoin;
+                const dataToUpdate = {
+                    leaderboardCybaName: selectedEntry.cybaName, // Use the canonical name
+                    cybaCoinBalance: Number(cybaCoinBalance) || 0,
+                };
+                setDocumentNonBlocking(userDocRef, dataToUpdate, { merge: true });
+                toast({
+                    title: "User Linked!",
+                    description: `Cybacoin balance for ${selectedEntry.cybaName} updated to ${dataToUpdate.cybaCoinBalance}.`
+                });
+            } else {
+                toast({
+                    variant: "destructive",
+                    title: "Name Not Found",
+                    description: `"${leaderboardName}" was not found in the leaderboard.`,
+                });
+            }
+        }, 500),
+        [leaderboardData, firestore, toast]
+    );
 
     if (isLoadingUsers || isLoadingSheet) {
         return (
@@ -326,7 +359,7 @@ function UserVerification() {
             <CardHeader>
                 <CardTitle>User Verification</CardTitle>
                 <CardDescription>
-                    Link website users to their leaderboard records to sync Cybacoin balances.
+                    Link website users to their leaderboard records by typing the exact CybaName. The link and Cybacoin balance will update automatically.
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -335,7 +368,7 @@ function UserVerification() {
                         <TableRow>
                             <TableHead>Username</TableHead>
                             <TableHead>Email</TableHead>
-                            <TableHead className="text-right">Leaderboard Link</TableHead>
+                            <TableHead className="text-right">Leaderboard CybaName</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -344,22 +377,12 @@ function UserVerification() {
                                 <TableCell>{user.username}</TableCell>
                                 <TableCell>{user.email}</TableCell>
                                 <TableCell className="text-right">
-                                    <Select
-                                        value={user.leaderboardCybaName || ''}
-                                        onValueChange={(value) => handleLinkUser(user.id, value)}
-                                    >
-                                        <SelectTrigger className="w-[220px] float-right">
-                                            <SelectValue placeholder="Select leaderboard name" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="">Unlink</SelectItem>
-                                            {leaderboardData.map((entry) => (
-                                                <SelectItem key={entry.cybaName} value={entry.cybaName!}>
-                                                    {entry.cybaName}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <Input
+                                        defaultValue={user.leaderboardCybaName || ''}
+                                        onChange={(e) => handleLinkUser(user.id, e.target.value)}
+                                        placeholder="Type leaderboard name..."
+                                        className="w-[250px] float-right"
+                                    />
                                 </TableCell>
                             </TableRow>
                         ))}

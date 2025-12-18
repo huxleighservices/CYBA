@@ -45,6 +45,7 @@
     "firebase-admin": "^12.1.1",
     "genkit": "^1.20.0",
     "googleapis": "^140.0.1",
+    "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.475.0",
     "next": "15.5.9",
     "patch-package": "^8.0.0",
@@ -58,6 +59,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/lodash.debounce": "^4.0.9",
     "@types/node": "^20",
     "@types/react": "^19.2.1",
     "@types/react-dom": "^19.2.1",
