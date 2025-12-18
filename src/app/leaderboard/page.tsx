@@ -53,7 +53,12 @@ export default function LeaderboardPage() {
       fetch('/api/sheets')
         .then((res) => {
           if (!res.ok) {
-            throw new Error(`Failed to fetch: ${res.statusText}`);
+            // Try to parse error details from the response body
+            return res.json().then(errBody => {
+               throw new Error(errBody.details || `Failed to fetch: ${res.statusText}`);
+            }).catch(() => {
+               throw new Error(`Failed to fetch: ${res.statusText}`);
+            });
           }
           return res.json();
         })
