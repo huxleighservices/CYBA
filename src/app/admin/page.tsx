@@ -21,7 +21,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Shield, PlusCircle, Trash2, Edit, Loader2 } from 'lucide-react';
+import { Shield, PlusCircle, Trash2, Edit, Loader2, Link2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   useFirebase,
@@ -248,6 +248,126 @@ function UserManagement() {
       </CardContent>
     </Card>
   );
+}
+
+// --- User Verification ---
+interface LeaderboardEntry {
+    cybaName?: string;
+    cybaCoin?: number;
+}
+function UserVerification() {
+    const { firestore } = useFirebase();
+    const { toast } = useToast();
+    const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+    const [isLoadingSheet, setIsLoadingSheet] = useState(true);
+
+    // Fetch users from Firestore
+    const usersRef = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
+    const { data: users, isLoading: isLoadingUsers } = useCollection<{
+        username: string;
+        email: string;
+        leaderboardCybaName?: string;
+    }>(usersRef);
+
+    // Fetch leaderboard data from Google Sheet
+    useEffect(() => {
+        const fetchLeaderboard = async () => {
+            setIsLoadingSheet(true);
+            try {
+                const response = await fetch('/api/sheets');
+                const data = await response.json();
+                if (response.ok) {
+                    setLeaderboardData(data);
+                } else {
+                    throw new Error(data.error || 'Failed to fetch leaderboard data');
+                }
+            } catch (error) {
+                console.error("Error fetching leaderboard:", error);
+                toast({
+                    variant: "destructive",
+                    title: "Could not load leaderboard",
+                    description: error instanceof Error ? error.message : String(error)
+                });
+            } finally {
+                setIsLoadingSheet(false);
+            }
+        };
+        fetchLeaderboard();
+    }, [toast]);
+
+    const handleLinkUser = (userId: string, leaderboardName: string) => {
+        const userDocRef = doc(firestore, 'users', userId);
+        const selectedEntry = leaderboardData.find(entry => entry.cybaName === leaderboardName);
+        const cybaCoinBalance = selectedEntry ? selectedEntry.cybaCoin : 0;
+
+        const dataToUpdate = {
+            leaderboardCybaName: leaderboardName,
+            cybaCoinBalance: Number(cybaCoinBalance) || 0,
+        };
+
+        setDocumentNonBlocking(userDocRef, dataToUpdate, { merge: true });
+
+        toast({
+            title: "User Linked!",
+            description: `Cybacoin balance has been updated to ${dataToUpdate.cybaCoinBalance}.`
+        });
+    };
+
+    if (isLoadingUsers || isLoadingSheet) {
+        return (
+            <div className="flex justify-center items-center p-8">
+                <Loader2 className="animate-spin" />
+            </div>
+        );
+    }
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>User Verification</CardTitle>
+                <CardDescription>
+                    Link website users to their leaderboard records to sync Cybacoin balances.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Username</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead className="text-right">Leaderboard Link</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {users?.map((user) => (
+                            <TableRow key={user.id}>
+                                <TableCell>{user.username}</TableCell>
+                                <TableCell>{user.email}</TableCell>
+                                <TableCell className="text-right">
+                                    <Select
+                                        value={user.leaderboardCybaName || ''}
+                                        onValueChange={(value) => handleLinkUser(user.id, value)}
+                                    >
+                                        <SelectTrigger className="w-[220px] float-right">
+                                            <SelectValue placeholder="Select leaderboard name" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="">Unlink</SelectItem>
+                                            {leaderboardData.map((entry) => (
+                                                <SelectItem key={entry.cybaName} value={entry.cybaName!}>
+                                                    {entry.cybaName}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    );
 }
 
 // --- Blog Management ---
@@ -1163,8 +1283,9 @@ function AdminPanel() {
       </div>
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="verification">Verification</TabsTrigger>
           <TabsTrigger value="blog">Blog</TabsTrigger>
           <TabsTrigger value="merch">Merchandise</TabsTrigger>
           <TabsTrigger value="memberships">Memberships</TabsTrigger>
@@ -1172,6 +1293,9 @@ function AdminPanel() {
         </TabsList>
         <TabsContent value="users" className="mt-6">
           <UserManagement />
+        </TabsContent>
+        <TabsContent value="verification" className="mt-6">
+          <UserVerification />
         </TabsContent>
         <TabsContent value="blog" className="mt-6">
           <BlogManagement />

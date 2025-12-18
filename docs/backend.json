@@ -142,6 +142,10 @@
         "cybaCoinBalance": {
           "type": "number",
           "description": "The user's balance of CybaCoin."
+        },
+        "leaderboardCybaName": {
+            "type": "string",
+            "description": "The linked CYBANAME from the leaderboard Google Sheet."
         }
       },
       "required": [
