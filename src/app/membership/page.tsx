@@ -29,7 +29,7 @@ export default function MembershipPage() {
           JOIN THE CYBAZONE
         </h1>
         <p className="text-lg text-foreground/80 mb-12">
-          Choose the plan that's right for your journey.
+          Choose your level. Billed weekly. Cancel anytime.
         </p>
       </div>
 
