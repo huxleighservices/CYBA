@@ -1,24 +1,28 @@
-
 import { google } from 'googleapis';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-const sheets = google.sheets('v4');
-
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const credsString = process.env.GOOGLE_SHEETS_CREDENTIALS;
-    if (!credsString) {
-      throw new Error('GOOGLE_SHEETS_CREDENTIALS environment variable not set.');
-    }
     if (!process.env.GOOGLE_SHEET_ID) {
-      throw new Error('GOOGLE_SHEET_ID environment variable not set.');
+      throw new Error('GOOGLE_SHEET_ID environment variable is not set');
+    }
+
+    if (!process.env.GOOGLE_SHEETS_CREDENTIALS) {
+      throw new Error('GOOGLE_SHEETS_CREDENTIALS environment variable is not set');
     }
 
     let credentials;
     try {
-      credentials = JSON.parse(credsString);
-    } catch (e) {
-      throw new Error('Failed to parse GOOGLE_SHEETS_CREDENTIALS. Ensure it is a valid JSON string.');
+      credentials = JSON.parse(process.env.GOOGLE_SHEETS_CREDENTIALS);
+    } catch (parseError) {
+      console.error('Failed to parse GOOGLE_SHEETS_CREDENTIALS:', parseError);
+      throw new Error(
+        'GOOGLE_SHEETS_CREDENTIALS is not valid JSON. Ensure the entire service account JSON file is set as the secret value.'
+      );
+    }
+
+    if (!credentials.private_key || !credentials.client_email) {
+      throw new Error('GOOGLE_SHEETS_CREDENTIALS is missing required fields (private_key, client_email)');
     }
 
     const auth = new google.auth.GoogleAuth({
@@ -26,42 +30,43 @@ export async function GET(req: Request) {
       scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
     });
 
+    const sheets = google.sheets({ version: 'v4', auth });
+
     const response = await sheets.spreadsheets.values.get({
-      auth,
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: 'Sheet1!A:G', // Assuming Sheet1 and columns A-G
+      range: 'Sheet1', // Assumes data is on 'Sheet1'
     });
 
     const rows = response.data.values || [];
-    if (rows.length < 2) {
-      return NextResponse.json([]); // Return empty if no data or only headers
+
+    if (rows.length === 0) {
+      return NextResponse.json([], { status: 200 });
     }
 
-    const headers: string[] = rows[0].map(h => h ? h.trim() : '');
-    const data = rows.slice(1).map((row) =>
-      headers.reduce((obj: Record<string, any>, header: string, index: number) => {
-        // camelCase the header for consistent property names
-        const camelHeader = header.charAt(0).toLowerCase() + header.slice(1);
-        const numericHeaders = ['outwardEngagement', 'inwardEngagement', 'features', 'cybaCoin'];
-        let value: string | number = row[index] || '';
-        
-        if (numericHeaders.includes(camelHeader)) {
-          // Attempt to convert to number, default to 0 if it fails or is empty
-          const numValue = parseFloat(value as string);
-          value = isNaN(numValue) ? 0 : numValue;
-        }
+    const headers = rows[0] as string[];
+    if (!headers || headers.length === 0) {
+      throw new Error('Sheet has no headers in the first row');
+    }
 
-        if (camelHeader) {
-          obj[camelHeader] = value;
-        }
+    const data = rows.slice(1).map((row: any[]) =>
+      headers.reduce((obj: Record<string, any>, header: string, index: number) => {
+        const value = row[index] || '';
+        // Try to convert to number if it looks like a number and isn't empty
+        obj[header] = !isNaN(Number(value)) && value.trim() !== '' ? Number(value) : value;
         return obj;
       }, {})
-    ).sort((a, b) => b.cybaCoin - a.cybaCoin); // Sort by cybaCoin descending
+    );
 
-    return NextResponse.json(data);
+    return NextResponse.json(data, { status: 200 });
   } catch (error) {
-    console.error('Failed to fetch sheet data:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-    return NextResponse.json({ error: 'Failed to fetch sheet data', details: errorMessage }, { status: 500 });
+    console.error('API Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return NextResponse.json(
+      {
+        error: 'Failed to fetch sheet data',
+        details: errorMessage,
+      },
+      { status: 500 }
+    );
   }
 }
