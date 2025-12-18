@@ -131,7 +131,7 @@ export default function LeaderboardPage() {
           CYBAZONE Leaderboard
         </h1>
         <p className="text-lg text-foreground/80 mb-2">
-          See who is making the biggest impact in the CYBAZONE.
+          See Which CYBAs are Making the Biggest Impact in the CYBAZONE.
         </p>
         {lastUpdated && (
           <p className="text-xs text-muted-foreground">
@@ -277,7 +277,7 @@ export default function LeaderboardPage() {
                 {getString(leaderboardData[0]?.cybaName) || 'N/A'}
               </p>
               <p className="text-xs text-muted-foreground mt-2">
-                {formatNumber(leaderboardData[0]?.cybaCoin)} points
+                {formatNumber(leaderboardData[0]?.cybaCoin)} Cybacoin
               </p>
             </CardContent>
           </Card>
@@ -295,7 +295,7 @@ export default function LeaderboardPage() {
           <Card className="bg-gradient-to-br from-green-500/10 to-transparent border-green-500/20">
             <CardContent className="p-6 text-center">
               <Coins className="h-8 w-8 text-green-500 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground mb-1">Total Points</p>
+              <p className="text-sm text-muted-foreground mb-1">Total Cybacoin</p>
               <p className="text-lg font-bold">
                 {formatNumber(
                   leaderboardData.reduce(
