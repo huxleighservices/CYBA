@@ -16,14 +16,14 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface LeaderboardEntry {
-  id: string;
-  cybaName: string;
-  cybaIg: string;
-  tier: string;
-  outwardEngagement: number;
-  inwardEngagement: number;
-  features: number;
-  cybaCoin: number;
+  cybaName?: string;
+  cybaIg?: string;
+  tier?: string;
+  outwardEngagement?: number;
+  inwardEngagement?: number;
+  features?: number;
+  cybaCoin?: number;
+  [key: string]: any;
 }
 
 const getRankIcon = (rank: number) => {
@@ -31,6 +31,28 @@ const getRankIcon = (rank: number) => {
   if (rank === 2) return <Medal className="h-5 w-5 text-gray-400" />;
   if (rank === 3) return <Medal className="h-5 w-5 text-orange-600" />;
   return <Flame className="h-5 w-5 text-orange-400" />;
+};
+
+// Helper to safely get numeric value
+const getNumber = (value: any): number => {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const num = parseFloat(value);
+    return isNaN(num) ? 0 : num;
+  }
+  return 0;
+};
+
+// Helper to format number safely
+const formatNumber = (value: any): string => {
+  const num = getNumber(value);
+  return num.toLocaleString();
+};
+
+// Helper to safely get string value
+const getString = (value: any): string => {
+  if (!value) return '';
+  return String(value).trim();
 };
 
 export default function LeaderboardPage() {
@@ -47,45 +69,44 @@ export default function LeaderboardPage() {
     }
   }, [isUserLoading, user, router]);
 
-  const fetchLeaderboard = () => {
-    if (user) {
+  const fetchLeaderboard = async () => {
+    try {
       setIsLoading(true);
-      fetch('/api/sheets')
-        .then((res) => {
-          if (!res.ok) {
-            // Try to parse error details from the response body
-            return res.json().then(errBody => {
-               throw new Error(errBody.details || `Failed to fetch: ${res.statusText}`);
-            }).catch(() => {
-               throw new Error(`Failed to fetch: ${res.statusText}`);
-            });
-          }
-          return res.json();
-        })
-        .then((data) => {
-          if (data.error) {
-            throw new Error(data.details || data.error);
-          }
-          setLeaderboardData(data);
-          setLastUpdated(new Date());
-          setError(null);
-        })
-        .catch((err) => {
-          console.error(err);
-          setError(err.message);
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
+      const response = await fetch('/api/sheets');
+      
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(errBody.details || `Failed to fetch: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.details || data.error);
+      }
+
+      // Safely handle the response
+      const entries = Array.isArray(data) ? data : [];
+      setLeaderboardData(entries);
+      setLastUpdated(new Date());
+      setError(null);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error('Leaderboard fetch error:', errorMessage);
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchLeaderboard();
-    
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchLeaderboard, 30000);
-    return () => clearInterval(interval);
+    if (user) {
+      fetchLeaderboard();
+
+      // Auto-refresh every 30 seconds
+      const interval = setInterval(fetchLeaderboard, 30000);
+      return () => clearInterval(interval);
+    }
   }, [user]);
 
   if (isUserLoading || (user && isLoading && leaderboardData.length === 0)) {
@@ -123,11 +144,11 @@ export default function LeaderboardPage() {
         <CardContent className="p-0">
           {error ? (
             <div className="flex flex-col items-center justify-center h-64 text-center px-4">
-              <div className="bg-destructive/10 p-6 rounded-lg">
+              <div className="bg-destructive/10 p-6 rounded-lg max-w-md">
                 <h3 className="text-xl font-semibold text-destructive mb-2">
                   Error Loading Leaderboard
                 </h3>
-                <p className="text-sm text-destructive/80 mb-4">{error}</p>
+                <p className="text-sm text-destructive/80 mb-4 break-words">{error}</p>
                 <button
                   onClick={() => fetchLeaderboard()}
                   className="text-sm px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition"
@@ -151,19 +172,19 @@ export default function LeaderboardPage() {
                     <TableHead className="text-right font-bold">
                       <div className="flex justify-end items-center gap-1">
                         <Coins className="h-4 w-4" />
-                        Points
+                        Cybacoin
                       </div>
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {leaderboardData?.map((entry, index) => {
+                  {leaderboardData.map((entry, index) => {
                     const rank = index + 1;
                     const isTopThree = rank <= 3;
-                    
+
                     return (
                       <TableRow
-                        key={entry.cybaName + index}
+                        key={`${entry.cybaName || index}-${index}`}
                         className={`transition-colors ${
                           isTopThree
                             ? 'bg-primary/5 hover:bg-primary/10 border-l-4 border-primary'
@@ -175,42 +196,56 @@ export default function LeaderboardPage() {
                             {getRankIcon(rank)}
                           </div>
                         </TableCell>
-                        <TableCell className={`font-semibold ${isTopThree ? 'text-primary' : ''}`}>
-                          {entry.cybaName}
+                        <TableCell
+                          className={`font-semibold ${
+                            isTopThree ? 'text-primary' : ''
+                          }`}
+                        >
+                          {getString(entry.cybaName) || 'N/A'}
                         </TableCell>
                         <TableCell>
-                          <a
-                            href={`https://instagram.com/${entry.cybaIg}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline text-sm"
-                          >
-                            @{entry.cybaIg}
-                          </a>
+                          {entry.cybaIg ? (
+                            <a
+                              href={`https://instagram.com/${entry.cybaIg}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline text-sm"
+                            >
+                              @{entry.cybaIg}
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant={entry.tier === 'Surge' ? 'default' : 'secondary'}
-                            className={
-                              entry.tier === 'Surge'
-                                ? 'bg-gradient-to-r from-primary to-primary/80'
-                                : 'bg-accent text-accent-foreground'
-                            }
-                          >
-                            {entry.tier}
-                          </Badge>
+                          {entry.tier ? (
+                            <Badge
+                              variant={
+                                entry.tier === 'Surge' ? 'default' : 'secondary'
+                              }
+                              className={
+                                entry.tier === 'Surge'
+                                  ? 'bg-gradient-to-r from-primary to-primary/80'
+                                  : 'bg-accent text-accent-foreground'
+                              }
+                            >
+                              {entry.tier}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-center font-medium">
-                          {entry.outwardEngagement}
+                          {formatNumber(entry.outwardEngagement)}
                         </TableCell>
                         <TableCell className="text-center font-medium">
-                          {entry.inwardEngagement}
+                          {formatNumber(entry.inwardEngagement)}
                         </TableCell>
                         <TableCell className="text-center font-medium">
-                          {entry.features}
+                          {formatNumber(entry.features)}
                         </TableCell>
                         <TableCell className="text-right font-bold text-primary text-lg">
-                          {entry.cybaCoin.toLocaleString()}
+                          {formatNumber(entry.cybaCoin)}
                         </TableCell>
                       </TableRow>
                     );
@@ -221,7 +256,9 @@ export default function LeaderboardPage() {
           ) : (
             <div className="flex flex-col items-center justify-center h-64 text-center">
               <Trophy className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold mb-2">The Leaderboard is Empty</h3>
+              <h3 className="text-xl font-semibold mb-2">
+                The Leaderboard is Empty
+              </h3>
               <p className="text-muted-foreground">
                 Check back later to see who's climbing the ranks!
               </p>
@@ -236,9 +273,11 @@ export default function LeaderboardPage() {
             <CardContent className="p-6 text-center">
               <Medal className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
               <p className="text-sm text-muted-foreground mb-1">Top Performer</p>
-              <p className="text-lg font-bold">{leaderboardData[0]?.cybaName}</p>
+              <p className="text-lg font-bold">
+                {getString(leaderboardData[0]?.cybaName) || 'N/A'}
+              </p>
               <p className="text-xs text-muted-foreground mt-2">
-                {leaderboardData[0]?.cybaCoin.toLocaleString()} points
+                {formatNumber(leaderboardData[0]?.cybaCoin)} points
               </p>
             </CardContent>
           </Card>
@@ -246,7 +285,9 @@ export default function LeaderboardPage() {
           <Card className="bg-gradient-to-br from-blue-500/10 to-transparent border-blue-500/20">
             <CardContent className="p-6 text-center">
               <div className="text-xl font-bold mb-2">📊</div>
-              <p className="text-sm text-muted-foreground mb-1">Total Competitors</p>
+              <p className="text-sm text-muted-foreground mb-1">
+                Total Competitors
+              </p>
               <p className="text-lg font-bold">{leaderboardData.length}</p>
             </CardContent>
           </Card>
@@ -256,9 +297,12 @@ export default function LeaderboardPage() {
               <Coins className="h-8 w-8 text-green-500 mx-auto mb-2" />
               <p className="text-sm text-muted-foreground mb-1">Total Points</p>
               <p className="text-lg font-bold">
-                {leaderboardData
-                  .reduce((sum, entry) => sum + entry.cybaCoin, 0)
-                  .toLocaleString()}
+                {formatNumber(
+                  leaderboardData.reduce(
+                    (sum, entry) => sum + getNumber(entry.cybaCoin),
+                    0
+                  )
+                )}
               </p>
             </CardContent>
           </Card>
