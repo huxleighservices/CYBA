@@ -99,6 +99,15 @@ const membershipSchema = z.object({
   buttonLink: z.string().min(1, 'Button link is required.'),
 });
 
+const boostSchema = z.object({
+  name: z.string().min(1, 'Name is required.'),
+  description: z.string().min(1, 'Description is required.'),
+  price: z.coerce.number().min(0, 'Price must be a positive number.'),
+  features: z.string().min(1, 'Add at least one feature.'),
+  buttonText: z.string().min(1, 'Button text is required.'),
+  buttonLink: z.string().min(1, 'Button link is required.'),
+});
+
 const ADMIN_PASSWORD = 'VIOLETCYBA';
 
 // --- Reusable Components ---
@@ -917,6 +926,229 @@ function MembershipForm({ item }: { item?: any }) {
   );
 }
 
+// --- Boosts & Rewards Management ---
+function BoostsManagement() {
+  const { firestore } = useFirebase();
+  const boostsRef = useMemoFirebase(
+    () => collection(firestore, 'boosts'),
+    [firestore]
+  );
+  const { data: boosts, isLoading } = useCollection(boostsRef);
+
+  const handleDelete = (id: string) => {
+    if (confirm('Are you sure you want to delete this item?')) {
+      deleteDocumentNonBlocking(doc(firestore, 'boosts', id));
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Boosts &amp; Rewards</CardTitle>
+          <CardDescription>
+            Create, edit, and delete boosts and rewards.
+          </CardDescription>
+        </div>
+        <BoostForm />
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <Loader2 className="animate-spin" />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Price (Cybacoin)</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {boosts?.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>{item.name}</TableCell>
+                  <TableCell>{item.price}</TableCell>
+                  <TableCell className="text-right space-x-2">
+                    <BoostForm item={item} />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={() => handleDelete(item.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function BoostForm({ item }: { item?: any }) {
+  const [open, setOpen] = useState(false);
+  const { firestore } = useFirebase();
+  const { toast } = useToast();
+
+  const defaultValues = item
+    ? {
+        ...item,
+        features: Array.isArray(item.features) ? item.features.join('\n') : '',
+      }
+    : {
+        name: '',
+        description: '',
+        price: 0,
+        features: '',
+        buttonText: '',
+        buttonLink: '',
+      };
+
+  const form = useForm<z.infer<typeof boostSchema>>({
+    resolver: zodResolver(boostSchema),
+    defaultValues,
+  });
+
+  useEffect(() => {
+    if (open) {
+      form.reset(defaultValues);
+    }
+  }, [item, form, open]);
+
+  const onSubmit = (values: z.infer<typeof boostSchema>) => {
+    const featuresArray = values.features.split('\n').filter(f => f.trim() !== '');
+    const dataToSave = { ...values, features: featuresArray };
+
+    if (item) {
+      setDocumentNonBlocking(doc(firestore, 'boosts', item.id), dataToSave, {
+        merge: true,
+      });
+      toast({ title: 'Boost updated!' });
+    } else {
+      addDocumentNonBlocking(collection(firestore, 'boosts'), dataToSave);
+      toast({ title: 'Boost created!' });
+    }
+    setOpen(false);
+    form.reset();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {item ? (
+          <Button variant="outline" size="icon">
+            <Edit className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button>
+            <PlusCircle className="mr-2 h-4 w-4" /> New Boost
+          </Button>
+        )}
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{item ? 'Edit' : 'Create'} Boost or Reward</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="price"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Price (in Cybacoin)</FormLabel>
+                  <FormControl>
+                    <Input type="number" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="features"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Features (one per line)</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} rows={5} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="buttonText"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Button Text</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="buttonLink"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Button Link</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="secondary">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button type="submit">Save</Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 // --- Main Admin Panel ---
 function AdminPanel() {
   return (
@@ -931,11 +1163,12 @@ function AdminPanel() {
       </div>
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="blog">Blog</TabsTrigger>
           <TabsTrigger value="merch">Merchandise</TabsTrigger>
           <TabsTrigger value="memberships">Memberships</TabsTrigger>
+          <TabsTrigger value="boosts">Boosts</TabsTrigger>
         </TabsList>
         <TabsContent value="users" className="mt-6">
           <UserManagement />
@@ -948,6 +1181,9 @@ function AdminPanel() {
         </TabsContent>
         <TabsContent value="memberships" className="mt-6">
           <MembershipManagement />
+        </TabsContent>
+        <TabsContent value="boosts" className="mt-6">
+          <BoostsManagement />
         </TabsContent>
       </Tabs>
     </div>
@@ -967,5 +1203,3 @@ export default function AdminPage() {
 
   return <AdminPanel />;
 }
-
-    

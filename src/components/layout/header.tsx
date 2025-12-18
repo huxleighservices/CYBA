@@ -15,6 +15,7 @@ import {
   PenSquare,
   Trophy,
   Menu,
+  Sparkles,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
@@ -46,6 +47,7 @@ const navLinks = [
   { href: '/merch', label: 'Merch', icon: ShoppingBag },
   { href: '/blog', label: 'Blog', icon: PenSquare },
   { href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
+  { href: '/boosts-rewards', label: 'Boosts', icon: Sparkles },
 ];
 
 function AuthButton() {
