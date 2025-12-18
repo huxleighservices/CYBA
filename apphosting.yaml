@@ -1,0 +1,16 @@
+runConfig:
+  minInstances: 1
+  maxInstances: 100
+  concurrency: 80
+  cpu: 2
+  memoryMiB: 1024
+
+env:
+  - variable: GOOGLE_SHEET_ID
+    secret: GOOGLE_SHEET_ID
+    availability:
+      - RUNTIME
+  - variable: GOOGLE_SHEETS_CREDENTIALS
+    secret: GOOGLE_SHEETS_CREDENTIALS
+    availability:
+      - RUNTIME

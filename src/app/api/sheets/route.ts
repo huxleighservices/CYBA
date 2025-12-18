@@ -6,15 +6,23 @@ const sheets = google.sheets('v4');
 
 export async function GET(req: Request) {
   try {
-    if (!process.env.GOOGLE_SHEETS_CREDENTIALS) {
+    const credsString = process.env.GOOGLE_SHEETS_CREDENTIALS;
+    if (!credsString) {
       throw new Error('GOOGLE_SHEETS_CREDENTIALS environment variable not set.');
     }
     if (!process.env.GOOGLE_SHEET_ID) {
       throw new Error('GOOGLE_SHEET_ID environment variable not set.');
     }
 
+    let credentials;
+    try {
+      credentials = JSON.parse(credsString);
+    } catch (e) {
+      throw new Error('Failed to parse GOOGLE_SHEETS_CREDENTIALS. Ensure it is a valid JSON string.');
+    }
+
     const auth = new google.auth.GoogleAuth({
-      credentials: JSON.parse(process.env.GOOGLE_SHEETS_CREDENTIALS),
+      credentials,
       scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
     });
 
@@ -29,15 +37,23 @@ export async function GET(req: Request) {
       return NextResponse.json([]); // Return empty if no data or only headers
     }
 
-    const headers: string[] = rows[0].map(h => h.trim());
+    const headers: string[] = rows[0].map(h => h ? h.trim() : '');
     const data = rows.slice(1).map((row) =>
       headers.reduce((obj: Record<string, any>, header: string, index: number) => {
+        // camelCase the header for consistent property names
+        const camelHeader = header.charAt(0).toLowerCase() + header.slice(1);
         const numericHeaders = ['outwardEngagement', 'inwardEngagement', 'features', 'cybaCoin'];
-        let value = row[index] || '';
-        if (numericHeaders.includes(header)) {
-          value = Number(value) || 0;
+        let value: string | number = row[index] || '';
+        
+        if (numericHeaders.includes(camelHeader)) {
+          // Attempt to convert to number, default to 0 if it fails or is empty
+          const numValue = parseFloat(value as string);
+          value = isNaN(numValue) ? 0 : numValue;
         }
-        obj[header] = value;
+
+        if (camelHeader) {
+          obj[camelHeader] = value;
+        }
         return obj;
       }, {})
     ).sort((a, b) => b.cybaCoin - a.cybaCoin); // Sort by cybaCoin descending
