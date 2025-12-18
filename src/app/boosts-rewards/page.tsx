@@ -29,7 +29,7 @@ export default function BoostsRewardsPage() {
           BOOSTS &amp; REWARDS
         </h1>
         <p className="text-lg text-foreground/80 mb-12">
-          Spend your Cybacoin on exclusive boosts and rewards.
+          Spend your CYBACOIN on exclusive boosts and rewards.
         </p>
       </div>
 
