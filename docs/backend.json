@@ -192,27 +192,27 @@
         "features"
       ]
     },
-    "Boost": {
+    "Extra": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Boost",
+      "title": "Extra",
       "type": "object",
-      "description": "Represents a boost or reward item available for purchase with CybaCoin.",
+      "description": "Represents a boost (paid) or reward (Cybacoin) item.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the boost/reward."
+          "description": "Unique identifier for the extra item."
         },
         "name": {
           "type": "string",
-          "description": "Name of the boost/reward."
+          "description": "Name of the item."
         },
         "description": {
           "type": "string",
-          "description": "Description of the boost/reward."
+          "description": "Description of the item."
         },
         "price": {
           "type": "number",
-          "description": "Price in CybaCoin."
+          "description": "Price in USD for boosts, or Cybacoin for rewards."
         },
         "features": {
           "type": "array",
@@ -229,6 +229,11 @@
           "type": "string",
           "description": "Link for the call-to-action button.",
           "format": "uri"
+        },
+        "type": {
+            "type": "string",
+            "description": "The type of extra, either a paid 'boost' or a 'reward' redeemable with Cybacoin.",
+            "enum": ["boost", "reward"]
         }
       },
       "required": [
@@ -238,7 +243,8 @@
         "price",
         "features",
         "buttonText",
-        "buttonLink"
+        "buttonLink",
+        "type"
       ]
     },
     "ForumPost": {
@@ -413,17 +419,17 @@
         }
       },
       {
-        "path": "/boosts/{boostId}",
+        "path": "/extras/{extraId}",
         "definition": {
-          "entityName": "Boost",
+          "entityName": "Extra",
           "schema": {
-            "$ref": "#/backend/entities/Boost"
+            "$ref": "#/backend/entities/Extra"
           },
           "description": "Stores boost and reward data.",
           "params": [
             {
-              "name": "boostId",
-              "description": "The unique identifier of the boost or reward."
+              "name": "extraId",
+              "description": "The unique identifier of the extra item."
             }
           ]
         }

@@ -10,7 +10,7 @@
  *
  * Data Structure:
  * The data model uses a flat hierarchy with distinct top-level collections for each major
- * entity: `/users`, `/blogPosts`, `/merchandise`, `/memberships`, `/boosts`, `/forumPosts`, and `/categories`.
+ * entity: `/users`, `/blogPosts`, `/merchandise`, `/memberships`, `/extras`, `/forumPosts`, and `/categories`.
  * User-specific data is located at `/users/{userId}`, with security rules enforcing that
  * only the authenticated user matching the `{userId}` can access or modify that document.
  *
@@ -18,7 +18,7 @@
  * - Public Read, Owner Write: Collections like `/blogPosts` and `/forumPosts` are publicly readable
  *   by anyone, but creating, updating, or deleting a document requires the user to be
  *   authenticated as the document's original author.
- * - Read-Only Public Data: Collections like `/merchandise`, `/memberships`, `/boosts`, and `/categories` are
+ * - Read-Only Public Data: Collections like `/merchandise`, `/memberships`, `/extras`, and `/categories` are
  *   treated as public, read-only data. Client-side writes are disabled entirely, as this
  *   content is assumed to be managed by administrators via a backend process (e.g., the Admin SDK).
  * - No User Enumeration: Listing documents from the top-level `/users` collection is explicitly
@@ -123,13 +123,13 @@ service cloud.firestore {
     }
     
     /**
-     * @description Controls access to boosts and rewards. This is public, read-only data.
-     * @path /boosts/{boostId}
-     * @allow (get) Any user viewing the details of a boost or reward.
-     * @deny (update) Any user trying to change the price of a boost.
+     * @description Controls access to extras (boosts and rewards). This is public, read-only data.
+     * @path /extras/{extraId}
+     * @allow (get) Any user viewing the details of an extra item.
+     * @deny (update) Any user trying to change the price of an extra.
      * @principle Secures data that should only be managed by a trusted backend or admin.
      */
-    match /boosts/{boostId} {
+    match /extras/{extraId} {
       allow get: if true;
       allow list: if true;
       allow create: if isAdmin();

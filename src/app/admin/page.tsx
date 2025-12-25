@@ -72,6 +72,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { debounce } from 'lodash';
+import { Switch } from '@/components/ui/switch';
 
 // Schemas
 const passwordSchema = z.object({
@@ -107,14 +108,16 @@ const membershipSchema = z.object({
   buttonLink: z.string().min(1, 'Button link is required.'),
 });
 
-const boostSchema = z.object({
+const extraSchema = z.object({
   name: z.string().min(1, 'Name is required.'),
   description: z.string().min(1, 'Description is required.'),
   price: z.coerce.number().min(0, 'Price must be a positive number.'),
   features: z.string().min(1, 'Add at least one feature.'),
   buttonText: z.string().min(1, 'Button text is required.'),
   buttonLink: z.string().min(1, 'Button link is required.'),
+  type: z.enum(['boost', 'reward']),
 });
+
 
 const ADMIN_PASSWORD = 'VIOLETCYBA';
 
@@ -1069,18 +1072,18 @@ function MembershipForm({ item }: { item?: any }) {
   );
 }
 
-// --- Boosts & Rewards Management ---
-function BoostsManagement() {
+// --- Extras Management ---
+function ExtrasManagement() {
   const { firestore } = useFirebase();
-  const boostsRef = useMemoFirebase(
-    () => collection(firestore, 'boosts'),
+  const extrasRef = useMemoFirebase(
+    () => collection(firestore, 'extras'),
     [firestore]
   );
-  const { data: boosts, isLoading } = useCollection(boostsRef);
+  const { data: extras, isLoading } = useCollection(extrasRef);
 
   const handleDelete = (id: string) => {
     if (confirm('Are you sure you want to delete this item?')) {
-      deleteDocumentNonBlocking(doc(firestore, 'boosts', id));
+      deleteDocumentNonBlocking(doc(firestore, 'extras', id));
     }
   };
 
@@ -1088,12 +1091,12 @@ function BoostsManagement() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Boosts &amp; Rewards</CardTitle>
+          <CardTitle>Extras Management</CardTitle>
           <CardDescription>
             Create, edit, and delete boosts and rewards.
           </CardDescription>
         </div>
-        <BoostForm />
+        <ExtraForm />
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -1103,17 +1106,21 @@ function BoostsManagement() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Price (Cybacoin)</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Price</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {boosts?.map((item) => (
+              {extras?.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>{item.name}</TableCell>
-                  <TableCell>{item.price}</TableCell>
+                  <TableCell className="capitalize">{item.type}</TableCell>
+                  <TableCell>
+                    {item.type === 'boost' ? `$${item.price.toFixed(2)}` : `${item.price} CC`}
+                  </TableCell>
                   <TableCell className="text-right space-x-2">
-                    <BoostForm item={item} />
+                    <ExtraForm item={item} />
                     <Button
                       variant="destructive"
                       size="icon"
@@ -1132,7 +1139,7 @@ function BoostsManagement() {
   );
 }
 
-function BoostForm({ item }: { item?: any }) {
+function ExtraForm({ item }: { item?: any }) {
   const [open, setOpen] = useState(false);
   const { firestore } = useFirebase();
   const { toast } = useToast();
@@ -1149,31 +1156,34 @@ function BoostForm({ item }: { item?: any }) {
         features: '',
         buttonText: '',
         buttonLink: '',
+        type: 'boost' as 'boost' | 'reward',
       };
 
-  const form = useForm<z.infer<typeof boostSchema>>({
-    resolver: zodResolver(boostSchema),
+  const form = useForm<z.infer<typeof extraSchema>>({
+    resolver: zodResolver(extraSchema),
     defaultValues,
   });
+  
+  const type = form.watch('type');
 
   useEffect(() => {
     if (open) {
       form.reset(defaultValues);
     }
-  }, [item, form, open]);
+  }, [item, form, open, defaultValues]);
 
-  const onSubmit = (values: z.infer<typeof boostSchema>) => {
+  const onSubmit = (values: z.infer<typeof extraSchema>) => {
     const featuresArray = values.features.split('\n').filter(f => f.trim() !== '');
     const dataToSave = { ...values, features: featuresArray };
 
     if (item) {
-      setDocumentNonBlocking(doc(firestore, 'boosts', item.id), dataToSave, {
+      setDocumentNonBlocking(doc(firestore, 'extras', item.id), dataToSave, {
         merge: true,
       });
-      toast({ title: 'Boost updated!' });
+      toast({ title: 'Extra updated!' });
     } else {
-      addDocumentNonBlocking(collection(firestore, 'boosts'), dataToSave);
-      toast({ title: 'Boost created!' });
+      addDocumentNonBlocking(collection(firestore, 'extras'), dataToSave);
+      toast({ title: 'Extra created!' });
     }
     setOpen(false);
     form.reset();
@@ -1188,16 +1198,40 @@ function BoostForm({ item }: { item?: any }) {
           </Button>
         ) : (
           <Button>
-            <PlusCircle className="mr-2 h-4 w-4" /> New Boost
+            <PlusCircle className="mr-2 h-4 w-4" /> New Extra
           </Button>
         )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{item ? 'Edit' : 'Create'} Boost or Reward</DialogTitle>
+          <DialogTitle>{item ? 'Edit' : 'Create'} Extra</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                  <div className="space-y-0.5">
+                    <FormLabel>Type</FormLabel>
+                    <FormDescription>
+                       Is this a paid Boost or a Cybacoin Reward?
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <div className="flex items-center space-x-2">
+                        <span className={cn("font-medium", field.value === 'reward' && "text-muted-foreground")}>Boost</span>
+                        <Switch
+                            checked={field.value === 'reward'}
+                            onCheckedChange={(checked) => field.onChange(checked ? 'reward' : 'boost')}
+                        />
+                         <span className={cn("font-medium", field.value === 'boost' && "text-muted-foreground")}>Reward</span>
+                    </div>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="name"
@@ -1229,9 +1263,11 @@ function BoostForm({ item }: { item?: any }) {
               name="price"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Price (in Cybacoin)</FormLabel>
+                  <FormLabel>
+                    Price (in {type === 'boost' ? 'USD' : 'Cybacoin'})
+                  </FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} />
+                    <Input type="number" step={type === 'boost' ? '0.01' : '1'} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -1312,7 +1348,7 @@ function AdminPanel() {
           <TabsTrigger value="blog">Blog</TabsTrigger>
           <TabsTrigger value="merch">Merchandise</TabsTrigger>
           <TabsTrigger value="memberships">Memberships</TabsTrigger>
-          <TabsTrigger value="boosts">Boosts</TabsTrigger>
+          <TabsTrigger value="extras">Extras</TabsTrigger>
         </TabsList>
         <TabsContent value="users" className="mt-6">
           <UserManagement />
@@ -1329,8 +1365,8 @@ function AdminPanel() {
         <TabsContent value="memberships" className="mt-6">
           <MembershipManagement />
         </TabsContent>
-        <TabsContent value="boosts" className="mt-6">
-          <BoostsManagement />
+        <TabsContent value="extras" className="mt-6">
+          <ExtrasManagement />
         </TabsContent>
       </Tabs>
     </div>
