@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -73,6 +74,7 @@ import {
 } from '@/components/ui/select';
 import { debounce } from 'lodash';
 import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
 
 // Schemas
 const passwordSchema = z.object({
@@ -941,7 +943,7 @@ function MembershipForm({ item }: { item?: any }) {
     if (open) {
       form.reset(defaultValues);
     }
-  }, [item, form, open]);
+  }, [item, form, open, defaultValues]);
 
   const onSubmit = (values: z.infer<typeof membershipSchema>) => {
     const featuresArray = values.features.split('\n').filter(f => f.trim() !== '');
