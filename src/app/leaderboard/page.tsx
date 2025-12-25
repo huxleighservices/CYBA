@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFirebase } from '@/firebase';
-import { Loader2, Coins, Trophy, Medal, Flame } from 'lucide-react';
+import { Loader2, Coins, Trophy, Medal, Flame, RefreshCw } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 interface LeaderboardEntry {
   cybaName?: string;
@@ -58,8 +60,10 @@ const getString = (value: any): string => {
 export default function LeaderboardPage() {
   const { user, isUserLoading } = useFirebase();
   const router = useRouter();
+  const { toast } = useToast();
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
@@ -69,9 +73,32 @@ export default function LeaderboardPage() {
     }
   }, [isUserLoading, user, router]);
 
-  const fetchLeaderboard = async () => {
+  const triggerSync = useCallback(async () => {
+    setIsSyncing(true);
     try {
-      setIsLoading(true);
+      // This API route will handle fetching the sheet and updating Firestore.
+      const response = await fetch('/api/sync-leaderboard', { method: 'POST' });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Sync failed');
+      }
+      toast({
+        title: 'Sync Complete',
+        description: `${result.updatedCount} user balances were updated.`,
+      });
+    } catch (error) {
+      console.error('Sync error:', error);
+      // Don't show a toast for background sync errors unless verbose
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [toast]);
+
+  const fetchLeaderboard = useCallback(async (isManualRefresh = false) => {
+    if (!isManualRefresh) {
+        setIsLoading(true);
+    }
+    try {
       const response = await fetch('/api/sheets');
       
       if (!response.ok) {
@@ -85,11 +112,16 @@ export default function LeaderboardPage() {
         throw new Error(data.details || data.error);
       }
 
-      // Safely handle the response
       const entries = Array.isArray(data) ? data : [];
       setLeaderboardData(entries);
       setLastUpdated(new Date());
       setError(null);
+      
+      // After a successful fetch, trigger the background sync
+      if (user) {
+          await triggerSync();
+      }
+
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       console.error('Leaderboard fetch error:', errorMessage);
@@ -97,17 +129,17 @@ export default function LeaderboardPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, triggerSync]);
 
+  // Initial fetch and setup interval
   useEffect(() => {
     if (user) {
       fetchLeaderboard();
-
-      // Auto-refresh every 30 seconds
-      const interval = setInterval(fetchLeaderboard, 30000);
+      const interval = setInterval(fetchLeaderboard, 60000); // Refresh every 60 seconds
       return () => clearInterval(interval);
     }
-  }, [user]);
+  }, [user, fetchLeaderboard]);
+
 
   if (isUserLoading || (user && isLoading && leaderboardData.length === 0)) {
     return (
@@ -133,11 +165,21 @@ export default function LeaderboardPage() {
         <p className="text-lg text-foreground/80 mb-2">
           See Which CYBAs are Making the Biggest Impact in the CYBAZONE.
         </p>
-        {lastUpdated && (
-          <p className="text-xs text-muted-foreground">
-            Last updated: {lastUpdated.toLocaleTimeString()}
-          </p>
-        )}
+        <div className="flex items-center justify-center gap-4">
+             {lastUpdated && (
+                <p className="text-xs text-muted-foreground">
+                    Last updated: {lastUpdated.toLocaleTimeString()}
+                </p>
+            )}
+             <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => fetchLeaderboard(true)}
+                disabled={isLoading || isSyncing}
+            >
+                <RefreshCw className={`h-4 w-4 ${isLoading || isSyncing ? 'animate-spin' : ''}`} />
+            </Button>
+        </div>
       </div>
 
       <Card className="border-primary/20 bg-card/50 shadow-lg">
@@ -149,12 +191,12 @@ export default function LeaderboardPage() {
                   Error Loading Leaderboard
                 </h3>
                 <p className="text-sm text-destructive/80 mb-4 break-words">{error}</p>
-                <button
-                  onClick={() => fetchLeaderboard()}
+                <Button
+                  onClick={() => fetchLeaderboard(true)}
                   className="text-sm px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition"
                 >
                   Try Again
-                </button>
+                </Button>
               </div>
             </div>
           ) : leaderboardData && leaderboardData.length > 0 ? (
