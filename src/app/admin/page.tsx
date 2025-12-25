@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -1146,7 +1146,7 @@ function ExtraForm({ item }: { item?: any }) {
   const { firestore } = useFirebase();
   const { toast } = useToast();
 
-  const defaultValues = item
+  const defaultValues = useMemo(() => (item
     ? {
         ...item,
         features: Array.isArray(item.features) ? item.features.join('\n') : '',
@@ -1159,7 +1159,7 @@ function ExtraForm({ item }: { item?: any }) {
         buttonText: '',
         buttonLink: '',
         type: 'boost' as 'boost' | 'reward',
-      };
+      }), [item]);
 
   const form = useForm<z.infer<typeof extraSchema>>({
     resolver: zodResolver(extraSchema),
@@ -1172,7 +1172,7 @@ function ExtraForm({ item }: { item?: any }) {
     if (open) {
       form.reset(defaultValues);
     }
-  }, [item, form, open, defaultValues]);
+  }, [form, open, defaultValues]);
 
   const onSubmit = (values: z.infer<typeof extraSchema>) => {
     const featuresArray = values.features.split('\n').filter(f => f.trim() !== '');
@@ -1388,3 +1388,5 @@ export default function AdminPage() {
 
   return <AdminPanel />;
 }
+
+    
