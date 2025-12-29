@@ -47,7 +47,7 @@ const navLinks = [
   { href: '/merch', label: 'Merch', icon: ShoppingBag },
   { href: '/blog', label: 'Blog', icon: PenSquare },
   { href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
-  { href: '/extras', label: 'Extras', icon: Sparkles },
+  { href: '/extras', label: 'Boosts/Rewards', icon: Sparkles },
 ];
 
 function AuthButton() {
