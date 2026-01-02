@@ -100,7 +100,7 @@ export default function ExtrasPage() {
                 <div className="text-center mb-8">
                     <h2 className="text-3xl font-headline font-bold text-glow">BOOSTS</h2>
                     <p className="text-md text-foreground/70 mt-2">
-                        Paid add-ons to increase your visibility and exposure.
+                        Add-ons to increase your exposure and engagement.
                     </p>
                 </div>
                 <div className="space-y-8">
