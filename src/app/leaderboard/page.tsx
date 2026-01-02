@@ -163,7 +163,7 @@ export default function LeaderboardPage() {
           CYBAZONE Leaderboard
         </h1>
         <p className="text-lg text-foreground/80 mb-2">
-          See Which CYBAs are Making the Biggest Impact in the CYBAZONE.
+          See which CYBAS are making the biggest impact in the CYBAZONE.
         </p>
         <div className="flex items-center justify-center gap-4">
              {lastUpdated && (
