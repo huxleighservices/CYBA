@@ -85,7 +85,7 @@ export default function ExtrasPage() {
           BOOSTS & REWARDS
         </h1>
         <p className="text-lg text-foreground/80 mb-12">
-          Amplify your presence with paid Boosts or redeem your CYBACOIN for exclusive Rewards.
+          Amplify your presence with BOOSTS or redeem your CYBACOIN for exclusive Rewards
         </p>
       </div>
 
