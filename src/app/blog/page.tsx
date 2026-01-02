@@ -48,8 +48,7 @@ export default function BlogPage() {
           CYBA BLOG
         </h1>
         <p className="text-lg text-foreground/80 mb-12">
-          Insights, news, and transmissions from the heart of the music
-          industry.
+          Updates from inside the CYBAZONE
         </p>
       </div>
 
