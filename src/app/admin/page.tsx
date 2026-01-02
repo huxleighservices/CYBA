@@ -920,7 +920,7 @@ function MembershipForm({ item }: { item?: any }) {
   const { firestore } = useFirebase();
   const { toast } = useToast();
 
-  const defaultValues = item
+  const defaultValues = useMemo(() => (item
     ? {
         ...item,
         features: Array.isArray(item.features) ? item.features.join('\n') : '',
@@ -932,7 +932,7 @@ function MembershipForm({ item }: { item?: any }) {
         features: '',
         buttonText: '',
         buttonLink: '',
-      };
+      }), [item]);
 
   const form = useForm<z.infer<typeof membershipSchema>>({
     resolver: zodResolver(membershipSchema),
@@ -943,7 +943,7 @@ function MembershipForm({ item }: { item?: any }) {
     if (open) {
       form.reset(defaultValues);
     }
-  }, [item, form, open, defaultValues]);
+  }, [form, open, defaultValues]);
 
   const onSubmit = (values: z.infer<typeof membershipSchema>) => {
     const featuresArray = values.features.split('\n').filter(f => f.trim() !== '');
@@ -1388,5 +1388,3 @@ export default function AdminPage() {
 
   return <AdminPanel />;
 }
-
-    
