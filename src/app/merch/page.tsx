@@ -11,17 +11,26 @@ import {
 } from '@/components/ui/card';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Coins } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
 
 export default function MerchPage() {
   const { firestore } = useFirebase();
+  const { toast } = useToast();
   const merchRef = useMemoFirebase(
     () => collection(firestore, 'merchandise'),
     [firestore]
   );
   const { data: merchandise, isLoading } = useCollection(merchRef);
+  
+  const handleCybacoinPurchase = () => {
+    toast({
+      title: "Coming Soon!",
+      description: "Cybacoin checkout is not yet implemented.",
+    });
+  };
 
   return (
     <div className="container mx-auto px-4 py-16">
@@ -63,15 +72,31 @@ export default function MerchPage() {
                   {item.description}
                 </CardDescription>
               </CardContent>
-              <CardFooter className="p-6 pt-0 flex justify-between items-center">
-                <p className="text-2xl font-bold text-primary">
-                  ${item.price.toFixed(2)}
-                </p>
-                <Button asChild>
-                  <Link href={item.buyNowUrl} target="_blank">
-                    Buy Now
-                  </Link>
-                </Button>
+              <CardFooter className="p-6 pt-0 flex-col items-stretch space-y-4">
+                 <div className="flex justify-between items-center">
+                    <p className="text-2xl font-bold text-primary">
+                        ${item.price.toFixed(2)}
+                    </p>
+                    <Button asChild>
+                        <Link href={item.buyNowUrl} target="_blank">
+                            Buy Now
+                        </Link>
+                    </Button>
+                </div>
+
+                {item.cybaCoinPrice > 0 && (
+                    <div className="flex justify-between items-center border-t border-primary/20 pt-4">
+                       <div className="flex items-center gap-2">
+                         <Coins className="h-6 w-6 text-primary"/>
+                         <p className="text-2xl font-bold text-primary">
+                            {item.cybaCoinPrice}
+                        </p>
+                       </div>
+                        <Button onClick={handleCybacoinPurchase}>
+                            Buy with Cybacoin
+                        </Button>
+                    </div>
+                )}
               </CardFooter>
             </Card>
           ))}

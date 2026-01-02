@@ -93,6 +93,7 @@ const merchandiseSchema = z.object({
   name: z.string().min(1, 'Name is required.'),
   description: z.string().min(1, 'Description is required.'),
   price: z.coerce.number().min(0, 'Price must be a positive number.'),
+  cybaCoinPrice: z.coerce.number().min(0, 'Price must be a positive number.').optional(),
   imageUrl: z.string().url('Must be a valid URL.').or(z.literal('')),
   buyNowUrl: z.string().url('Must be a valid URL.').or(z.literal('')),
   stockQuantity: z.coerce
@@ -654,6 +655,7 @@ function MerchManagement() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Price</TableHead>
+                <TableHead>Cybacoin Price</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -662,6 +664,7 @@ function MerchManagement() {
                 <TableRow key={item.id}>
                   <TableCell>{item.name}</TableCell>
                   <TableCell>${item.price.toFixed(2)}</TableCell>
+                  <TableCell>{item.cybaCoinPrice ?? 'N/A'}</TableCell>
                   <TableCell className="text-right space-x-2">
                     <MerchForm item={item} />
                     <Button
@@ -694,11 +697,13 @@ function MerchForm({ item }: { item?: any }) {
           ...item,
           imageUrl: item.imageUrl || '',
           buyNowUrl: item.buyNowUrl || '',
+          cybaCoinPrice: item.cybaCoinPrice ?? undefined,
         }
       : {
           name: '',
           description: '',
           price: 0,
+          cybaCoinPrice: undefined,
           imageUrl: '',
           buyNowUrl: '',
           stockQuantity: 0,
@@ -712,12 +717,14 @@ function MerchForm({ item }: { item?: any }) {
           ...item,
           imageUrl: item.imageUrl || '',
           buyNowUrl: item.buyNowUrl || '',
+          cybaCoinPrice: item.cybaCoinPrice ?? undefined,
         });
       } else {
         form.reset({
           name: '',
           description: '',
           price: 0,
+          cybaCoinPrice: undefined,
           imageUrl: '',
           buyNowUrl: '',
           stockQuantity: 0,
@@ -727,13 +734,18 @@ function MerchForm({ item }: { item?: any }) {
   }, [item, form, open]);
 
   const onSubmit = (values: z.infer<typeof merchandiseSchema>) => {
+    const dataToSave = {
+        ...values,
+        cybaCoinPrice: values.cybaCoinPrice || null, // Store null if empty
+    };
+
     if (item) {
-      setDocumentNonBlocking(doc(firestore, 'merchandise', item.id), values, {
+      setDocumentNonBlocking(doc(firestore, 'merchandise', item.id), dataToSave, {
         merge: true,
       });
       toast({ title: 'Merchandise updated!' });
     } else {
-      addDocumentNonBlocking(collection(firestore, 'merchandise'), values);
+      addDocumentNonBlocking(collection(firestore, 'merchandise'), dataToSave);
       toast({ title: 'Merchandise created!' });
     }
     setOpen(false);
@@ -790,9 +802,22 @@ function MerchForm({ item }: { item?: any }) {
               name="price"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Price</FormLabel>
+                  <FormLabel>Price (USD)</FormLabel>
                   <FormControl>
                     <Input type="number" step="0.01" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="cybaCoinPrice"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cybacoin Price (Optional)</FormLabel>
+                  <FormControl>
+                    <Input type="number" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

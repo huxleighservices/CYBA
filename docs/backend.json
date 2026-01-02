@@ -76,7 +76,11 @@
         },
         "price": {
           "type": "number",
-          "description": "Price of the merchandise item."
+          "description": "Price of the merchandise item in USD."
+        },
+        "cybaCoinPrice": {
+          "type": "number",
+          "description": "Price of the merchandise item in Cybacoin."
         },
         "imageUrl": {
           "type": "string",
@@ -155,7 +159,7 @@
       ]
     },
     "Membership": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "http://json-schema.org/draft_07/schema#",
       "title": "Membership",
       "type": "object",
       "description": "Represents a membership plan offered by CYBA family.",
