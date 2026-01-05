@@ -1284,7 +1284,7 @@ function ExtrasManagement() {
                         <Button
                           variant="destructive"
                           size="icon"
-                          onClick={() => handleDelete(item.id)}
+                          onClick={(e) => {e.stopPropagation(); handleDelete(item.id)}}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -1572,3 +1572,5 @@ export default function AdminPage() {
 
   return <AdminPanel />;
 }
+
+    
