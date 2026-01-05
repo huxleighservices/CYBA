@@ -32,9 +32,9 @@ function ItemCard({ item }: { item: any }) {
             {item.price}
           </span>
           {isBoost ? (
-            <DollarSign className="h-7 w-7 text-primary" />
+            <DollarSign className="h-8 w-8 text-primary" />
           ) : (
-            <Image src="/CCoin.png?v=2" alt="Cybacoin" width={28} height={28} />
+            <Image src="/CCoin.png?v=2" alt="Cybacoin" width={32} height={32} />
           )}
         </CardDescription>
       </CardHeader>
