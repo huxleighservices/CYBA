@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -1106,18 +1107,14 @@ function ExtrasManagement() {
   const { firestore } = useFirebase();
   const { toast } = useToast();
 
-  const boostsQuery = useMemoFirebase(
-    () => query(collection(firestore, 'extras'), where('type', '==', 'boost'), orderBy('order')),
+  const extrasQuery = useMemoFirebase(
+    () => query(collection(firestore, 'extras'), orderBy('order')),
     [firestore]
   );
-  const { data: boosts, isLoading: isLoadingBoosts } = useCollection(boostsQuery);
+  const { data: extras, isLoading } = useCollection(extrasQuery);
 
-  const rewardsQuery = useMemoFirebase(
-    () => query(collection(firestore, 'extras'), where('type', '==', 'reward'), orderBy('order')),
-    [firestore]
-  );
-  const { data: rewards, isLoading: isLoadingRewards } = useCollection(rewardsQuery);
-
+  const boosts = useMemo(() => extras?.filter(e => e.type === 'boost') || [], [extras]);
+  const rewards = useMemo(() => extras?.filter(e => e.type === 'reward') || [], [extras]);
 
   const handleDelete = (id: string) => {
     if (confirm('Are you sure you want to delete this item?')) {
@@ -1158,8 +1155,6 @@ function ExtrasManagement() {
     }
   };
 
-
-  const isLoading = isLoadingBoosts || isLoadingRewards;
 
   return (
     <Card>
@@ -1533,4 +1528,5 @@ export default function AdminPage() {
 
   return <AdminPanel />;
 }
+
     
