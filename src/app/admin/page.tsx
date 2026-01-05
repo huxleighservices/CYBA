@@ -1150,6 +1150,13 @@ function ExtrasManagement() {
       toast({ variant: "destructive", title: "Failed to update order."});
     }
   };
+  
+  const handleDelete = (id: string, name: string) => {
+      if (confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+        deleteDocumentNonBlocking(doc(firestore, 'extras', id));
+        toast({ title: 'Extra Deleted', description: `"${name}" has been removed.` });
+      }
+    };
 
 
   return (
@@ -1203,7 +1210,7 @@ function ExtrasManagement() {
                         </Select>
                       </TableCell>
                       <TableCell className="text-right space-x-2">
-                        <ExtraForm item={item} boosts={boosts} rewards={rewards} />
+                        <ExtraForm item={item} boosts={boosts} rewards={rewards} onDelete={() => handleDelete(item.id, item.name)} />
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1246,7 +1253,7 @@ function ExtrasManagement() {
                         </Select>
                       </TableCell>
                       <TableCell className="text-right space-x-2">
-                        <ExtraForm item={item} boosts={boosts} rewards={rewards} />
+                        <ExtraForm item={item} boosts={boosts} rewards={rewards} onDelete={() => handleDelete(item.id, item.name)} />
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1260,7 +1267,7 @@ function ExtrasManagement() {
   );
 }
 
-function ExtraForm({ item, boosts = [], rewards = [] }: { item?: any; boosts?: any[]; rewards?: any[]; }) {
+function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; boosts?: any[]; rewards?: any[]; onDelete?: () => void; }) {
   const [open, setOpen] = useState(false);
   const { firestore } = useFirebase();
   const { toast } = useToast();
@@ -1311,14 +1318,6 @@ function ExtraForm({ item, boosts = [], rewards = [] }: { item?: any; boosts?: a
       toast({ title: 'Extra created!' });
     }
     setOpen(false);
-  };
-  
-  const handleDelete = () => {
-    if (item && confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
-      deleteDocumentNonBlocking(doc(firestore, 'extras', item.id));
-      toast({ title: 'Extra Deleted', description: `"${item.name}" has been removed.` });
-      setOpen(false);
-    }
   };
 
   return (
@@ -1465,11 +1464,14 @@ function ExtraForm({ item, boosts = [], rewards = [] }: { item?: any; boosts?: a
 
             <DialogFooter className="col-span-1 md:col-span-2 flex justify-between w-full">
               <div>
-                {item && (
+                {item && onDelete && (
                   <Button
                     type="button"
                     variant="destructive"
-                    onClick={handleDelete}
+                    onClick={() => {
+                        onDelete();
+                        setOpen(false);
+                    }}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Delete
