@@ -34,7 +34,7 @@ function ItemCard({ item }: { item: any }) {
           {isBoost ? (
             <DollarSign className="h-7 w-7 text-primary" />
           ) : (
-            <Image src="/CCoin.png" alt="Cybacoin" width={28} height={28} />
+            <Image src="/CCoin.png?v=2" alt="Cybacoin" width={28} height={28} />
           )}
         </CardDescription>
       </CardHeader>

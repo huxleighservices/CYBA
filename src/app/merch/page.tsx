@@ -87,7 +87,7 @@ export default function MerchPage() {
                 {item.cybaCoinPrice > 0 && (
                     <div className="flex justify-between items-center border-t border-primary/20 pt-4">
                        <div className="flex items-center gap-2">
-                         <Image src="/CCoin.png" alt="Cybacoin" width={24} height={24} />
+                         <Image src="/CCoin.png?v=2" alt="Cybacoin" width={24} height={24} />
                          <p className="text-2xl font-bold text-primary">
                             {item.cybaCoinPrice}
                         </p>
