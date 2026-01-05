@@ -79,7 +79,6 @@ import { debounce } from 'lodash';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-import { seedInitialExtras } from '@/firebase/seed';
 
 // Schemas
 const passwordSchema = z.object({
