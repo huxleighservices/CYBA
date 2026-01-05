@@ -214,7 +214,7 @@ export default function LeaderboardPage() {
                     <TableHead className="text-center font-bold">Features</TableHead>
                     <TableHead className="text-right font-bold">
                       <div className="flex justify-end items-center gap-1">
-                        <Image src="/Ccoin.png" alt="Cybacoin" width={16} height={16} />
+                        <Image src="/CCoin.png" alt="Cybacoin" width={16} height={16} />
                         Cybacoin
                       </div>
                     </TableHead>
@@ -337,7 +337,7 @@ export default function LeaderboardPage() {
 
           <Card className="bg-gradient-to-br from-green-500/10 to-transparent border-green-500/20">
             <CardContent className="p-6 text-center">
-               <Image src="/Ccoin.png" alt="Cybacoin" width={32} height={32} className="mx-auto mb-2" />
+               <Image src="/CCoin.png" alt="Cybacoin" width={32} height={32} className="mx-auto mb-2" />
               <p className="text-sm text-muted-foreground mb-1">Total Cybacoin</p>
               <p className="text-lg font-bold">
                 {formatNumber(
