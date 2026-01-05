@@ -39,7 +39,7 @@ import {
   addDocumentNonBlocking,
   deleteDocumentNonBlocking,
 } from '@/firebase';
-import { collection, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, query, where, orderBy, writeBatch } from 'firebase/firestore';
 import {
   Tabs,
   TabsContent,
@@ -75,6 +75,7 @@ import {
 import { debounce } from 'lodash';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
 
 // Schemas
 const passwordSchema = z.object({
@@ -119,6 +120,7 @@ const extraSchema = z.object({
   buttonText: z.string().min(1, 'Button text is required.'),
   buttonLink: z.string().min(1, 'Button link is required.'),
   type: z.enum(['boost', 'reward']),
+  order: z.number().optional(),
 });
 
 
@@ -1102,11 +1104,20 @@ function MembershipForm({ item }: { item?: any }) {
 // --- Extras Management ---
 function ExtrasManagement() {
   const { firestore } = useFirebase();
-  const extrasRef = useMemoFirebase(
-    () => collection(firestore, 'extras'),
+  const { toast } = useToast();
+
+  const boostsQuery = useMemoFirebase(
+    () => query(collection(firestore, 'extras'), where('type', '==', 'boost'), orderBy('order')),
     [firestore]
   );
-  const { data: extras, isLoading } = useCollection(extrasRef);
+  const { data: boosts, isLoading: isLoadingBoosts } = useCollection(boostsQuery);
+
+  const rewardsQuery = useMemoFirebase(
+    () => query(collection(firestore, 'extras'), where('type', '==', 'reward'), orderBy('order')),
+    [firestore]
+  );
+  const { data: rewards, isLoading: isLoadingRewards } = useCollection(rewardsQuery);
+
 
   const handleDelete = (id: string) => {
     if (confirm('Are you sure you want to delete this item?')) {
@@ -1114,59 +1125,163 @@ function ExtrasManagement() {
     }
   };
 
+  const handleOrderChange = async (
+    item: { id: string; order?: number },
+    newOrder: number,
+    list: any[]
+  ) => {
+    const oldOrder = item.order;
+
+    if (oldOrder === newOrder) return; // No change
+
+    const batch = writeBatch(firestore);
+
+    // Find the item that currently has the newOrder
+    const itemToSwap = list.find(i => i.order === newOrder);
+
+    // Update the dragged item
+    const currentItemRef = doc(firestore, 'extras', item.id);
+    batch.update(currentItemRef, { order: newOrder });
+
+    // Update the item that was in the target position, if it exists
+    if (itemToSwap) {
+      const itemToSwapRef = doc(firestore, 'extras', itemToSwap.id);
+      batch.update(itemToSwapRef, { order: oldOrder });
+    }
+
+    try {
+      await batch.commit();
+      toast({ title: "Order updated successfully."});
+    } catch (e) {
+      console.error("Failed to update order:", e);
+      toast({ variant: "destructive", title: "Failed to update order."});
+    }
+  };
+
+
+  const isLoading = isLoadingBoosts || isLoadingRewards;
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Extras Management</CardTitle>
           <CardDescription>
-            Create, edit, and delete boosts and rewards.
+            Create, edit, and manage sort order for boosts and rewards.
           </CardDescription>
         </div>
-        <ExtraForm />
+        <ExtraForm boosts={boosts} rewards={rewards} />
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <Loader2 className="animate-spin" />
+          <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {extras?.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>{item.name}</TableCell>
-                  <TableCell className="capitalize">{item.type}</TableCell>
-                  <TableCell>
-                    {item.type === 'boost' ? `$${item.price.toFixed(2)}` : `${item.price} CC`}
-                  </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <ExtraForm item={item} />
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="space-y-8">
+            {/* Boosts Table */}
+            <div>
+              <h3 className="text-lg font-medium mb-2">Boosts</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Sort</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {boosts?.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell>{item.name}</TableCell>
+                      <TableCell>${item.price.toFixed(2)}</TableCell>
+                      <TableCell>
+                         <Select
+                          value={item.order?.toString()}
+                          onValueChange={(value) => handleOrderChange(item, parseInt(value), boosts)}
+                        >
+                          <SelectTrigger className="w-20">
+                            <SelectValue placeholder="Sort" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: boosts.length }, (_, i) => i + 1).map(num => (
+                              <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <ExtraForm item={item} boosts={boosts} rewards={rewards} />
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => handleDelete(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <Separator />
+            
+            {/* Rewards Table */}
+             <div>
+              <h3 className="text-lg font-medium mb-2">Rewards</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Price (CC)</TableHead>
+                    <TableHead>Sort</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rewards?.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell>{item.name}</TableCell>
+                      <TableCell>{item.price}</TableCell>
+                       <TableCell>
+                         <Select
+                          value={item.order?.toString()}
+                          onValueChange={(value) => handleOrderChange(item, parseInt(value), rewards)}
+                        >
+                          <SelectTrigger className="w-20">
+                            <SelectValue placeholder="Sort" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: rewards.length }, (_, i) => i + 1).map(num => (
+                              <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <ExtraForm item={item} boosts={boosts} rewards={rewards} />
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => handleDelete(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>
   );
 }
 
-function ExtraForm({ item }: { item?: any }) {
+function ExtraForm({ item, boosts = [], rewards = [] }: { item?: any; boosts?: any[]; rewards?: any[]; }) {
   const [open, setOpen] = useState(false);
   const { firestore } = useFirebase();
   const { toast } = useToast();
@@ -1209,6 +1324,10 @@ function ExtraForm({ item }: { item?: any }) {
       });
       toast({ title: 'Extra updated!' });
     } else {
+      // New item gets the last order number
+      const newOrder = (dataToSave.type === 'boost' ? boosts.length : rewards.length) + 1;
+      dataToSave.order = newOrder;
+      
       addDocumentNonBlocking(collection(firestore, 'extras'), dataToSave);
       toast({ title: 'Extra created!' });
     }
@@ -1252,6 +1371,7 @@ function ExtraForm({ item }: { item?: any }) {
                         <Switch
                             checked={field.value === 'reward'}
                             onCheckedChange={(checked) => field.onChange(checked ? 'reward' : 'boost')}
+                            disabled={!!item} // Cannot change type after creation
                         />
                          <span className={cn("font-medium", field.value === 'boost' && "text-muted-foreground")}>Reward</span>
                     </div>
@@ -1413,3 +1533,4 @@ export default function AdminPage() {
 
   return <AdminPanel />;
 }
+    

@@ -34,7 +34,7 @@ function ItemCard({ item }: { item: any }) {
           {isBoost ? (
             <DollarSign className="h-8 w-8 text-primary" />
           ) : (
-            <Image src="/CCoin.png?v=2" alt="Cybacoin" width={42} height={42} />
+            <Image src="/CCoin.png?v=3" alt="Cybacoin" width={42} height={42} />
           )}
         </CardDescription>
       </CardHeader>
@@ -133,3 +133,4 @@ export default function ExtrasPage() {
     </div>
   );
 }
+    

@@ -238,6 +238,10 @@
             "type": "string",
             "description": "The type of extra, either a paid 'boost' or a 'reward' redeemable with Cybacoin.",
             "enum": ["boost", "reward"]
+        },
+        "order": {
+            "type": "number",
+            "description": "The display order of the item on the page."
         }
       },
       "required": [
@@ -490,3 +494,4 @@
     "reasoning": "The Firestore structure is designed to support the CYBA family website, encompassing user data, blog posts, merchandise, memberships, boosts, and forum posts. The structure prioritizes simplicity and open access, given the initial requirement for open Firestore rules.  User data is stored under `/users/{userId}` using path-based ownership. Blog posts are stored in a single `/blogPosts` collection. Merchandise is stored in a single `/merchandise` collection. Membership plans are stored in `/memberships`. Boosts and rewards are stored in `/boosts`. Forum posts are stored in a single `/forumPosts` collection. Categories for blog posts are stored in a single `/categories` collection. A new `leaderboard` collection is added to store data from the Google Sheet."
   }
 }
+    
