@@ -9,11 +9,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Check, Coins, Loader2, DollarSign } from 'lucide-react';
+import { Check, Loader2, DollarSign } from 'lucide-react';
 import Link from 'next/link';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
-import { Separator } from '@/components/ui/separator';
+import { collection, query, where, orderBy } from 'firebase/firestore';
+import Image from 'next/image';
 
 function ItemCard({ item }: { item: any }) {
   const isBoost = item.type === 'boost';
@@ -34,7 +34,7 @@ function ItemCard({ item }: { item: any }) {
           {isBoost ? (
             <DollarSign className="h-7 w-7 text-primary" />
           ) : (
-            <Coins className="h-7 w-7 text-primary" />
+            <Image src="/Ccoin.png" alt="Cybacoin" width={28} height={28} />
           )}
         </CardDescription>
       </CardHeader>
@@ -65,13 +65,13 @@ export default function ExtrasPage() {
   const { firestore } = useFirebase();
   
   const boostsQuery = useMemoFirebase(
-    () => query(collection(firestore, 'extras'), where('type', '==', 'boost')),
+    () => query(collection(firestore, 'extras'), where('type', '==', 'boost'), orderBy('order')),
     [firestore]
   );
   const { data: boosts, isLoading: isLoadingBoosts } = useCollection(boostsQuery);
   
   const rewardsQuery = useMemoFirebase(
-    () => query(collection(firestore, 'extras'), where('type', '==', 'reward')),
+    () => query(collection(firestore, 'extras'), where('type', '==', 'reward'), orderBy('order')),
     [firestore]
   );
   const { data: rewards, isLoading: isLoadingRewards } = useCollection(rewardsQuery);

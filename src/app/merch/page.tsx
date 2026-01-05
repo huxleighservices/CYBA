@@ -10,8 +10,8 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
-import { Loader2, Coins } from 'lucide-react';
+import { collection, orderBy, query } from 'firebase/firestore';
+import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
@@ -20,7 +20,7 @@ export default function MerchPage() {
   const { firestore } = useFirebase();
   const { toast } = useToast();
   const merchRef = useMemoFirebase(
-    () => collection(firestore, 'merchandise'),
+    () => query(collection(firestore, 'merchandise'), orderBy('order')),
     [firestore]
   );
   const { data: merchandise, isLoading } = useCollection(merchRef);
@@ -87,7 +87,7 @@ export default function MerchPage() {
                 {item.cybaCoinPrice > 0 && (
                     <div className="flex justify-between items-center border-t border-primary/20 pt-4">
                        <div className="flex items-center gap-2">
-                         <Coins className="h-6 w-6 text-primary"/>
+                         <Image src="/Ccoin.png" alt="Cybacoin" width={24} height={24} />
                          <p className="text-2xl font-bold text-primary">
                             {item.cybaCoinPrice}
                         </p>
