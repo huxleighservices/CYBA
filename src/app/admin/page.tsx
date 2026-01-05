@@ -30,6 +30,7 @@ import {
   Edit,
   Loader2,
   Link2,
+  Database,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -40,7 +41,7 @@ import {
   addDocumentNonBlocking,
   deleteDocumentNonBlocking,
 } from '@/firebase';
-import { collection, doc, serverTimestamp, query, where, orderBy, writeBatch } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, query, where, orderBy, writeBatch, getDocs } from 'firebase/firestore';
 import {
   Tabs,
   TabsContent,
@@ -77,6 +78,7 @@ import { debounce } from 'lodash';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { seedInitialExtras } from '@/firebase/seed';
 
 // Schemas
 const passwordSchema = z.object({
@@ -1106,6 +1108,7 @@ function MembershipForm({ item }: { item?: any }) {
 function ExtrasManagement() {
   const { firestore } = useFirebase();
   const { toast } = useToast();
+  const [isSeeding, setIsSeeding] = useState(false);
 
   const extrasQuery = useMemoFirebase(
     () => query(collection(firestore, 'extras'), orderBy('order')),
@@ -1121,6 +1124,22 @@ function ExtrasManagement() {
       deleteDocumentNonBlocking(doc(firestore, 'extras', id));
     }
   };
+
+  const handleSeedData = async () => {
+    if (!confirm('Are you sure you want to delete all existing extras and re-seed the database? This action cannot be undone.')) {
+      return;
+    }
+    setIsSeeding(true);
+    try {
+      await seedInitialExtras(firestore);
+      toast({ title: "Database Seeded!", description: "Boosts and Rewards have been reset to their initial state." });
+    } catch (e) {
+      console.error("Seeding failed:", e);
+      toast({ variant: "destructive", title: "Seeding Failed", description: "Could not seed the database. Check the console for errors." });
+    } finally {
+      setIsSeeding(false);
+    }
+  }
 
   const handleOrderChange = async (
     item: { id: string; order?: number },
@@ -1141,7 +1160,7 @@ function ExtrasManagement() {
     batch.update(currentItemRef, { order: newOrder });
 
     // Update the item that was in the target position, if it exists
-    if (itemToSwap) {
+    if (itemToSwap && typeof oldOrder !== 'undefined') {
       const itemToSwapRef = doc(firestore, 'extras', itemToSwap.id);
       batch.update(itemToSwapRef, { order: oldOrder });
     }
@@ -1159,13 +1178,19 @@ function ExtrasManagement() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <div>
+        <div className="space-y-1">
           <CardTitle>Extras Management</CardTitle>
           <CardDescription>
             Create, edit, and manage sort order for boosts and rewards.
           </CardDescription>
         </div>
-        <ExtraForm boosts={boosts} rewards={rewards} />
+        <div className="flex items-center gap-2">
+           <Button variant="outline" onClick={handleSeedData} disabled={isSeeding}>
+              {isSeeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Database className="mr-2 h-4 w-4" />}
+              Seed Database
+            </Button>
+          <ExtraForm boosts={boosts} rewards={rewards} />
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -1528,5 +1553,7 @@ export default function AdminPage() {
 
   return <AdminPanel />;
 }
+
+    
 
     
