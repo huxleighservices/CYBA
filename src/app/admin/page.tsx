@@ -1284,7 +1284,7 @@ function ExtrasManagement() {
                         <Button
                           variant="destructive"
                           size="icon"
-                          onClick={(e) => {e.stopPropagation(); handleDelete(item.id)}}
+                          onClick={() => handleDelete(item.id)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
