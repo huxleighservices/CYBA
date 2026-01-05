@@ -22,6 +22,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from '@/components/ui/card';
 import {
   Shield,
@@ -1108,8 +1109,7 @@ function MembershipForm({ item }: { item?: any }) {
 function ExtrasManagement() {
   const { firestore } = useFirebase();
   const { toast } = useToast();
-  const [isSeeding, setIsSeeding] = useState(false);
-
+  
   const extrasQuery = useMemoFirebase(
     () => query(collection(firestore, 'extras'), orderBy('order')),
     [firestore]
@@ -1118,28 +1118,6 @@ function ExtrasManagement() {
 
   const boosts = useMemo(() => extras?.filter(e => e.type === 'boost') || [], [extras]);
   const rewards = useMemo(() => extras?.filter(e => e.type === 'reward') || [], [extras]);
-
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this item?')) {
-      deleteDocumentNonBlocking(doc(firestore, 'extras', id));
-    }
-  };
-
-  const handleSeedData = async () => {
-    if (!confirm('Are you sure you want to delete all existing extras and re-seed the database? This action cannot be undone.')) {
-      return;
-    }
-    setIsSeeding(true);
-    try {
-      await seedInitialExtras(firestore);
-      toast({ title: "Database Seeded!", description: "Boosts and Rewards have been reset to their initial state." });
-    } catch (e) {
-      console.error("Seeding failed:", e);
-      toast({ variant: "destructive", title: "Seeding Failed", description: "Could not seed the database. Check the console for errors." });
-    } finally {
-      setIsSeeding(false);
-    }
-  }
 
   const handleOrderChange = async (
     item: { id: string; order?: number },
@@ -1185,10 +1163,6 @@ function ExtrasManagement() {
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">
-           <Button variant="outline" onClick={handleSeedData} disabled={isSeeding}>
-              {isSeeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Database className="mr-2 h-4 w-4" />}
-              Seed Database
-            </Button>
           <ExtraForm boosts={boosts} rewards={rewards} />
         </div>
       </CardHeader>
@@ -1231,13 +1205,6 @@ function ExtrasManagement() {
                       </TableCell>
                       <TableCell className="text-right space-x-2">
                         <ExtraForm item={item} boosts={boosts} rewards={rewards} />
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          onClick={() => handleDelete(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1281,13 +1248,6 @@ function ExtrasManagement() {
                       </TableCell>
                       <TableCell className="text-right space-x-2">
                         <ExtraForm item={item} boosts={boosts} rewards={rewards} />
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          onClick={() => handleDelete(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1352,7 +1312,14 @@ function ExtraForm({ item, boosts = [], rewards = [] }: { item?: any; boosts?: a
       toast({ title: 'Extra created!' });
     }
     setOpen(false);
-    form.reset();
+  };
+  
+  const handleDelete = () => {
+    if (item && confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
+      deleteDocumentNonBlocking(doc(firestore, 'extras', item.id));
+      toast({ title: 'Extra Deleted', description: `"${item.name}" has been removed.` });
+      setOpen(false);
+    }
   };
 
   return (
@@ -1497,14 +1464,27 @@ function ExtraForm({ item, boosts = [], rewards = [] }: { item?: any; boosts?: a
                 </CardContent>
             </Card>
 
-            {/* Footer remains at the bottom */}
-            <DialogFooter className="col-span-1 md:col-span-2">
-              <DialogClose asChild>
-                <Button type="button" variant="secondary">
-                  Cancel
-                </Button>
-              </DialogClose>
-              <Button type="submit">Save</Button>
+            <DialogFooter className="col-span-1 md:col-span-2 flex justify-between w-full">
+              <div>
+                {item && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={handleDelete}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </Button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <DialogClose asChild>
+                  <Button type="button" variant="secondary">
+                    Cancel
+                  </Button>
+                </DialogClose>
+                <Button type="submit">Save</Button>
+              </div>
             </DialogFooter>
           </form>
         </Form>
