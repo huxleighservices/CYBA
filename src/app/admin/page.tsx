@@ -1368,118 +1368,137 @@ function ExtraForm({ item, boosts = [], rewards = [] }: { item?: any; boosts?: a
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>{item ? 'Edit' : 'Create'} Extra</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                  <div className="space-y-0.5">
-                    <FormLabel>Type</FormLabel>
-                    <FormDescription>
-                       Is this a paid Boost or a Cybacoin Reward?
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <div className="flex items-center space-x-2">
-                        <span className={cn("font-medium", field.value === 'reward' && "text-muted-foreground")}>Boost</span>
-                        <Switch
-                            checked={field.value === 'reward'}
-                            onCheckedChange={(checked) => field.onChange(checked ? 'reward' : 'boost')}
-                            disabled={!!item} // Cannot change type after creation
-                        />
-                         <span className={cn("font-medium", field.value === 'boost' && "text-muted-foreground")}>Reward</span>
-                    </div>
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="price"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Price (in {type === 'boost' ? 'USD' : 'Cybacoin'})
-                  </FormLabel>
-                  <FormControl>
-                    <Input type="number" step={type === 'boost' ? '0.01' : '1'} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="features"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Features (one per line)</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} rows={5} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="buttonText"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Button Text</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="buttonLink"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Button Link</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left Card */}
+            <Card className="col-span-1">
+                <CardHeader>
+                    <CardTitle>Primary Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="type"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                          <div className="space-y-0.5">
+                            <FormLabel>Type</FormLabel>
+                            <FormDescription>
+                               Is this a paid Boost or a Cybacoin Reward?
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <div className="flex items-center space-x-2">
+                                <span className={cn("font-medium", field.value === 'reward' && "text-muted-foreground")}>Boost</span>
+                                <Switch
+                                    checked={field.value === 'reward'}
+                                    onCheckedChange={(checked) => field.onChange(checked ? 'reward' : 'boost')}
+                                    disabled={!!item} // Cannot change type after creation
+                                />
+                                 <span className={cn("font-medium", field.value === 'boost' && "text-muted-foreground")}>Reward</span>
+                            </div>
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Textarea {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="price"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            Price (in {type === 'boost' ? 'USD' : 'Cybacoin'})
+                          </FormLabel>
+                          <FormControl>
+                            <Input type="number" step={type === 'boost' ? '0.01' : '1'} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                </CardContent>
+            </Card>
+
+            {/* Right Card */}
+            <Card className="col-span-1">
+                <CardHeader>
+                    <CardTitle>Features & Action</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                     <FormField
+                      control={form.control}
+                      name="features"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Features (one per line)</FormLabel>
+                          <FormControl>
+                            <Textarea {...field} rows={8} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="buttonText"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Button Text</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="buttonLink"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Button Link</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                </CardContent>
+            </Card>
+
+            {/* Footer remains at the bottom */}
+            <DialogFooter className="col-span-1 md:col-span-2">
               <DialogClose asChild>
                 <Button type="button" variant="secondary">
                   Cancel
@@ -1553,6 +1572,8 @@ export default function AdminPage() {
 
   return <AdminPanel />;
 }
+
+    
 
     
 
