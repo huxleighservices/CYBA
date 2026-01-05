@@ -12,8 +12,9 @@ import {
 import { Check, Loader2, DollarSign } from 'lucide-react';
 import Link from 'next/link';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import Image from 'next/image';
+import { useMemo } from 'react';
 
 function ItemCard({ item }: { item: any }) {
   const isBoost = item.type === 'boost';
@@ -64,19 +65,14 @@ function ItemCard({ item }: { item: any }) {
 export default function ExtrasPage() {
   const { firestore } = useFirebase();
   
-  const boostsQuery = useMemoFirebase(
-    () => query(collection(firestore, 'extras'), where('type', '==', 'boost'), orderBy('order')),
+  const extrasQuery = useMemoFirebase(
+    () => query(collection(firestore, 'extras'), orderBy('order')),
     [firestore]
   );
-  const { data: boosts, isLoading: isLoadingBoosts } = useCollection(boostsQuery);
-  
-  const rewardsQuery = useMemoFirebase(
-    () => query(collection(firestore, 'extras'), where('type', '==', 'reward'), orderBy('order')),
-    [firestore]
-  );
-  const { data: rewards, isLoading: isLoadingRewards } = useCollection(rewardsQuery);
+  const { data: extras, isLoading } = useCollection(extrasQuery);
 
-  const isLoading = isLoadingBoosts || isLoadingRewards;
+  const boosts = useMemo(() => extras?.filter(e => e.type === 'boost') || [], [extras]);
+  const rewards = useMemo(() => extras?.filter(e => e.type === 'reward') || [], [extras]);
 
   return (
     <div className="container mx-auto px-4 py-16">
@@ -104,7 +100,7 @@ export default function ExtrasPage() {
                     </p>
                 </div>
                 <div className="space-y-8">
-                    {boosts?.length ? (
+                    {boosts?.length > 0 ? (
                         boosts.map((item) => <ItemCard key={item.id} item={item} />)
                     ) : (
                         <p className="text-center text-foreground/60">No boosts available at the moment.</p>
@@ -121,7 +117,7 @@ export default function ExtrasPage() {
                     </p>
                 </div>
                 <div className="space-y-8">
-                    {rewards?.length ? (
+                    {rewards?.length > 0 ? (
                         rewards.map((item) => <ItemCard key={item.id} item={item} />)
                     ) : (
                         <p className="text-center text-foreground/60">No rewards available at the moment.</p>
