@@ -1156,7 +1156,7 @@ function ExtrasManagement() {
         deleteDocumentNonBlocking(doc(firestore, 'extras', id));
         toast({ title: 'Extra Deleted', description: `"${name}" has been removed.` });
       }
-    };
+  };
 
 
   return (
@@ -1210,7 +1210,7 @@ function ExtrasManagement() {
                         </Select>
                       </TableCell>
                       <TableCell className="text-right space-x-2">
-                        <ExtraForm item={item} boosts={boosts} rewards={rewards} onDelete={() => handleDelete(item.id, item.name)} />
+                        <ExtraForm item={item} boosts={boosts} rewards={rewards} onDelete={handleDelete} />
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1253,7 +1253,7 @@ function ExtrasManagement() {
                         </Select>
                       </TableCell>
                       <TableCell className="text-right space-x-2">
-                        <ExtraForm item={item} boosts={boosts} rewards={rewards} onDelete={() => handleDelete(item.id, item.name)} />
+                        <ExtraForm item={item} boosts={boosts} rewards={rewards} onDelete={handleDelete} />
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1267,7 +1267,7 @@ function ExtrasManagement() {
   );
 }
 
-function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; boosts?: any[]; rewards?: any[]; onDelete?: () => void; }) {
+function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; boosts?: any[]; rewards?: any[]; onDelete?: (id: string, name: string) => void; }) {
   const [open, setOpen] = useState(false);
   const { firestore } = useFirebase();
   const { toast } = useToast();
@@ -1319,6 +1319,13 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
     }
     setOpen(false);
   };
+  
+  const handleDeleteClick = () => {
+    if (item && onDelete) {
+        onDelete(item.id, item.name);
+        setOpen(false); // Close dialog after delete action is initiated
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -1362,7 +1369,6 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
                                 <Switch
                                     checked={field.value === 'reward'}
                                     onCheckedChange={(checked) => field.onChange(checked ? 'reward' : 'boost')}
-                                    disabled={!!item} // Cannot change type after creation
                                 />
                                  <span className={cn("font-medium", field.value === 'boost' && "text-muted-foreground")}>Reward</span>
                             </div>
@@ -1468,10 +1474,7 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
                   <Button
                     type="button"
                     variant="destructive"
-                    onClick={() => {
-                        onDelete();
-                        setOpen(false);
-                    }}
+                    onClick={handleDeleteClick}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Delete
