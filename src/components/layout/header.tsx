@@ -121,9 +121,12 @@ function AuthButton() {
 
 function MainNav() {
   const pathname = usePathname();
-  return (
-    <nav className="hidden md:flex items-center space-x-6 lg:space-x-8">
-      {navLinks.map((link) => (
+  const row1Links = navLinks.slice(0, 3);
+  const row2Links = navLinks.slice(3);
+
+  const renderLinks = (links: typeof navLinks) => (
+    <div className="flex items-center justify-center space-x-6 lg:space-x-8">
+      {links.map((link) => (
         <Link
           key={link.href}
           href={link.href}
@@ -135,6 +138,13 @@ function MainNav() {
           {link.label}
         </Link>
       ))}
+    </div>
+  );
+
+  return (
+    <nav className="hidden md:flex flex-col items-center space-y-2">
+      {renderLinks(row1Links)}
+      {renderLinks(row2Links)}
     </nav>
   );
 }
@@ -183,7 +193,7 @@ function MobileNav() {
 export function Header() {
   return (
     <header className="sticky top-0 z-20 w-full bg-background/80 backdrop-blur-md">
-      <div className="container mx-auto flex h-16 items-center">
+      <div className="container mx-auto flex h-24 items-center">
         {/* Left side */}
         <div className="flex items-center gap-6">
           <MobileNav />

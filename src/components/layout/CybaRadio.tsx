@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
@@ -9,15 +9,18 @@ import { doc } from 'firebase/firestore';
 export function CybaRadio() {
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [isClient, setIsClient] = useState(false);
   const { firestore } = useFirebase();
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const settingsDocRef = useMemoFirebase(() => doc(firestore, 'settings', 'radio'), [firestore]);
   const { data: settingsData } = useDoc<{ playlistId: string }>(settingsDocRef);
 
   const playlistId = settingsData?.playlistId || 'PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf';
 
-  // Build the embed URL - only add autoplay when user clicks
   const getEmbedUrl = (muted: boolean, autoplay: boolean) => {
     const params = new URLSearchParams({
       list: playlistId,
@@ -36,18 +39,14 @@ export function CybaRadio() {
   };
 
   const handleClick = () => {
-    if (isMuted) {
-      // User wants to hear audio - reload iframe with audio enabled
+    if (!isPlaying) {
       setIsPlaying(true);
-      setIsMuted(false);
-    } else {
-      // User wants to mute - reload iframe muted
-      setIsMuted(true);
     }
+    setIsMuted(!isMuted);
   };
 
   return (
-    <div className="sticky top-[64px] z-10 w-full bg-black/50 backdrop-blur-md overflow-hidden">
+    <div className="sticky top-[96px] z-10 w-full bg-black/50 backdrop-blur-md overflow-hidden">
       <div className="container mx-auto flex h-10 items-center justify-between text-sm text-primary">
         <div className="flex-shrink-0 font-bold mr-4">CYBAZONE RADIO</div>
 
@@ -68,16 +67,16 @@ export function CybaRadio() {
         </Button>
       </div>
 
-      {/* Hidden YouTube iframe - reloads with new params on toggle */}
-      <iframe
-        ref={iframeRef}
-        key={`${isMuted}-${isPlaying}`}
-        src={getEmbedUrl(isMuted, isPlaying)}
-        allow="autoplay; encrypted-media"
-        className="fixed w-[300px] h-[200px] pointer-events-none"
-        style={{ top: '-9999px', left: '-9999px' }}
-        title="CybaRadio"
-      />
+      {isClient && (
+        <iframe
+          key={`${isMuted}-${isPlaying}`}
+          src={getEmbedUrl(isMuted, isPlaying)}
+          allow="autoplay; encrypted-media"
+          className="fixed w-[300px] h-[200px] pointer-events-none"
+          style={{ top: '-9999px', left: '-9999px' }}
+          title="CybaRadio"
+        />
+      )}
     </div>
   );
 }
