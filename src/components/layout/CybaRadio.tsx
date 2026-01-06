@@ -3,18 +3,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 
-interface CybaRadioProps {
-  playlistUrl: string;
-}
-
-export function CybaRadio({ playlistUrl }: CybaRadioProps) {
+export function CybaRadio() {
   const [isMuted, setIsMuted] = useState(true);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const { firestore } = useFirebase();
+
+  const settingsDocRef = useMemoFirebase(() => doc(firestore, 'settings', 'radio'), [firestore]);
+  const { data: settingsData } = useDoc<{ playlistUrl: string }>(settingsDocRef);
 
   useEffect(() => {
-    // We can't autoplay with sound in most browsers.
-    // We start muted and the user can unmute.
     if (audioRef.current) {
       audioRef.current.muted = true;
     }
@@ -25,16 +25,16 @@ export function CybaRadio({ playlistUrl }: CybaRadioProps) {
       const currentlyMuted = audioRef.current.muted;
       audioRef.current.muted = !currentlyMuted;
       setIsMuted(!currentlyMuted);
-      // Attempt to play if it hasn't started yet
       if (currentlyMuted) {
         audioRef.current.play().catch(e => console.error("Audio play failed:", e));
       }
     }
   };
-  
+
   // This is a placeholder audio. Integrating a full Spotify playlist requires their Web Playback SDK,
   // which is a more involved setup requiring authentication.
-  const placeholderAudioSrc = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+  // The URL is now dynamically pulled from Firestore, with a fallback.
+  const audioSrc = settingsData?.playlistUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
 
   return (
     <div className="sticky top-[64px] z-10 w-full bg-black/50 backdrop-blur-md overflow-hidden">
@@ -56,7 +56,7 @@ export function CybaRadio({ playlistUrl }: CybaRadioProps) {
           <span className="sr-only">{isMuted ? 'Unmute' : 'Mute'}</span>
         </Button>
       </div>
-      <audio ref={audioRef} src={placeholderAudioSrc} loop playsInline />
+      <audio ref={audioRef} src={audioSrc} loop playsInline key={audioSrc} />
     </div>
   );
 }

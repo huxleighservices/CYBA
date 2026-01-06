@@ -31,11 +31,13 @@ import {
   Loader2,
   Link2,
   Database,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   useFirebase,
   useCollection,
+  useDoc,
   useMemoFirebase,
   setDocumentNonBlocking,
   addDocumentNonBlocking,
@@ -82,6 +84,10 @@ import { Separator } from '@/components/ui/separator';
 // Schemas
 const passwordSchema = z.object({
   password: z.string().min(1, 'Password is required.'),
+});
+
+const settingsSchema = z.object({
+    playlistUrl: z.string().url({ message: "Please enter a valid Spotify URL." }),
 });
 
 const blogPostSchema = z.object({
@@ -190,6 +196,76 @@ function PasswordForm({ onSuccess }: { onSuccess: () => void }) {
     </Card>
   );
 }
+
+// --- Site Settings Management ---
+function SettingsManagement() {
+    const { firestore } = useFirebase();
+    const { toast } = useToast();
+
+    const settingsDocRef = useMemoFirebase(() => doc(firestore, 'settings', 'radio'), [firestore]);
+    const { data: settingsData, isLoading } = useDoc<{ playlistUrl: string }>(settingsDocRef);
+
+    const form = useForm<z.infer<typeof settingsSchema>>({
+        resolver: zodResolver(settingsSchema),
+        defaultValues: {
+            playlistUrl: '',
+        },
+    });
+
+    useEffect(() => {
+        if (settingsData) {
+            form.reset({ playlistUrl: settingsData.playlistUrl || '' });
+        }
+    }, [settingsData, form]);
+
+    function onSubmit(values: z.infer<typeof settingsSchema>) {
+        setDocumentNonBlocking(settingsDocRef, values, { merge: true });
+        toast({
+            title: "Settings Saved",
+            description: "CYBARADIO playlist URL has been updated.",
+        });
+    }
+
+    if (isLoading) {
+        return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>;
+    }
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Site Settings</CardTitle>
+                <CardDescription>Manage global settings for the website.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-w-lg">
+                        <FormField
+                            control={form.control}
+                            name="playlistUrl"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>CYBARADIO Spotify Playlist URL</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="https://open.spotify.com/playlist/..." {...field} />
+                                    </FormControl>
+                                    <FormDescription>
+                                        This URL will be used for the CYBARADIO player across the site.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <Button type="submit" disabled={form.formState.isSubmitting}>
+                           {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Save Settings
+                        </Button>
+                    </form>
+                </Form>
+            </CardContent>
+        </Card>
+    );
+}
+
 
 // --- User Management ---
 function UserManagement() {
@@ -1116,6 +1192,13 @@ function ExtrasManagement() {
 
   const boosts = useMemo(() => extras?.filter(e => e.type === 'boost') || [], [extras]);
   const rewards = useMemo(() => extras?.filter(e => e.type === 'reward') || [], [extras]);
+  
+  const handleDelete = (id: string, name: string) => {
+    if (confirm(`Are you sure you want to delete "${name}"?`)) {
+        deleteDocumentNonBlocking(doc(firestore, 'extras', id));
+        toast({ title: 'Extra Deleted', description: `"${name}" has been removed.` });
+    }
+  };
 
   const handleOrderChange = async (
     item: { id: string; order?: number },
@@ -1148,11 +1231,6 @@ function ExtrasManagement() {
       console.error("Failed to update order:", e);
       toast({ variant: "destructive", title: "Failed to update order."});
     }
-  };
-  
-  const handleDelete = (id: string, name: string) => {
-    deleteDocumentNonBlocking(doc(firestore, 'extras', id));
-    toast({ title: 'Extra Deleted', description: `"${name}" has been removed.` });
   };
 
   return (
@@ -1263,7 +1341,7 @@ function ExtrasManagement() {
   );
 }
 
-function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; boosts?: any[]; rewards?: any[]; onDelete?: (id: string, name: string) => void; }) {
+function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; boosts?: any[]; rewards?: any[]; onDelete: (id: string, name: string) => void; }) {
   const [open, setOpen] = useState(false);
   const { firestore } = useFirebase();
   const { toast } = useToast();
@@ -1299,7 +1377,6 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
   const onSubmit = (values: z.infer<typeof extraSchema>) => {
     const featuresArray = values.features.split('\n').filter(f => f.trim() !== '');
     
-    // Check if the type changed. If so, need to recalculate order.
     const isNew = !item;
     const typeChanged = !isNew && item.type !== values.type;
 
@@ -1307,12 +1384,9 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
     if (isNew) {
       order = (values.type === 'boost' ? boosts.length : rewards.length) + 1;
     } else if (typeChanged) {
-      // It's complicated to re-order everything on type change,
-      // for now, we can just append it to the end of the new list.
-      // A more robust solution might be needed for perfect ordering.
       order = (values.type === 'boost' ? boosts.length : rewards.length) + 1;
     } else {
-      order = item.order; // Keep existing order
+      order = item.order;
     }
     
     const dataToSave = { ...values, features: featuresArray, order };
@@ -1331,8 +1405,10 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
   
   const handleDeleteClick = () => {
     if (item && onDelete) {
-      onDelete(item.id, item.name);
-      setOpen(false);
+        if (confirm(`Are you sure you want to delete "${item.name}"?`)) {
+            onDelete(item.id, item.name);
+            setOpen(false);
+        }
     }
   };
 
@@ -1355,7 +1431,6 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Left Card */}
             <Card className="col-span-1">
                 <CardHeader>
                     <CardTitle>Primary Details</CardTitle>
@@ -1429,7 +1504,6 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
                 </CardContent>
             </Card>
 
-            {/* Right Card */}
             <Card className="col-span-1">
                 <CardHeader>
                     <CardTitle>Features & Action</CardTitle>
@@ -1478,18 +1552,18 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
             </Card>
 
             <DialogFooter className="col-span-1 md:col-span-2 flex justify-between w-full">
-               {item && (
+               <div className='flex gap-2'>
+                {item && (
                  <Button
                     type="button"
                     variant="destructive"
                     onClick={handleDeleteClick}
-                    className="mr-auto"
                 >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Delete
                 </Button>
                )}
-               <div className="flex-grow" />
+               </div>
               <div className="flex gap-2">
                 <DialogClose asChild>
                   <Button type="button" variant="secondary">
@@ -1521,13 +1595,14 @@ function AdminPanel() {
       </div>
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="verification">Verification</TabsTrigger>
           <TabsTrigger value="blog">Blog</TabsTrigger>
           <TabsTrigger value="merch">Merchandise</TabsTrigger>
           <TabsTrigger value="memberships">Memberships</TabsTrigger>
           <TabsTrigger value="extras">Extras</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
         <TabsContent value="users" className="mt-6">
           <UserManagement />
@@ -1546,6 +1621,9 @@ function AdminPanel() {
         </TabsContent>
         <TabsContent value="extras" className="mt-6">
           <ExtrasManagement />
+        </TabsContent>
+        <TabsContent value="settings" className="mt-6">
+          <SettingsManagement />
         </TabsContent>
       </Tabs>
     </div>

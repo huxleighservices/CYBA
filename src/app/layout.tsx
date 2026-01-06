@@ -30,7 +30,7 @@ export default function RootLayout({
               className="relative flex flex-col flex-1"
             >
               <Header />
-              <CybaRadio playlistUrl="https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M" />
+              <CybaRadio />
               <main className="flex-grow">{children}</main>
               <Footer />
               <Toaster />

@@ -352,6 +352,19 @@
         "tier",
         "cybaCoin"
       ]
+    },
+     "Settings": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Settings",
+      "type": "object",
+      "description": "Represents global site settings.",
+      "properties": {
+        "playlistUrl": {
+          "type": "string",
+          "description": "The URL for the CYBARADIO Spotify playlist.",
+          "format": "uri"
+        }
+      }
     }
   },
   "auth": {
@@ -486,6 +499,22 @@
             {
               "name": "leaderboardEntryId",
               "description": "The unique identifier of the leaderboard entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/settings/{settingId}",
+        "definition": {
+          "entityName": "Settings",
+          "schema": {
+            "$ref": "#/backend/entities/Settings"
+          },
+          "description": "Stores global site settings. Use a single document with a known ID (e.g., 'radio').",
+          "params": [
+            {
+              "name": "settingId",
+              "description": "The unique identifier for the setting document."
             }
           ]
         }
