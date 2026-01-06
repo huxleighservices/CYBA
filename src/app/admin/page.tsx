@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -1152,10 +1151,8 @@ function ExtrasManagement() {
   };
   
   const handleDelete = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
-      deleteDocumentNonBlocking(doc(firestore, 'extras', id));
-      toast({ title: 'Extra Deleted', description: `"${name}" has been removed.` });
-    }
+    deleteDocumentNonBlocking(doc(firestore, 'extras', id));
+    toast({ title: 'Extra Deleted', description: `"${name}" has been removed.` });
   };
 
   return (
@@ -1334,10 +1331,8 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
   
   const handleDeleteClick = () => {
     if (item && onDelete) {
-        if (confirm(`Are you sure you want to delete "${item.name}"? This action cannot be undone.`)) {
-            onDelete(item.id, item.name);
-            setOpen(false);
-        }
+      onDelete(item.id, item.name);
+      setOpen(false);
     }
   };
 
@@ -1570,5 +1565,4 @@ export default function AdminPage() {
 
   return <AdminPanel />;
 }
-
-    
+   

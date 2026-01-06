@@ -77,4 +77,17 @@
       0 0 5px hsl(var(--primary) / 0.6),
       0 0 10px hsl(var(--primary) / 0.4);
   }
+
+  .ticker-track {
+    animation: ticker 40s linear infinite;
+  }
+
+  @keyframes ticker {
+    0% {
+      transform: translateX(100%);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
+  }
 }
