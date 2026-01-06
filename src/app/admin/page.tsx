@@ -1152,12 +1152,11 @@ function ExtrasManagement() {
   };
   
   const handleDelete = (id: string, name: string) => {
-      if (confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
-        deleteDocumentNonBlocking(doc(firestore, 'extras', id));
-        toast({ title: 'Extra Deleted', description: `"${name}" has been removed.` });
-      }
+    if (confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+      deleteDocumentNonBlocking(doc(firestore, 'extras', id));
+      toast({ title: 'Extra Deleted', description: `"${name}" has been removed.` });
+    }
   };
-
 
   return (
     <Card>
@@ -1169,7 +1168,7 @@ function ExtrasManagement() {
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">
-          <ExtraForm boosts={boosts} rewards={rewards} />
+          <ExtraForm boosts={boosts} rewards={rewards} onDelete={handleDelete} />
         </div>
       </CardHeader>
       <CardContent>
