@@ -1468,18 +1468,19 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
             </Card>
 
             <DialogFooter className="col-span-1 md:col-span-2 flex justify-between w-full">
-              <div>
-                {item && onDelete && (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={handleDeleteClick}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </Button>
-                )}
-              </div>
+              {item && onDelete ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={handleDeleteClick}
+                  className="mr-auto"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </Button>
+              ) : (
+                 <div /> // Placeholder to keep layout consistent
+              )}
               <div className="flex gap-2">
                 <DialogClose asChild>
                   <Button type="button" variant="secondary">
