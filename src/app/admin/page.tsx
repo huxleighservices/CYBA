@@ -1301,7 +1301,24 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
 
   const onSubmit = (values: z.infer<typeof extraSchema>) => {
     const featuresArray = values.features.split('\n').filter(f => f.trim() !== '');
-    const dataToSave = { ...values, features: featuresArray };
+    
+    // Check if the type changed. If so, need to recalculate order.
+    const isNew = !item;
+    const typeChanged = !isNew && item.type !== values.type;
+
+    let order;
+    if (isNew) {
+      order = (values.type === 'boost' ? boosts.length : rewards.length) + 1;
+    } else if (typeChanged) {
+      // It's complicated to re-order everything on type change,
+      // for now, we can just append it to the end of the new list.
+      // A more robust solution might be needed for perfect ordering.
+      order = (values.type === 'boost' ? boosts.length : rewards.length) + 1;
+    } else {
+      order = item.order; // Keep existing order
+    }
+    
+    const dataToSave = { ...values, features: featuresArray, order };
 
     if (item) {
       setDocumentNonBlocking(doc(firestore, 'extras', item.id), dataToSave, {
@@ -1309,10 +1326,6 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
       });
       toast({ title: 'Extra updated!' });
     } else {
-      // New item gets the last order number
-      const newOrder = (dataToSave.type === 'boost' ? boosts.length : rewards.length) + 1;
-      dataToSave.order = newOrder;
-      
       addDocumentNonBlocking(collection(firestore, 'extras'), dataToSave);
       toast({ title: 'Extra created!' });
     }
@@ -1321,8 +1334,10 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
   
   const handleDeleteClick = () => {
     if (item && onDelete) {
-        onDelete(item.id, item.name);
-        setOpen(false); // Close dialog after delete action is initiated
+        if (confirm(`Are you sure you want to delete "${item.name}"? This action cannot be undone.`)) {
+            onDelete(item.id, item.name);
+            setOpen(false);
+        }
     }
   };
 
@@ -1468,19 +1483,18 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
             </Card>
 
             <DialogFooter className="col-span-1 md:col-span-2 flex justify-between w-full">
-              {item && onDelete ? (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={handleDeleteClick}
-                  className="mr-auto"
+               {item && (
+                 <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={handleDeleteClick}
+                    className="mr-auto"
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
                 </Button>
-              ) : (
-                 <div /> // Placeholder to keep layout consistent
-              )}
+               )}
+               <div className="flex-grow" />
               <div className="flex gap-2">
                 <DialogClose asChild>
                   <Button type="button" variant="secondary">
