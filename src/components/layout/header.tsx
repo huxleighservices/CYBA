@@ -43,7 +43,7 @@ import {
 const navLinks = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/membership', label: 'Membership', icon: Users },
-  { href: '/merch', label: 'Merch', icon: ShoppingBag },
+  { href: '/merch', label: 'CYBAMERCH', icon: ShoppingBag },
   { href: '/blog', label: 'Blog', icon: PenSquare },
   { href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   { href: '/extras', label: 'Boosts/Rewards', icon: Sparkles },
