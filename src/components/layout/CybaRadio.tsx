@@ -31,9 +31,6 @@ export function CybaRadio() {
     }
   };
 
-  // This is a placeholder audio. Integrating a full Spotify playlist requires their Web Playback SDK,
-  // which is a more involved setup requiring authentication.
-  // The URL is now dynamically pulled from Firestore, with a fallback.
   const audioSrc = settingsData?.playlistUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
 
   return (
@@ -56,7 +53,7 @@ export function CybaRadio() {
           <span className="sr-only">{isMuted ? 'Unmute' : 'Mute'}</span>
         </Button>
       </div>
-      <audio ref={audioRef} src={audioSrc} loop playsInline key={audioSrc} />
+      {audioSrc && <audio ref={audioRef} src={audioSrc} loop playsInline key={audioSrc} />}
     </div>
   );
 }
