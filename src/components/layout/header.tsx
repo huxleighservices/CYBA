@@ -83,7 +83,7 @@ function AuthButton() {
   return (
     <div className="flex items-center gap-4">
       <div className="flex items-center gap-2 text-primary">
-        <Image src="/CCoin.png?v=2" alt="Cybacoin" width={32} height={32} />
+        <Image src="/CCoin.png?v=2" alt="CYBACOIN" width={32} height={32} />
         <span className="font-bold">{userProfile?.cybaCoinBalance || 0}</span>
       </div>
       <DropdownMenu>

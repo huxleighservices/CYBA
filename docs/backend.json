@@ -80,7 +80,7 @@
         },
         "cybaCoinPrice": {
           "type": "number",
-          "description": "Price of the merchandise item in Cybacoin."
+          "description": "Price of the merchandise item in CYBACOIN."
         },
         "imageUrl": {
           "type": "string",
@@ -145,7 +145,7 @@
         },
         "cybaCoinBalance": {
           "type": "number",
-          "description": "The user's balance of CybaCoin."
+          "description": "The user's balance of CYBACOIN."
         },
         "leaderboardCybaName": {
             "type": "string",
@@ -200,7 +200,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Extra",
       "type": "object",
-      "description": "Represents a boost (paid) or reward (Cybacoin) item.",
+      "description": "Represents a boost (paid) or reward (CYBACOIN) item.",
       "properties": {
         "id": {
           "type": "string",
@@ -216,7 +216,7 @@
         },
         "price": {
           "type": "number",
-          "description": "Price in USD for boosts, or Cybacoin for rewards."
+          "description": "Price in USD for boosts, or CYBACOIN for rewards."
         },
         "features": {
           "type": "array",
@@ -236,7 +236,7 @@
         },
         "type": {
             "type": "string",
-            "description": "The type of extra, either a paid 'boost' or a 'reward' redeemable with Cybacoin.",
+            "description": "The type of extra, either a paid 'boost' or a 'reward' redeemable with CYBACOIN.",
             "enum": ["boost", "reward"]
         },
         "order": {
@@ -343,7 +343,7 @@
         },
         "cybaCoin": {
           "type": "number",
-          "description": "The user's CybaCoin balance."
+          "description": "The user's CYBACOIN balance."
         }
       },
       "required": [

@@ -214,8 +214,8 @@ export default function LeaderboardPage() {
                     <TableHead className="text-center font-bold">Features</TableHead>
                     <TableHead className="text-right font-bold">
                       <div className="flex justify-end items-center gap-1">
-                        <Image src="/CCoin.png?v=2" alt="Cybacoin" width={26} height={26} />
-                        Cybacoin
+                        <Image src="/CCoin.png?v=2" alt="CYBACOIN" width={26} height={26} />
+                        CYBACOIN
                       </div>
                     </TableHead>
                   </TableRow>
@@ -320,7 +320,7 @@ export default function LeaderboardPage() {
                 {getString(leaderboardData[0]?.cybaName) || 'N/A'}
               </p>
               <p className="text-xs text-muted-foreground mt-2">
-                {formatNumber(leaderboardData[0]?.cybaCoin)} Cybacoin
+                {formatNumber(leaderboardData[0]?.cybaCoin)} CYBACOIN
               </p>
             </CardContent>
           </Card>
@@ -337,8 +337,8 @@ export default function LeaderboardPage() {
 
           <Card className="bg-gradient-to-br from-green-500/10 to-transparent border-green-500/20">
             <CardContent className="p-6 text-center">
-               <Image src="/CCoin.png?v=2" alt="Cybacoin" width={48} height={48} className="mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground mb-1">Total Cybacoin</p>
+               <Image src="/CCoin.png?v=2" alt="CYBACOIN" width={48} height={48} className="mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground mb-1">Total CYBACOIN</p>
               <p className="text-lg font-bold">
                 {formatNumber(
                   leaderboardData.reduce(

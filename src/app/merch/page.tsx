@@ -28,7 +28,7 @@ export default function MerchPage() {
   const handleCybacoinPurchase = () => {
     toast({
       title: "Coming Soon!",
-      description: "Cybacoin checkout is not yet implemented.",
+      description: "CYBACOIN checkout is not yet implemented.",
     });
   };
 
@@ -87,13 +87,13 @@ export default function MerchPage() {
                 {item.cybaCoinPrice > 0 && (
                     <div className="flex justify-between items-center border-t border-primary/20 pt-4">
                        <div className="flex items-center gap-2">
-                         <Image src="/CCoin.png?v=2" alt="Cybacoin" width={37} height={37} />
+                         <Image src="/CCoin.png?v=2" alt="CYBACOIN" width={37} height={37} />
                          <p className="text-2xl font-bold text-primary">
                             {item.cybaCoinPrice}
                         </p>
                        </div>
                         <Button onClick={handleCybacoinPurchase}>
-                            Buy with Cybacoin
+                            Buy with CYBACOIN
                         </Button>
                     </div>
                 )}

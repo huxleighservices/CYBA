@@ -68,7 +68,7 @@ export default function SignupPage() {
               id: firebaseUser.uid,
               username,
               email,
-              cybaCoinBalance: 0, // Initialize CybaCoin balance
+              cybaCoinBalance: 0, // Initialize CYBACOIN balance
             };
             setDocumentNonBlocking(userRef, userData, { merge: true });
             router.push('/');

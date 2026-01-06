@@ -401,7 +401,7 @@ function UserVerification() {
                 setDocumentNonBlocking(userDocRef, dataToUpdate, { merge: true });
                 toast({
                     title: "User Unlinked!",
-                    description: `Cybacoin balance has been reset.`
+                    description: `CYBACOIN balance has been reset.`
                 });
                 return;
             }
@@ -419,7 +419,7 @@ function UserVerification() {
                 setDocumentNonBlocking(userDocRef, dataToUpdate, { merge: true });
                 toast({
                     title: "User Linked!",
-                    description: `Cybacoin balance for ${selectedEntry.cybaName} updated to ${dataToUpdate.cybaCoinBalance}.`
+                    description: `CYBACOIN balance for ${selectedEntry.cybaName} updated to ${dataToUpdate.cybaCoinBalance}.`
                 });
             } else {
                 toast({
@@ -445,7 +445,7 @@ function UserVerification() {
             <CardHeader>
                 <CardTitle>User Verification</CardTitle>
                 <CardDescription>
-                    Link website users to their leaderboard records by typing the exact CybaName. The link and Cybacoin balance will update automatically.
+                    Link website users to their leaderboard records by typing the exact CybaName. The link and CYBACOIN balance will update automatically.
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -735,7 +735,7 @@ function MerchManagement() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Price</TableHead>
-                <TableHead>Cybacoin Price</TableHead>
+                <TableHead>CYBACOIN Price</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -895,7 +895,7 @@ function MerchForm({ item }: { item?: any }) {
               name="cybaCoinPrice"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Cybacoin Price (Optional)</FormLabel>
+                  <FormLabel>CYBACOIN Price (Optional)</FormLabel>
                   <FormControl>
                     <Input type="number" {...field} />
                   </FormControl>
@@ -1194,10 +1194,8 @@ function ExtrasManagement() {
   const rewards = useMemo(() => extras?.filter(e => e.type === 'reward') || [], [extras]);
   
   const handleDelete = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to delete "${name}"?`)) {
-        deleteDocumentNonBlocking(doc(firestore, 'extras', id));
-        toast({ title: 'Extra Deleted', description: `"${name}" has been removed.` });
-    }
+    deleteDocumentNonBlocking(doc(firestore, 'extras', id));
+    toast({ title: 'Extra Deleted', description: `"${name}" has been removed.` });
   };
 
   const handleOrderChange = async (
@@ -1407,7 +1405,7 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
     if (item && onDelete) {
         if (confirm(`Are you sure you want to delete "${item.name}"?`)) {
             onDelete(item.id, item.name);
-            setOpen(false);
+            setOpen(false); // Close the dialog after deletion
         }
     }
   };
@@ -1444,7 +1442,7 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
                           <div className="space-y-0.5">
                             <FormLabel>Type</FormLabel>
                             <FormDescription>
-                               Is this a paid Boost or a Cybacoin Reward?
+                               Is this a paid Boost or a CYBACOIN Reward?
                             </FormDescription>
                           </div>
                           <FormControl>
@@ -1492,7 +1490,7 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
-                            Price (in {type === 'boost' ? 'USD' : 'Cybacoin'})
+                            Price (in {type === 'boost' ? 'USD' : 'CYBACOIN'})
                           </FormLabel>
                           <FormControl>
                             <Input type="number" step={type === 'boost' ? '0.01' : '1'} {...field} />

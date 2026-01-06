@@ -121,7 +121,7 @@ const boosts = [
       features: [
         'Priority placement in posting queue',
         'Applies to all features for the week',
-        'Available to all CYBAS',
+        'Available to all CYBAs',
       ],
       buttonText: 'Unlock Priority Boost',
       buttonLink: '#',
