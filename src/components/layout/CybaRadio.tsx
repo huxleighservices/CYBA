@@ -24,6 +24,11 @@ export function CybaRadio() {
   const toggleMute = () => {
     if (iframeRef.current?.contentWindow) {
       if (isMuted) {
+        // When unmuting for the first time, also ensure video is playing.
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: 'command', func: 'playVideo' }),
+          '*'
+        );
         iframeRef.current.contentWindow.postMessage(
           JSON.stringify({ event: 'command', func: 'unMute' }),
           '*'
@@ -69,7 +74,7 @@ export function CybaRadio() {
           ref={iframeRef}
           src={embedUrl}
           allow="autoplay; encrypted-media"
-          className="absolute w-[1px] h-[1px] -top-96 -left-96 opacity-0 pointer-events-none"
+          className="absolute -top-[9999px] -left-[9999px] w-[300px] h-[200px]"
           title="CybaRadio Player"
           key={playlistId} // Re-render iframe when playlistId changes
         />
