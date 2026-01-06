@@ -87,7 +87,7 @@ const passwordSchema = z.object({
 });
 
 const settingsSchema = z.object({
-    playlistUrl: z.string().url({ message: "Please enter a valid Spotify URL." }),
+    playlistId: z.string().min(1, { message: "Please enter a valid YouTube Playlist ID." }),
 });
 
 const blogPostSchema = z.object({
@@ -203,18 +203,18 @@ function SettingsManagement() {
     const { toast } = useToast();
 
     const settingsDocRef = useMemoFirebase(() => doc(firestore, 'settings', 'radio'), [firestore]);
-    const { data: settingsData, isLoading } = useDoc<{ playlistUrl: string }>(settingsDocRef);
+    const { data: settingsData, isLoading } = useDoc<{ playlistId: string }>(settingsDocRef);
 
     const form = useForm<z.infer<typeof settingsSchema>>({
         resolver: zodResolver(settingsSchema),
         defaultValues: {
-            playlistUrl: '',
+            playlistId: '',
         },
     });
 
     useEffect(() => {
         if (settingsData) {
-            form.reset({ playlistUrl: settingsData.playlistUrl || '' });
+            form.reset({ playlistId: settingsData.playlistId || '' });
         }
     }, [settingsData, form]);
 
@@ -222,7 +222,7 @@ function SettingsManagement() {
         setDocumentNonBlocking(settingsDocRef, values, { merge: true });
         toast({
             title: "Settings Saved",
-            description: "CYBARADIO playlist URL has been updated.",
+            description: "CYBARADIO playlist ID has been updated.",
         });
     }
 
@@ -241,15 +241,15 @@ function SettingsManagement() {
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-w-lg">
                         <FormField
                             control={form.control}
-                            name="playlistUrl"
+                            name="playlistId"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>CYBARADIO Spotify Playlist URL</FormLabel>
+                                    <FormLabel>CYBARADIO YouTube Playlist ID</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="https://open.spotify.com/playlist/..." {...field} />
+                                        <Input placeholder="PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf" {...field} />
                                     </FormControl>
                                     <FormDescription>
-                                        This URL will be used for the CYBARADIO player across the site.
+                                        This ID will be used for the CYBARADIO player across the site.
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>
@@ -1550,9 +1550,9 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
                     />
                 </CardContent>
             </Card>
-
+            
             <DialogFooter className="col-span-1 md:col-span-2 flex justify-between w-full">
-               <div className='flex gap-2'>
+              <div>
                 {item && (
                  <Button
                     type="button"
@@ -1563,7 +1563,7 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
                     Delete
                 </Button>
                )}
-               </div>
+              </div>
               <div className="flex gap-2">
                 <DialogClose asChild>
                   <Button type="button" variant="secondary">
@@ -1643,4 +1643,3 @@ export default function AdminPage() {
 
   return <AdminPanel />;
 }
-   
