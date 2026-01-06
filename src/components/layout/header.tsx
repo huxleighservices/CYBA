@@ -198,7 +198,7 @@ export function Header() {
         <div className="flex items-center gap-6">
           <MobileNav />
           <Link href="/" className="flex items-center space-x-2">
-            <Image src="/cyblogo.png" alt="CYBA Logo" width={40} height={40} />
+            <Image src="/cyblogo.png" alt="CYBA Logo" width={50} height={50} className="animate-slow-spin" />
             <span className="hidden font-bold sm:inline-block">CYBA</span>
           </Link>
         </div>

@@ -96,11 +96,20 @@ export default {
             textShadow: '0 0 10px hsl(var(--primary-foreground)), 0 0 20px hsl(var(--primary-foreground)), 0 0 40px hsl(var(--primary)), 0 0 60px hsl(var(--primary)), 0 0 80px hsl(var(--primary))'
           }
         },
+        'slow-spin': {
+          from: {
+            transform: 'rotate(0deg)',
+          },
+          to: {
+            transform: 'rotate(360deg)',
+          },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'text-glow': 'text-glow-anim 3s ease-in-out infinite',
+        'slow-spin': 'slow-spin 15s linear infinite',
       },
     },
   },
