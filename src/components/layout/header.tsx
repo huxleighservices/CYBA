@@ -201,13 +201,13 @@ export function Header() {
 
         {/* Right side */}
         <div className="flex items-center justify-end gap-4">
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-1 bg-muted/50 rounded-full p-1">
             <a
               href="https://www.instagram.com/cybazone/?hl=en"
               target="_blank"
               rel="noopener noreferrer"
             >
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="rounded-full">
                 <Instagram className="h-5 w-5" />
                 <span className="sr-only">Instagram</span>
               </Button>
@@ -217,7 +217,7 @@ export function Header() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="rounded-full">
                 <Youtube className="h-5 w-5" />
                 <span className="sr-only">YouTube</span>
               </Button>
@@ -227,7 +227,7 @@ export function Header() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="rounded-full">
                 <Facebook className="h-5 w-5" />
                 <span className="sr-only">Facebook</span>
               </Button>
