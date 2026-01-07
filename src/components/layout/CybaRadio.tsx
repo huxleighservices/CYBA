@@ -10,6 +10,8 @@ export function CybaRadio() {
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [iframeKey, setIframeKey] = useState(0);
+  const randomIndexRef = useRef(0);
   const { firestore } = useFirebase();
 
   useEffect(() => {
@@ -17,36 +19,51 @@ export function CybaRadio() {
   }, []);
 
   const settingsDocRef = useMemoFirebase(() => doc(firestore, 'settings', 'radio'), [firestore]);
-  const { data: settingsData } = useDoc<{ playlistId: string }>(settingsDocRef);
+  const { data: settingsData } = useDoc<{ playlistId: string; playlistLength?: number }>(settingsDocRef);
 
   const playlistId = settingsData?.playlistId || 'PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf';
+  const playlistLength = settingsData?.playlistLength || 50;
 
-  const getEmbedUrl = (muted: boolean, autoplay: boolean) => {
+  const getEmbedUrl = (index: number) => {
     const params = new URLSearchParams({
       list: playlistId,
-      autoplay: autoplay ? '1' : '0',
-      mute: muted ? '1' : '0',
+      autoplay: '1',
+      mute: '1', // Always start muted and control via API
       loop: '1',
+      index: index.toString(),
       controls: '0',
       disablekb: '1',
       fs: '0',
       modestbranding: '1',
-      playsinline: '1',
-      enablejsapi: '0',
-      shuffle: '1',
+      rel: '0',
+      enablejsapi: '1',
     });
+    if (typeof window !== 'undefined') {
+      params.set('origin', window.location.origin);
+    }
     return `https://www.youtube.com/embed/videoseries?${params.toString()}`;
   };
 
   const handleClick = () => {
-    if (!isPlaying) {
+    if (isMuted) {
+      // Unmute
+      const newIndex = Math.floor(Math.random() * playlistLength);
+      randomIndexRef.current = newIndex;
+      setIframeKey(prev => prev + 1); // Force re-render with new index to start a new video
       setIsPlaying(true);
+      setIsMuted(false);
+    } else {
+      // Mute
+      setIsMuted(true);
+      setIsPlaying(false);
     }
-    setIsMuted(!isMuted);
   };
 
+  // The actual URL passed to the iframe. It changes only when the key changes.
+  const embedUrl = getEmbedUrl(randomIndexRef.current);
+
   return (
-    <div className="sticky top-[96px] z-10 w-full bg-black/50 backdrop-blur-md overflow-hidden">
+    <div className="sticky top-[64px] z-10 w-full bg-black/50 backdrop-blur-md overflow-hidden">
       <div className="container mx-auto flex h-10 items-center justify-between text-sm text-primary">
         <div className="flex-shrink-0 font-bold mr-4">CYBAZONE RADIO</div>
 
@@ -67,14 +84,15 @@ export function CybaRadio() {
         </Button>
       </div>
 
-      {isClient && (
+      {/* Hidden YouTube iframe - only render on client and when playing */}
+      {isClient && isPlaying && (
         <iframe
-          key={`${isMuted}-${isPlaying}`}
-          src={getEmbedUrl(isMuted, isPlaying)}
+          key={iframeKey}
+          src={getEmbedUrl(randomIndexRef.current)} // Use the new index here
           allow="autoplay; encrypted-media"
-          className="fixed w-[300px] h-[200px] pointer-events-none"
+          className="absolute w-[1px] h-[1px] opacity-0 pointer-events-none"
           style={{ top: '-9999px', left: '-9999px' }}
-          title="CybaRadio"
+          title="CYBAZONE RADIO"
         />
       )}
     </div>

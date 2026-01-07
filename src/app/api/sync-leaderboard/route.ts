@@ -58,18 +58,15 @@ async function getSheetData(): Promise<LeaderboardEntry[]> {
   const rows = response.data.values || [];
   if (rows.length < 2) return [];
 
-  const headers = rows[0].map(h => String(h).toLowerCase().trim());
-  
-  const nameIndex = headers.findIndex(h => h.includes('cybaname') || h.includes('name'));
-  const coinIndex = headers.findIndex(h => h.includes('cybacoin') || h.includes('points') || h.includes('coin'));
-
-  if (nameIndex === -1 || coinIndex === -1) {
-    throw new Error('Sheet must contain "cybaName" and "cybaCoin" columns');
-  }
+  // FIXED: Use explicit column indices based on actual sheet structure
+  // A=0: CYBANAME, B=1: CYBA IG, C=2: TIER, D=3: OUTWARD, E=4: INWARD, 
+  // F=5: FEATURES, G=6: EXTRAS, H=7: CYBACOIN, I=8: Last Updated
+  const NAME_INDEX = 0;  // Column A - CYBANAME
+  const COIN_INDEX = 7;  // Column H - CYBACOIN
 
   return rows.slice(1).map(row => ({
-    cybaName: String(row[nameIndex] || '').trim(),
-    cybaCoin: Number(row[coinIndex]) || 0,
+    cybaName: String(row[NAME_INDEX] || '').trim(),
+    cybaCoin: Number(row[COIN_INDEX]) || 0,
   })).filter(entry => entry.cybaName);
 }
 

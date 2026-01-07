@@ -87,7 +87,8 @@ const passwordSchema = z.object({
 });
 
 const settingsSchema = z.object({
-    playlistId: z.string().min(1, { message: "Please enter a valid YouTube Playlist ID." }),
+  playlistId: z.string().min(1, { message: "Please enter a valid YouTube Playlist ID." }),
+  playlistLength: z.coerce.number().min(1, { message: "Enter the number of videos in the playlist." }),
 });
 
 const blogPostSchema = z.object({
@@ -199,71 +200,97 @@ function PasswordForm({ onSuccess }: { onSuccess: () => void }) {
 
 // --- Site Settings Management ---
 function SettingsManagement() {
-    const { firestore } = useFirebase();
-    const { toast } = useToast();
+  const { firestore } = useFirebase();
+  const { toast } = useToast();
 
-    const settingsDocRef = useMemoFirebase(() => doc(firestore, 'settings', 'radio'), [firestore]);
-    const { data: settingsData, isLoading } = useDoc<{ playlistId: string }>(settingsDocRef);
+  const settingsDocRef = useMemoFirebase(() => doc(firestore, 'settings', 'radio'), [firestore]);
+  const { data: settingsData, isLoading } = useDoc<{ playlistId: string; playlistLength: number }>(settingsDocRef);
 
-    const form = useForm<z.infer<typeof settingsSchema>>({
-        resolver: zodResolver(settingsSchema),
-        defaultValues: {
-            playlistId: '',
-        },
+  const form = useForm<z.infer<typeof settingsSchema>>({
+    resolver: zodResolver(settingsSchema),
+    defaultValues: {
+      playlistId: '',
+      playlistLength: 50,
+    },
+  });
+
+  useEffect(() => {
+    if (settingsData) {
+      form.reset({
+        playlistId: settingsData.playlistId || '',
+        playlistLength: settingsData.playlistLength || 50,
+      });
+    }
+  }, [settingsData, form]);
+
+  function onSubmit(values: z.infer<typeof settingsSchema>) {
+    setDocumentNonBlocking(settingsDocRef, values, { merge: true });
+    toast({
+      title: "Settings Saved",
+      description: "CYBARADIO settings have been updated.",
     });
+  }
 
-    useEffect(() => {
-        if (settingsData) {
-            form.reset({ playlistId: settingsData.playlistId || '' });
-        }
-    }, [settingsData, form]);
+  if (isLoading) {
+    return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>;
+  }
 
-    function onSubmit(values: z.infer<typeof settingsSchema>) {
-        setDocumentNonBlocking(settingsDocRef, values, { merge: true });
-        toast({
-            title: "Settings Saved",
-            description: "CYBARADIO playlist ID has been updated.",
-        });
-    }
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Site Settings</CardTitle>
+        <CardDescription>Manage global settings for the website.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-lg">
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">CYBARADIO Configuration</h3>
+              
+              <FormField
+                control={form.control}
+                name="playlistId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>YouTube Playlist ID</FormLabel>
+                    <FormControl>
+                      <Input placeholder="PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      The playlist ID from the YouTube URL (after "list=").
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-    if (isLoading) {
-        return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>;
-    }
+              <FormField
+                control={form.control}
+                name="playlistLength"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Playlist Length</FormLabel>
+                    <FormControl>
+                      <Input type="number" min={1} placeholder="50" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      The number of videos in the playlist. Used to shuffle to a random video when unmuting.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Site Settings</CardTitle>
-                <CardDescription>Manage global settings for the website.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-w-lg">
-                        <FormField
-                            control={form.control}
-                            name="playlistId"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>CYBARADIO YouTube Playlist ID</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf" {...field} />
-                                    </FormControl>
-                                    <FormDescription>
-                                        This ID will be used for the CYBARADIO player across the site.
-                                    </FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <Button type="submit" disabled={form.formState.isSubmitting}>
-                           {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Save Settings
-                        </Button>
-                    </form>
-                </Form>
-            </CardContent>
-        </Card>
-    );
+            <Button type="submit" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Settings
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
 }
 
 
@@ -393,7 +420,6 @@ function UserVerification() {
             const userDocRef = doc(firestore, 'users', userId);
             
             if (!leaderboardName) {
-                // If the input is cleared, unlink the user
                 const dataToUpdate = {
                     leaderboardCybaName: '',
                     cybaCoinBalance: 0,
@@ -413,7 +439,7 @@ function UserVerification() {
             if (selectedEntry) {
                 const cybaCoinBalance = selectedEntry.cybaCoin;
                 const dataToUpdate = {
-                    leaderboardCybaName: selectedEntry.cybaName, // Use the canonical name
+                    leaderboardCybaName: selectedEntry.cybaName,
                     cybaCoinBalance: Number(cybaCoinBalance) || 0,
                 };
                 setDocumentNonBlocking(userDocRef, dataToUpdate, { merge: true });
@@ -580,13 +606,11 @@ function BlogPostForm({ post, user }: { post?: any; user: any }) {
 
   const onSubmit = (values: z.infer<typeof blogPostSchema>) => {
     if (post) {
-      // Update
       setDocumentNonBlocking(doc(firestore, 'blogPosts', post.id), values, {
         merge: true,
       });
       toast({ title: 'Blog post updated!' });
     } else {
-      // Create
       addDocumentNonBlocking(collection(firestore, 'blogPosts'), {
         ...values,
         author: user.uid,
@@ -816,7 +840,7 @@ function MerchForm({ item }: { item?: any }) {
   const onSubmit = (values: z.infer<typeof merchandiseSchema>) => {
     const dataToSave = {
         ...values,
-        cybaCoinPrice: values.cybaCoinPrice || null, // Store null if empty
+        cybaCoinPrice: values.cybaCoinPrice || null,
     };
 
     if (item) {
@@ -1205,18 +1229,15 @@ function ExtrasManagement() {
   ) => {
     const oldOrder = item.order;
 
-    if (oldOrder === newOrder) return; // No change
+    if (oldOrder === newOrder) return;
 
     const batch = writeBatch(firestore);
 
-    // Find the item that currently has the newOrder
     const itemToSwap = list.find(i => i.order === newOrder);
 
-    // Update the dragged item
     const currentItemRef = doc(firestore, 'extras', item.id);
     batch.update(currentItemRef, { order: newOrder });
 
-    // Update the item that was in the target position, if it exists
     if (itemToSwap && typeof oldOrder !== 'undefined') {
       const itemToSwapRef = doc(firestore, 'extras', itemToSwap.id);
       batch.update(itemToSwapRef, { order: oldOrder });
@@ -1249,7 +1270,6 @@ function ExtrasManagement() {
           <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>
         ) : (
           <div className="space-y-8">
-            {/* Boosts Table */}
             <div>
               <h3 className="text-lg font-medium mb-2">Boosts</h3>
               <Table>
@@ -1292,7 +1312,6 @@ function ExtrasManagement() {
 
             <Separator />
             
-            {/* Rewards Table */}
              <div>
               <h3 className="text-lg font-medium mb-2">Rewards</h3>
               <Table>
@@ -1405,7 +1424,7 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
     if (item && onDelete) {
         if (confirm(`Are you sure you want to delete "${item.name}"?`)) {
             onDelete(item.id, item.name);
-            setOpen(false); // Close the dialog after deletion
+            setOpen(false);
         }
     }
   };
