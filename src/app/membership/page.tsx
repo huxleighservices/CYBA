@@ -26,7 +26,7 @@ export default function MembershipPage() {
     <div className="container mx-auto px-4 py-16">
       <div className="text-center max-w-3xl mx-auto">
         <h1 className="text-4xl md:text-6xl font-headline font-bold text-glow mb-4">
-          JOIN THE CYBAZONE
+          ENTER THE CYBAZONE
         </h1>
         <p className="text-lg text-foreground/80 mb-12">
           Choose your level. Billed weekly. Cancel anytime.
