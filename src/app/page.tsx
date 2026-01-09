@@ -18,11 +18,10 @@ export default function Home() {
           <Button
             asChild
             size="lg"
-            className="font-bold group"
+            className="font-bold group animate-button-glow bg-primary/50 hover:bg-primary/70 text-xl py-4 px-10"
           >
             <Link href="/membership">
-              Join the Rebellion{' '}
-              <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+              ENTER
             </Link>
           </Button>
         </div>
