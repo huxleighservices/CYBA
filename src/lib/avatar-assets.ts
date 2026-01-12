@@ -45,21 +45,27 @@ export const avatarOptions: AvatarOptions = {
       hint: 'avatar hat',
     })),
   ],
-  shirt: Array.from({ length: 10 }, (_, i) => ({
+  shirt: [
+    { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
+    ...Array.from({ length: 10 }, (_, i) => ({
     name: `Shirt ${i + 1}`,
     url: `/images/avatar/shirt/SHIRT${String(i + 1).padStart(4, '0')}.png`,
     hint: 'avatar shirt',
-  })),
-  pants: Array.from({ length: 10 }, (_, i) => ({
+  }))],
+  pants: [
+    { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
+    ...Array.from({ length: 10 }, (_, i) => ({
     name: `Pants ${i + 1}`,
     url: `/images/avatar/pants/PANTS${String(i + 1).padStart(4, '0')}.png`,
     hint: 'avatar pants',
-  })),
-  shoes: Array.from({ length: 10 }, (_, i) => ({
+  }))],
+  shoes: [
+    { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
+    ...Array.from({ length: 10 }, (_, i) => ({
     name: `Shoes ${i + 1}`,
     url: `/images/avatar/shoes/SHOES${String(i + 1).padStart(4, '0')}.png`,
     hint: 'avatar shoes',
-  })),
+  }))],
   accessory: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
     ...Array.from({ length: 10 }, (_, i) => ({

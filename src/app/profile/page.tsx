@@ -59,35 +59,32 @@ type UserProfile = {
 function AvatarDisplay({ avatarConfig, size = 128 }: { avatarConfig?: AvatarConfig, size?: number }) {
     const config = { ...defaultAvatarConfig, ...avatarConfig };
 
-    const layers = [
-        'skin',
-        'shirt',
-        'pants',
-        'shoes',
-        'accessory',
-        'hat',
-    ];
+    const getOption = (category: keyof AvatarConfig) => {
+        const options = avatarOptions[category];
+        const index = config[category] || 0;
+        return options[index] || options[0]; // Fallback to first option
+    };
+    
+    const skin = getOption('skin');
+    const shirt = getOption('shirt');
+    const pants = getOption('pants');
+    const shoes = getOption('shoes');
+    const accessory = getOption('accessory');
+    const hat = getOption('hat');
 
     return (
         <div className="relative bg-muted/30 rounded-lg" style={{ width: size, height: size }}>
-            {layers.map((layer) => {
-                const category = layer as keyof AvatarConfig;
-                const index = config[category] || 0;
-                const option = avatarOptions[category][index];
-                if (!option || option.url.includes('transparent.png')) return null;
-                
-                return (
-                    <Image
-                        key={layer}
-                        src={option.url}
-                        alt={`${layer} ${index + 1}`}
-                        fill
-                        className="object-contain"
-                        data-ai-hint={option.hint}
-                        priority={layer === 'skin'}
-                    />
-                );
-            })}
+            {/* Skin is the base layer */}
+            <Image src={skin.url} alt={skin.name} fill className="object-contain" data-ai-hint={skin.hint} priority />
+
+            {/* Clothing & Accessories */}
+            {!pants.url.includes('transparent') && <Image src={pants.url} alt={pants.name} fill className="object-contain" data-ai-hint={pants.hint} />}
+            {!shirt.url.includes('transparent') && <Image src={shirt.url} alt={shirt.name} fill className="object-contain" data-ai-hint={shirt.hint} />}
+            {!shoes.url.includes('transparent') && <Image src={shoes.url} alt={shoes.name} fill className="object-contain" data-ai-hint={shoes.hint} />}
+            {!accessory.url.includes('transparent') && <Image src={accessory.url} alt={accessory.name} fill className="object-contain" data-ai-hint={accessory.hint} />}
+            {!hat.url.includes('transparent') && <Image src={hat.url} alt={hat.name} fill className="object-contain" data-ai-hint={hat.hint} />}
+
+            {/* Base outline on top */}
              <Image
                 src="/avatar-base.png"
                 alt="Avatar Base"
