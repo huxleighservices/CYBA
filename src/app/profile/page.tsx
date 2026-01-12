@@ -64,7 +64,7 @@ function AvatarDisplay({ avatarConfig, size = 128 }: { avatarConfig?: AvatarConf
         const index = config[category] || 0;
         return options[index] || options[0]; // Fallback to first option
     };
-    
+
     const skin = getOption('skin');
     const shirt = getOption('shirt');
     const pants = getOption('pants');
@@ -72,24 +72,40 @@ function AvatarDisplay({ avatarConfig, size = 128 }: { avatarConfig?: AvatarConf
     const accessory = getOption('accessory');
     const hat = getOption('hat');
 
+    // Explicitly order the layers for correct stacking
+    const layers = [
+      { layer: skin, z: 10, name: 'Skin' },
+      { layer: pants, z: 20, name: 'Pants' },
+      { layer: shirt, z: 30, name: 'Shirt' },
+      { layer: shoes, z: 40, name: 'Shoes' },
+      { layer: accessory, z: 50, name: 'Accessory' },
+      { layer: hat, z: 60, name: 'Hat' },
+    ];
+
     return (
         <div className="relative bg-muted/30 rounded-lg" style={{ width: size, height: size }}>
-            {/* Skin is the base layer */}
-            <Image src={skin.url} alt={skin.name} fill className="object-contain" data-ai-hint={skin.hint} priority />
-
-            {/* Clothing & Accessories */}
-            {!pants.url.includes('transparent') && <Image src={pants.url} alt={pants.name} fill className="object-contain" data-ai-hint={pants.hint} />}
-            {!shirt.url.includes('transparent') && <Image src={shirt.url} alt={shirt.name} fill className="object-contain" data-ai-hint={shirt.hint} />}
-            {!shoes.url.includes('transparent') && <Image src={shoes.url} alt={shoes.name} fill className="object-contain" data-ai-hint={shoes.hint} />}
-            {!accessory.url.includes('transparent') && <Image src={accessory.url} alt={accessory.name} fill className="object-contain" data-ai-hint={accessory.hint} />}
-            {!hat.url.includes('transparent') && <Image src={hat.url} alt={hat.name} fill className="object-contain" data-ai-hint={hat.hint} />}
-
-            {/* Base outline on top */}
+            {layers.map(({ layer, z, name }) => (
+                // Use a conditional render to avoid rendering transparent images, which can sometimes still cause issues.
+                layer.url.includes('transparent') ? null : (
+                    <Image
+                        key={name}
+                        src={layer.url}
+                        alt={layer.name}
+                        fill
+                        className="object-contain"
+                        style={{ zIndex: z }}
+                        data-ai-hint={layer.hint}
+                        priority={name === 'Skin'}
+                    />
+                )
+            ))}
+             {/* Base outline MUST be last to be on top, with the highest z-index */}
              <Image
                 src="/avatar-base.png"
                 alt="Avatar Base"
                 fill
                 className="object-contain"
+                style={{ zIndex: 100 }}
                 priority
             />
         </div>
