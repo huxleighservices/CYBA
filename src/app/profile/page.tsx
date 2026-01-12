@@ -65,27 +65,19 @@ function AvatarDisplay({ avatarConfig, size = 128 }: { avatarConfig?: AvatarConf
         return options[index] || options[0]; // Fallback to first option
     };
 
-    const skin = getOption('skin');
-    const shirt = getOption('shirt');
-    const pants = getOption('pants');
-    const shoes = getOption('shoes');
-    const accessory = getOption('accessory');
-    const hat = getOption('hat');
-
     // Explicitly order the layers for correct stacking
     const layers = [
-      { layer: skin, z: 10, name: 'Skin' },
-      { layer: pants, z: 20, name: 'Pants' },
-      { layer: shirt, z: 30, name: 'Shirt' },
-      { layer: shoes, z: 40, name: 'Shoes' },
-      { layer: accessory, z: 50, name: 'Accessory' },
-      { layer: hat, z: 60, name: 'Hat' },
+      { layer: getOption('skin'), z: 10, name: 'Skin' },
+      { layer: getOption('pants'), z: 20, name: 'Pants' },
+      { layer: getOption('shirt'), z: 30, name: 'Shirt' },
+      { layer: getOption('shoes'), z: 40, name: 'Shoes' },
+      { layer: getOption('accessory'), z: 50, name: 'Accessory' },
+      { layer: getOption('hat'), z: 60, name: 'Hat' },
     ];
 
     return (
         <div className="relative bg-muted/30 rounded-lg" style={{ width: size, height: size }}>
             {layers.map(({ layer, z, name }) => (
-                // Use a conditional render to avoid rendering transparent images, which can sometimes still cause issues.
                 layer.url.includes('transparent') ? null : (
                     <Image
                         key={name}
@@ -99,7 +91,6 @@ function AvatarDisplay({ avatarConfig, size = 128 }: { avatarConfig?: AvatarConf
                     />
                 )
             ))}
-             {/* Base outline MUST be last to be on top, with the highest z-index */}
              <Image
                 src="/avatar-base.png"
                 alt="Avatar Base"
