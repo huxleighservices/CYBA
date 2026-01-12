@@ -130,11 +130,6 @@
           "type": "string",
           "description": "Reference to the user's membership plan. (Relationship: Membership 1:N User)"
         },
-        "photoURL": {
-          "type": "string",
-          "description": "URL of the user's profile picture.",
-          "format": "uri"
-        },
         "membershipTier": {
           "type": "string",
           "description": "The membership tier of the user.",
@@ -148,8 +143,32 @@
           "description": "The user's balance of CYBACOIN."
         },
         "leaderboardCybaName": {
-            "type": "string",
-            "description": "The linked CYBANAME from the leaderboard Google Sheet."
+          "type": "string",
+          "description": "The linked CYBANAME from the leaderboard Google Sheet."
+        },
+        "avatarConfig": {
+          "type": "object",
+          "description": "Stores the user's selected avatar customization.",
+          "properties": {
+            "skin": {
+              "type": "number"
+            },
+            "hat": {
+              "type": "number"
+            },
+            "shirt": {
+              "type": "number"
+            },
+            "pants": {
+              "type": "number"
+            },
+            "shoes": {
+              "type": "number"
+            },
+            "accessory": {
+              "type": "number"
+            }
+          }
         }
       },
       "required": [
@@ -235,13 +254,16 @@
           "format": "uri"
         },
         "type": {
-            "type": "string",
-            "description": "The type of extra, either a paid 'boost' or a 'reward' redeemable with CYBACOIN.",
-            "enum": ["boost", "reward"]
+          "type": "string",
+          "description": "The type of extra, either a paid 'boost' or a 'reward' redeemable with CYBACOIN.",
+          "enum": [
+            "boost",
+            "reward"
+          ]
         },
         "order": {
-            "type": "number",
-            "description": "The display order of the item on the page."
+          "type": "number",
+          "description": "The display order of the item on the page."
         }
       },
       "required": [
@@ -353,7 +375,7 @@
         "cybaCoin"
       ]
     },
-     "Settings": {
+    "Settings": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Settings",
       "type": "object",
