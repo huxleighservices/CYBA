@@ -70,11 +70,18 @@ function AvatarDisplay({ avatarConfig, size = 128 }: { avatarConfig?: AvatarConf
 
     return (
         <div className="relative bg-muted/30 rounded-lg" style={{ width: size, height: size }}>
+            <Image
+                src="/avatar-base.png"
+                alt="Avatar Base"
+                fill
+                className="object-contain"
+                priority
+            />
             {layers.map((layer) => {
                 const category = layer as keyof AvatarConfig;
                 const index = config[category] || 0;
                 const option = avatarOptions[category][index];
-                if (!option) return null;
+                if (!option || option.url.includes('transparent.png')) return null;
                 
                 return (
                     <Image
