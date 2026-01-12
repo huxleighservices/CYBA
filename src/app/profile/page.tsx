@@ -56,52 +56,50 @@ type UserProfile = {
 
 // --- Avatar Components ---
 
-function AvatarDisplay({ avatarConfig, size = 128 }: { avatarConfig?: AvatarConfig, size?: number }) {
-    const config = { ...defaultAvatarConfig, ...avatarConfig };
+function AvatarDisplay({ avatarConfig, size = 128 }: { avatarConfig?: AvatarConfig; size?: number }) {
+  const config = { ...defaultAvatarConfig, ...avatarConfig };
 
-    const getOption = (category: keyof AvatarConfig) => {
-        const options = avatarOptions[category];
-        const index = config[category] || 0;
-        return options[index] || options[0]; // Fallback to first option
-    };
+  const getOption = (category: keyof AvatarConfig) => {
+    const options = avatarOptions[category];
+    const index = config[category] || 0;
+    return options[index] || options[0];
+  };
 
-    // Explicitly order the layers for correct stacking
-    const layers = [
-      { layer: getOption('skin'), z: 10, name: 'Skin' },
-      { layer: getOption('pants'), z: 20, name: 'Pants' },
-      { layer: getOption('shirt'), z: 30, name: 'Shirt' },
-      { layer: getOption('shoes'), z: 40, name: 'Shoes' },
-      { layer: getOption('accessory'), z: 50, name: 'Accessory' },
-      { layer: getOption('hat'), z: 60, name: 'Hat' },
-    ];
+  const skin = getOption('skin');
+  const hat = getOption('hat');
+  const shirt = getOption('shirt');
+  const pants = getOption('pants');
+  const shoes = getOption('shoes');
+  const accessory = getOption('accessory');
 
-    return (
-        <div className="relative bg-muted/30 rounded-lg" style={{ width: size, height: size }}>
-            {layers.map(({ layer, z, name }) => (
-                layer.url.includes('transparent') ? null : (
-                    <Image
-                        key={name}
-                        src={layer.url}
-                        alt={layer.name}
-                        fill
-                        className="object-contain"
-                        style={{ zIndex: z }}
-                        data-ai-hint={layer.hint}
-                        priority={name === 'Skin'}
-                    />
-                )
-            ))}
-             <Image
-                src="/avatar-base.png"
-                alt="Avatar Base"
-                fill
-                className="object-contain"
-                style={{ zIndex: 100 }}
-                priority
-            />
-        </div>
-    );
+  return (
+    <div className="relative bg-muted/30 rounded-lg" style={{ width: size, height: size }}>
+      {/* Base Layer */}
+      {!skin.url.includes('transparent') && (
+        <Image src={skin.url} alt={skin.name} fill className="object-contain" style={{ zIndex: 10 }} priority />
+      )}
+      {/* Clothing and Accessories */}
+      {!pants.url.includes('transparent') && (
+        <Image src={pants.url} alt={pants.name} fill className="object-contain" style={{ zIndex: 20 }} />
+      )}
+      {!shirt.url.includes('transparent') && (
+        <Image src={shirt.url} alt={shirt.name} fill className="object-contain" style={{ zIndex: 30 }} />
+      )}
+      {!shoes.url.includes('transparent') && (
+        <Image src={shoes.url} alt={shoes.name} fill className="object-contain" style={{ zIndex: 40 }} />
+      )}
+      {!accessory.url.includes('transparent') && (
+        <Image src={accessory.url} alt={accessory.name} fill className="object-contain" style={{ zIndex: 50 }} />
+      )}
+      {!hat.url.includes('transparent') && (
+        <Image src={hat.url} alt={hat.name} fill className="object-contain" style={{ zIndex: 60 }} />
+      )}
+      {/* Outline on Top */}
+      <Image src="/avatar-base.png" alt="Avatar Base" fill className="object-contain" style={{ zIndex: 100 }} priority />
+    </div>
+  );
 }
+
 
 function AvatarCustomizer({
     initialConfig,
