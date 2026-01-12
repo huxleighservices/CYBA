@@ -31,11 +31,11 @@ type AvatarOptions = {
 
 export const avatarOptions: AvatarOptions = {
   skin: [
-    { name: 'Tone 1', url: 'https://placehold.co/256x256/eac6a4/eac6a4.png', hint: 'skin tone' },
-    { name: 'Tone 2', url: 'https://placehold.co/256x256/c19365/c19365.png', hint: 'skin tone' },
-    { name: 'Tone 3', url: 'https://placehold.co/256x256/8e573e/8e573e.png', hint: 'skin tone' },
-    { name: 'Tone 4', url: 'https://placehold.co/256x256/4a2717/4a2717.png', hint: 'skin tone' },
-    { name: 'Tone 5', url: 'https://placehold.co/256x256/201103/201103.png', hint: 'skin tone' },
+    { name: 'Tone 1', url: '/images/avatar/skin/tone1.png', hint: 'skin tone light' },
+    { name: 'Tone 2', url: '/images/avatar/skin/tone2.png', hint: 'skin tone medium' },
+    { name: 'Tone 3', url: '/images/avatar/skin/tone3.png', hint: 'skin tone dark' },
+    { name: 'Tone 4', url: '/images/avatar/skin/tone4.png', hint: 'skin tone deep' },
+    { name: 'Tone 5', url: '/images/avatar/skin/tone5.png', hint: 'skin tone rich' },
   ],
   hat: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
