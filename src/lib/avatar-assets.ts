@@ -31,11 +31,11 @@ type AvatarOptions = {
 
 export const avatarOptions: AvatarOptions = {
   skin: [
-    { name: 'Tone 1', url: '/images/avatar/skin/tone1.png', hint: 'skin tone light' },
-    { name: 'Tone 2', url: '/images/avatar/skin/tone2.png', hint: 'skin tone medium' },
-    { name: 'Tone 3', url: '/images/avatar/skin/tone3.png', hint: 'skin tone dark' },
-    { name: 'Tone 4', url: '/images/avatar/skin/tone4.png', hint: 'skin tone deep' },
-    { name: 'Tone 5', url: '/images/avatar/skin/tone5.png', hint: 'skin tone rich' },
+    { name: 'SKIN1', url: '/images/avatar/skin/SKIN1.png', hint: 'skin tone light' },
+    { name: 'SKIN2', url: '/images/avatar/skin/SKIN2.png', hint: 'skin tone medium' },
+    { name: 'SKIN3', url: '/images/avatar/skin/SKIN3.png', hint: 'skin tone dark' },
+    { name: 'SKIN4', url: '/images/avatar/skin/SKIN4.png', hint: 'skin tone deep' },
+    { name: 'SKIN5', url: '/images/avatar/skin/SKIN5.png', hint: 'skin tone rich' },
   ],
   hat: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
