@@ -32,6 +32,7 @@ import {
   Link2,
   Database,
   Settings as SettingsIcon,
+  Palette,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -80,6 +81,8 @@ import { debounce } from 'lodash';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { avatarOptions } from '@/lib/avatar-assets';
+import Image from 'next/image';
 
 // Schemas
 const passwordSchema = z.object({
@@ -1597,6 +1600,54 @@ function ExtraForm({ item, boosts = [], rewards = [], onDelete }: { item?: any; 
   );
 }
 
+// --- Avatar Management ---
+function AvatarManagement() {
+    const { toast } = useToast();
+
+    // In a real application, you would have forms to upload new assets
+    // and modify the `avatar-assets.ts` file or a database.
+    // For now, this just displays the current assets.
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Avatar Asset Management</CardTitle>
+                <CardDescription>
+                    Review the current avatar assets. Adding and removing assets requires code changes.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                {Object.entries(avatarOptions).map(([category, options]) => (
+                    <div key={category}>
+                        <h3 className="text-lg font-medium capitalize mb-2">{category}</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                            {options.map(option => (
+                                <div key={option.name} className="flex flex-col items-center gap-2">
+                                    <Image
+                                        src={option.url}
+                                        alt={option.name}
+                                        width={80}
+                                        height={80}
+                                        className="rounded-md bg-muted/20 border"
+                                        data-ai-hint={option.hint}
+                                    />
+                                    <span className="text-xs text-center">{option.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+                 <div className="mt-6 p-4 border-l-4 border-blue-500 bg-blue-500/10 rounded-r-lg">
+                    <h4 className="font-semibold text-blue-300">Developer Note</h4>
+                    <p className="text-sm text-blue-400/80">
+                        To add, remove, or change avatar assets, you must edit the <code className="bg-black/50 px-1 py-0.5 rounded">src/lib/avatar-assets.ts</code> file.
+                        This panel is currently for display purposes only.
+                    </p>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
 
 // --- Main Admin Panel ---
 function AdminPanel() {
@@ -1612,13 +1663,14 @@ function AdminPanel() {
       </div>
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-4 gap-2">
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="verification">Verification</TabsTrigger>
           <TabsTrigger value="blog">Blog</TabsTrigger>
           <TabsTrigger value="merch">Merchandise</TabsTrigger>
           <TabsTrigger value="memberships">Memberships</TabsTrigger>
           <TabsTrigger value="extras">Extras</TabsTrigger>
+          <TabsTrigger value="avatars">Avatars</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
         <TabsContent value="users" className="mt-6">
@@ -1638,6 +1690,9 @@ function AdminPanel() {
         </TabsContent>
         <TabsContent value="extras" className="mt-6">
           <ExtrasManagement />
+        </TabsContent>
+        <TabsContent value="avatars" className="mt-6">
+            <AvatarManagement />
         </TabsContent>
         <TabsContent value="settings" className="mt-6">
           <SettingsManagement />
