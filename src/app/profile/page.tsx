@@ -94,8 +94,6 @@ function AvatarDisplay({ avatarConfig, size = 128 }: { avatarConfig?: AvatarConf
       {!hat.url.includes('transparent') && (
         <Image src={hat.url} alt={hat.name} fill className="object-contain" style={{ zIndex: 60 }} />
       )}
-      {/* Outline on Top */}
-      <Image src="/avatar-base.png" alt="Avatar Base" fill className="object-contain" style={{ zIndex: 100 }} priority />
     </div>
   );
 }
@@ -124,26 +122,11 @@ function AvatarCustomizer({
         setCurrentConfig(prev => ({ ...prev, [category]: nextIndex }));
     };
 
-    const handleRandomize = () => {
-        const randomConfig: AvatarConfig = {
-            skin: Math.floor(Math.random() * avatarOptions.skin.length),
-            hat: Math.floor(Math.random() * avatarOptions.hat.length),
-            shirt: Math.floor(Math.random() * avatarOptions.shirt.length),
-            pants: Math.floor(Math.random() * avatarOptions.pants.length),
-            shoes: Math.floor(Math.random() * avatarOptions.shoes.length),
-            accessory: Math.floor(Math.random() * avatarOptions.accessory.length),
-        };
-        setCurrentConfig(randomConfig);
-    };
-
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             <div className="flex flex-col items-center gap-4">
                 <h3 className="font-bold text-lg">Avatar Preview</h3>
                 <AvatarDisplay avatarConfig={currentConfig} size={256} />
-                <Button onClick={handleRandomize} variant="outline" size="sm">
-                    <Dices className="mr-2" /> Randomize
-                </Button>
             </div>
             <div className="space-y-4">
                 {(Object.keys(avatarOptions) as Array<keyof AvatarConfig>).map(category => (
