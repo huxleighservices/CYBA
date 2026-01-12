@@ -70,7 +70,7 @@ export const avatarOptions: AvatarOptions = {
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
     ...Array.from({ length: 10 }, (_, i) => ({
       name: `Accessory ${i + 1}`,
-      url: `/avatar/item/ITEM${String(i + 1).padStart(4, '0')}.png`,
+      url: `/avatar/accessory/ITEM${String(i + 1).padStart(4, '0')}.png`,
       hint: 'avatar accessory',
     })),
   ],
