@@ -31,17 +31,17 @@ type AvatarOptions = {
 
 export const avatarOptions: AvatarOptions = {
   skin: [
-    { name: 'SKIN1', url: '/images/avatar/skin/SKIN1.png', hint: 'skin tone light' },
-    { name: 'SKIN2', url: '/images/avatar/skin/SKIN2.png', hint: 'skin tone medium' },
-    { name: 'SKIN3', url: '/images/avatar/skin/SKIN3.png', hint: 'skin tone dark' },
-    { name: 'SKIN4', url: '/images/avatar/skin/SKIN4.png', hint: 'skin tone deep' },
-    { name: 'SKIN5', url: '/images/avatar/skin/SKIN5.png', hint: 'skin tone rich' },
+    { name: 'SKIN1', url: '/avatar/skin/SKIN1.png', hint: 'skin tone light' },
+    { name: 'SKIN2', url: '/avatar/skin/SKIN2.png', hint: 'skin tone medium' },
+    { name: 'SKIN3', url: '/avatar/skin/SKIN3.png', hint: 'skin tone dark' },
+    { name: 'SKIN4', url: '/avatar/skin/SKIN4.png', hint: 'skin tone deep' },
+    { name: 'SKIN5', url: '/avatar/skin/SKIN5.png', hint: 'skin tone rich' },
   ],
   hat: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
     ...Array.from({ length: 10 }, (_, i) => ({
       name: `Hat ${i + 1}`,
-      url: `/images/avatar/hat/HAT${String(i + 1).padStart(4, '0')}.png`,
+      url: `/avatar/hat/HAT${String(i + 1).padStart(4, '0')}.png`,
       hint: 'avatar hat',
     })),
   ],
@@ -49,28 +49,28 @@ export const avatarOptions: AvatarOptions = {
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
     ...Array.from({ length: 10 }, (_, i) => ({
     name: `Shirt ${i + 1}`,
-    url: `/images/avatar/shirt/SHIRT${String(i + 1).padStart(4, '0')}.png`,
+    url: `/avatar/shirt/SHIRT${String(i + 1).padStart(4, '0')}.png`,
     hint: 'avatar shirt',
   }))],
   pants: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
     ...Array.from({ length: 10 }, (_, i) => ({
     name: `Pants ${i + 1}`,
-    url: `/images/avatar/pants/PANTS${String(i + 1).padStart(4, '0')}.png`,
+    url: `/avatar/pants/PANTS${String(i + 1).padStart(4, '0')}.png`,
     hint: 'avatar pants',
   }))],
   shoes: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
     ...Array.from({ length: 10 }, (_, i) => ({
     name: `Shoes ${i + 1}`,
-    url: `/images/avatar/shoes/SHOES${String(i + 1).padStart(4, '0')}.png`,
+    url: `/avatar/shoes/SHOES${String(i + 1).padStart(4, '0')}.png`,
     hint: 'avatar shoes',
   }))],
   accessory: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
     ...Array.from({ length: 10 }, (_, i) => ({
       name: `Accessory ${i + 1}`,
-      url: `/images/avatar/item/ITEM${String(i + 1).padStart(4, '0')}.png`,
+      url: `/avatar/item/ITEM${String(i + 1).padStart(4, '0')}.png`,
       hint: 'avatar accessory',
     })),
   ],
