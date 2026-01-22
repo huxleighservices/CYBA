@@ -99,63 +99,61 @@ function AvatarCustomizer({
     };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-1 flex flex-col items-center gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            
+            {/* Column 1: Avatar Preview */}
+            <div className="lg:col-span-1 flex justify-center items-center">
                 <AvatarDisplay avatarConfig={{...currentConfig, layerOrder}} size={256} />
             </div>
 
-            <div className="lg:col-span-1 space-y-4">
-                 <FormLabel>Items</FormLabel>
+            {/* Column 2: Item Selection */}
+            <div className="lg:col-span-1 space-y-3">
                 {(Object.keys(avatarOptions) as AvatarLayer[]).map(category => (
-                    <div key={category}>
-                        <div className="flex items-center justify-between gap-2 p-2 border rounded-md">
-                            <FormLabel className="capitalize w-16">{category}</FormLabel>
+                    <div key={category} className="flex items-center justify-between gap-4">
+                        <span className="font-medium capitalize w-20 flex-shrink-0">{category}</span>
+                        <div className="flex items-center justify-end flex-grow">
                             <Button variant="ghost" size="icon" onClick={() => handleSelect(category, 'prev')}>
-                                <ArrowLeft />
+                                <ArrowLeft className="h-5 w-5" />
                             </Button>
-                            <span className="text-sm text-center w-24 truncate">
-                                {avatarOptions[category][currentConfig[category] || 0]?.name || 'None'}
-                            </span>
                             <Button variant="ghost" size="icon" onClick={() => handleSelect(category, 'next')}>
-                                <ArrowRight />
+                                <ArrowRight className="h-5 w-5" />
                             </Button>
                         </div>
                     </div>
                 ))}
             </div>
 
-             <div className="lg:col-span-1 space-y-4">
-                <FormLabel>Layer Order</FormLabel>
-                <div className="space-y-2 rounded-lg border p-2 bg-background/50">
-                    {layerOrder.map((layerKey, index) => (
-                        <div key={layerKey} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
-                            <span className="font-medium capitalize">{layerKey}</span>
-                            <div className="flex gap-1">
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleMoveLayer(index, 'up')}
-                                    disabled={index === 0}
-                                >
-                                    <ArrowUp className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleMoveLayer(index, 'down')}
-                                    disabled={index === layerOrder.length - 1}
-                                >
-                                    <ArrowDown className="h-4 w-4" />
-                                </Button>
-                            </div>
+            {/* Column 3: Layer Order */}
+            <div className="lg:col-span-1 space-y-2">
+                {layerOrder.map((layerKey, index) => (
+                    <div key={layerKey} className="flex items-center justify-between">
+                        <span className="font-medium capitalize">{layerKey}</span>
+                        <div className="flex items-center">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleMoveLayer(index, 'up')}
+                                disabled={index === 0}
+                            >
+                                <ArrowUp className="h-5 w-5" />
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleMoveLayer(index, 'down')}
+                                disabled={index === layerOrder.length - 1}
+                            >
+                                <ArrowDown className="h-5 w-5" />
+                            </Button>
                         </div>
-                    ))}
-                </div>
+                    </div>
+                ))}
             </div>
 
-            <DialogFooter className="lg:col-span-3">
+            {/* Footer spanning all columns */}
+            <DialogFooter className="lg:col-span-3 mt-4">
                  <DialogClose asChild>
                     <Button type="button" variant="secondary">Cancel</Button>
                 </DialogClose>
@@ -254,7 +252,7 @@ export default function ProfilePage() {
     <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-16">
       <Card className="w-full max-w-md border-primary/20 bg-card/50">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onProfileSubmit)}>
+          <form onSubmit={form. handleSubmit(onProfileSubmit)}>
             <CardHeader className="items-center text-center">
                <div className="mb-4">
                   <AvatarDisplay avatarConfig={userProfile.avatarConfig} size={96} />
@@ -317,7 +315,7 @@ export default function ProfilePage() {
                     <DialogTrigger asChild>
                         <Button variant="secondary" className="w-full">Customize Avatar</Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-6xl">
+                    <DialogContent className="max-w-4xl">
                         <DialogHeader>
                             <DialogTitle>Customize Your Avatar</DialogTitle>
                             <DialogDescription>
