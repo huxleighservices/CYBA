@@ -11,6 +11,8 @@ type AvatarOption = {
   hint: string;
 };
 
+export type AvatarLayer = 'skin' | 'hat' | 'shirt' | 'pants' | 'shoes' | 'accessory';
+
 export type AvatarConfig = {
   skin: number;
   hat: number;
@@ -18,6 +20,7 @@ export type AvatarConfig = {
   pants: number;
   shoes: number;
   accessory: number;
+  layerOrder: AvatarLayer[];
 };
 
 type AvatarOptions = {
@@ -48,24 +51,27 @@ export const avatarOptions: AvatarOptions = {
   shirt: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
     ...Array.from({ length: 10 }, (_, i) => ({
-    name: `Shirt ${i + 1}`,
-    url: `/avatar/shirt/SHIRT${String(i + 1).padStart(4, '0')}.png`,
-    hint: 'avatar shirt',
-  }))],
+      name: `Shirt ${i + 1}`,
+      url: `/avatar/shirt/SHIRT${String(i + 1).padStart(4, '0')}.png`,
+      hint: `avatar shirt ${i + 1}`,
+    })),
+  ],
   pants: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
     ...Array.from({ length: 10 }, (_, i) => ({
-    name: `Pants ${i + 1}`,
-    url: `/avatar/pants/PANTS${String(i + 1).padStart(4, '0')}.png`,
-    hint: 'avatar pants',
-  }))],
+      name: `Pants ${i + 1}`,
+      url: `/avatar/pants/PANTS${String(i + 1).padStart(4, '0')}.png`,
+      hint: 'avatar pants',
+    })),
+  ],
   shoes: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
     ...Array.from({ length: 10 }, (_, i) => ({
-    name: `Shoes ${i + 1}`,
-    url: `/avatar/shoes/SHOES${String(i + 1).padStart(4, '0')}.png`,
-    hint: 'avatar shoes',
-  }))],
+      name: `Shoes ${i + 1}`,
+      url: `/avatar/shoes/SHOES${String(i + 1).padStart(4, '0')}.png`,
+      hint: 'avatar shoes',
+    })),
+  ],
   accessory: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
     ...Array.from({ length: 10 }, (_, i) => ({
@@ -76,13 +82,23 @@ export const avatarOptions: AvatarOptions = {
   ],
 };
 
+export const defaultLayerOrder: AvatarLayer[] = [
+  'skin',
+  'shoes',
+  'pants',
+  'shirt',
+  'accessory',
+  'hat',
+];
+
 export const defaultAvatarConfig: AvatarConfig = {
-    skin: 0,
-    hat: 0,
-    shirt: 0,
-    pants: 0,
-    shoes: 0,
-    accessory: 0,
+  skin: 0,
+  hat: 0,
+  shirt: 0,
+  pants: 0,
+  shoes: 0,
+  accessory: 0,
+  layerOrder: defaultLayerOrder,
 };
 
 // We need a transparent image for "None" options

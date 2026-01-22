@@ -167,6 +167,21 @@
             },
             "accessory": {
               "type": "number"
+            },
+            "layerOrder": {
+              "type": "array",
+              "description": "The display order of the avatar layers.",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "skin",
+                  "hat",
+                  "shirt",
+                  "pants",
+                  "shoes",
+                  "accessory"
+                ]
+              }
             }
           }
         }

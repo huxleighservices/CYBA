@@ -35,10 +35,10 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
-import { User as UserIcon, Loader2, Shield, ArrowLeft, ArrowRight, Dices } from 'lucide-react';
+import { User as UserIcon, Loader2, Shield, ArrowLeft, ArrowRight, ArrowUp, ArrowDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { avatarOptions, AvatarConfig, defaultAvatarConfig } from '@/lib/avatar-assets';
+import { avatarOptions, AvatarConfig, defaultAvatarConfig, AvatarLayer, defaultLayerOrder } from '@/lib/avatar-assets';
 import { AvatarDisplay } from '@/components/AvatarDisplay';
 
 
@@ -59,12 +59,13 @@ function AvatarCustomizer({
     initialConfig,
     onSave,
 }: {
-    initialConfig?: AvatarConfig;
+    initialConfig: AvatarConfig;
     onSave: (newConfig: AvatarConfig) => void;
 }) {
-    const [currentConfig, setCurrentConfig] = useState<AvatarConfig>(initialConfig || defaultAvatarConfig);
+    const [currentConfig, setCurrentConfig] = useState<AvatarConfig>(initialConfig);
+    const [layerOrder, setLayerOrder] = useState<AvatarLayer[]>(initialConfig.layerOrder);
 
-    const handleSelect = (category: keyof AvatarConfig, direction: 'next' | 'prev') => {
+    const handleSelect = (category: AvatarLayer, direction: 'next' | 'prev') => {
         const options = avatarOptions[category];
         const currentIndex = currentConfig[category] || 0;
         let nextIndex;
@@ -77,20 +78,38 @@ function AvatarCustomizer({
 
         setCurrentConfig(prev => ({ ...prev, [category]: nextIndex }));
     };
+
+    const handleMoveLayer = (index: number, direction: 'up' | 'down') => {
+        const newOrder = [...layerOrder];
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+
+        if (targetIndex < 0 || targetIndex >= newOrder.length) {
+            return;
+        }
+
+        [newOrder[index], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[index]];
+        setLayerOrder(newOrder);
+    };
     
+    const handleSaveChanges = () => {
+        onSave({
+            ...currentConfig,
+            layerOrder,
+        });
+    };
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-            <div className="flex flex-col items-center gap-4">
-                <AvatarDisplay avatarConfig={currentConfig} size={256} />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-1 flex flex-col items-center gap-4">
+                <AvatarDisplay avatarConfig={{...currentConfig, layerOrder}} size={256} />
             </div>
-            <div className="space-y-4">
-                {(Object.keys(avatarOptions) as Array<keyof AvatarConfig>).map(category => (
+
+            <div className="lg:col-span-1 space-y-4">
+                 <FormLabel>Items</FormLabel>
+                {(Object.keys(avatarOptions) as AvatarLayer[]).map(category => (
                     <div key={category}>
-                        <div className="flex items-center justify-between mb-2">
-                            <FormLabel className="capitalize">{category}</FormLabel>
-                        </div>
                         <div className="flex items-center justify-between gap-2 p-2 border rounded-md">
+                            <FormLabel className="capitalize w-16">{category}</FormLabel>
                             <Button variant="ghost" size="icon" onClick={() => handleSelect(category, 'prev')}>
                                 <ArrowLeft />
                             </Button>
@@ -104,12 +123,44 @@ function AvatarCustomizer({
                     </div>
                 ))}
             </div>
-            <DialogFooter className="md:col-span-2">
+
+             <div className="lg:col-span-1 space-y-4">
+                <FormLabel>Layer Order</FormLabel>
+                <div className="space-y-2 rounded-lg border p-2 bg-background/50">
+                    {layerOrder.map((layerKey, index) => (
+                        <div key={layerKey} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
+                            <span className="font-medium capitalize">{layerKey}</span>
+                            <div className="flex gap-1">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleMoveLayer(index, 'up')}
+                                    disabled={index === 0}
+                                >
+                                    <ArrowUp className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleMoveLayer(index, 'down')}
+                                    disabled={index === layerOrder.length - 1}
+                                >
+                                    <ArrowDown className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <DialogFooter className="lg:col-span-3">
                  <DialogClose asChild>
                     <Button type="button" variant="secondary">Cancel</Button>
                 </DialogClose>
                 <DialogClose asChild>
-                    <Button onClick={() => onSave(currentConfig)}>Save Avatar</Button>
+                    <Button onClick={handleSaveChanges}>Save Avatar</Button>
                 </DialogClose>
             </DialogFooter>
         </div>
@@ -137,6 +188,14 @@ export default function ProfilePage() {
       username: '',
     },
   });
+
+  const initialConfigWithDefaults = useMemo(() => ({
+    ...defaultAvatarConfig,
+    ...userProfile?.avatarConfig,
+    layerOrder: (userProfile?.avatarConfig?.layerOrder && userProfile.avatarConfig.layerOrder.length === defaultLayerOrder.length) 
+                ? userProfile.avatarConfig.layerOrder 
+                : defaultLayerOrder
+  }), [userProfile]);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -258,14 +317,14 @@ export default function ProfilePage() {
                     <DialogTrigger asChild>
                         <Button variant="secondary" className="w-full">Customize Avatar</Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-3xl">
+                    <DialogContent className="max-w-6xl">
                         <DialogHeader>
                             <DialogTitle>Customize Your Avatar</DialogTitle>
                             <DialogDescription>
-                                Mix and match to create your unique look.
+                                Mix and match to create your unique look. Reorder layers to get it just right.
                             </DialogDescription>
                         </DialogHeader>
-                        <AvatarCustomizer initialConfig={userProfile.avatarConfig} onSave={onAvatarSave} />
+                        <AvatarCustomizer initialConfig={initialConfigWithDefaults} onSave={onAvatarSave} />
                     </DialogContent>
                  </Dialog>
             </CardFooter>
