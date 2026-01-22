@@ -1,9 +1,5 @@
 // This file acts as a centralized library for all avatar customization assets.
-// I'm using placeholder images from `picsum.photos`. You can replace these
-// URLs with your actual asset URLs when they are ready. The structure allows for
-// easy management and expansion of avatar options.
-
-// The `hint` property is for AI to better understand the image content.
+// It explicitly lists available assets to avoid referencing deleted files.
 
 type AvatarOption = {
   name: string;
@@ -42,43 +38,35 @@ export const avatarOptions: AvatarOptions = {
   ],
   hat: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
-    ...Array.from({ length: 10 }, (_, i) => ({
-      name: `Hat ${i + 1}`,
-      url: `/avatar/hat/HAT${String(i + 1).padStart(4, '0')}.png`,
-      hint: 'avatar hat',
-    })),
+    { name: 'Hat 1', url: '/avatar/hat/HAT0001.png', hint: 'avatar hat' },
+    { name: 'Hat 2', url: '/avatar/hat/HAT0002.png', hint: 'avatar hat' },
+    { name: 'Hat 4', url: '/avatar/hat/HAT0004.png', hint: 'avatar hat' },
+    { name: 'Hat 5', url: '/avatar/hat/HAT0005.png', hint: 'avatar hat' },
+    { name: 'Hat 7', url: '/avatar/hat/HAT0007.png', hint: 'avatar hat' },
   ],
   shirt: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
-    ...Array.from({ length: 10 }, (_, i) => ({
-      name: `Shirt ${i + 1}`,
-      url: `/avatar/shirt/SHIRT${String(i + 1).padStart(4, '0')}.png`,
-      hint: `avatar shirt ${i + 1}`,
-    })),
+    { name: 'Shirt 1', url: '/avatar/shirt/SHIRT0001.png', hint: 'avatar shirt' },
+    { name: 'Shirt 2', url: '/avatar/shirt/SHIRT0002.png', hint: 'avatar shirt' },
+    { name: 'Shirt 4', url: '/avatar/shirt/SHIRT0004.png', hint: 'avatar shirt' },
+    { name: 'Shirt 6', url: '/avatar/shirt/SHIRT0006.png', hint: 'avatar shirt' },
   ],
   pants: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
-    ...Array.from({ length: 10 }, (_, i) => ({
-      name: `Pants ${i + 1}`,
-      url: `/avatar/pants/PANTS${String(i + 1).padStart(4, '0')}.png`,
-      hint: 'avatar pants',
-    })),
+    { name: 'Pants 1', url: '/avatar/pants/PANTS0001.png', hint: 'avatar pants' },
+    { name: 'Pants 2', url: '/avatar/pants/PANTS0002.png', hint: 'avatar pants' },
+    { name: 'Pants 3', url: '/avatar/pants/PANTS0003.png', hint: 'avatar pants' },
   ],
   shoes: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
-    ...Array.from({ length: 10 }, (_, i) => ({
-      name: `Shoes ${i + 1}`,
-      url: `/avatar/shoes/SHOES${String(i + 1).padStart(4, '0')}.png`,
-      hint: 'avatar shoes',
-    })),
+    { name: 'Shoes 1', url: '/avatar/shoes/SHOES0001.png', hint: 'avatar shoes' },
+    { name: 'Shoes 3', url: '/avatar/shoes/SHOES0003.png', hint: 'avatar shoes' },
+    { name: 'Shoes 4', url: '/avatar/shoes/SHOES0004.png', hint: 'avatar shoes' },
   ],
   accessory: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
-    ...Array.from({ length: 10 }, (_, i) => ({
-      name: `Accessory ${i + 1}`,
-      url: `/avatar/accessory/ITEM${String(i + 1).padStart(4, '0')}.png`,
-      hint: 'avatar accessory',
-    })),
+    { name: 'Accessory 1', url: '/avatar/accessory/ITEM0001.png', hint: 'avatar accessory' },
+    { name: 'Accessory 2', url: '/avatar/accessory/ITEM0002.png', hint: 'avatar accessory' },
   ],
 };
 
@@ -100,8 +88,3 @@ export const defaultAvatarConfig: AvatarConfig = {
   accessory: 0,
   layerOrder: defaultLayerOrder,
 };
-
-// We need a transparent image for "None" options
-// This requires creating a file in `public/images`
-// I will assume this file will be created. If not, this might result in a 404.
-// This is a limitation I have as an AI.
