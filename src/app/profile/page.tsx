@@ -99,36 +99,26 @@ function AvatarCustomizer({
     };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
             
             {/* Column 1: Avatar Preview */}
             <div className="lg:col-span-1 flex justify-center items-center">
                 <AvatarDisplay avatarConfig={{...currentConfig, layerOrder}} size={256} />
             </div>
 
-            {/* Column 2: Item Selection */}
-            <div className="lg:col-span-1 space-y-3">
-                {(Object.keys(avatarOptions) as AvatarLayer[]).map(category => (
-                    <div key={category} className="flex items-center justify-between gap-4">
+            {/* Column 2: Controls */}
+            <div className="lg:col-span-2 space-y-2">
+                {layerOrder.map((category, index) => (
+                    <div key={category} className="flex items-center justify-between gap-2 p-2 rounded-md border bg-muted/20">
                         <span className="font-medium capitalize w-20 flex-shrink-0">{category}</span>
                         <div className="flex items-center justify-end flex-grow">
-                            <Button variant="ghost" size="icon" onClick={() => handleSelect(category, 'prev')}>
+                            <Button variant="ghost" size="sm" onClick={() => handleSelect(category, 'prev')}>
                                 <ArrowLeft className="h-5 w-5" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleSelect(category, 'next')}>
+                            <Button variant="ghost" size="sm" onClick={() => handleSelect(category, 'next')}>
                                 <ArrowRight className="h-5 w-5" />
                             </Button>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {/* Column 3: Layer Order */}
-            <div className="lg:col-span-1 space-y-2">
-                {layerOrder.map((layerKey, index) => (
-                    <div key={layerKey} className="flex items-center justify-between">
-                        <span className="font-medium capitalize">{layerKey}</span>
-                        <div className="flex items-center">
+                            <div className="w-px h-6 bg-border mx-2" />
                             <Button
                                 type="button"
                                 variant="ghost"
