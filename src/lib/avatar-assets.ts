@@ -75,6 +75,9 @@ export const avatarOptions: AvatarOptions = {
     { name: 'Accessory 1', url: '/avatar/accessory/ITEM0001.png', hint: 'avatar accessory' },
     { name: 'Accessory 2', url: '/avatar/accessory/ITEM0002.png', hint: 'avatar accessory' },
     { name: 'Accessory 3', url: '/avatar/accessory/ITEM0003.png', hint: 'avatar accessory' },
+    { name: 'Accessory 4', url: '/avatar/accessory/ITEM0004.png', hint: 'avatar accessory' },
+    { name: 'Accessory 5', url: '/avatar/accessory/ITEM0005.png', hint: 'avatar accessory' },
+    { name: 'Accessory 6', url: '/avatar/accessory/ITEM0006.png', hint: 'avatar accessory' },
   ],
 };
 
