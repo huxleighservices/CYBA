@@ -44,21 +44,19 @@ export const avatarOptions: AvatarOptions = {
     { name: 'Hat 4', url: '/avatar/hat/HAT0004.png', hint: 'avatar hat' },
     { name: 'Hat 5', url: '/avatar/hat/HAT0005.png', hint: 'avatar hat' },
     { name: 'Hat 6', url: '/avatar/hat/HAT0006.png', hint: 'avatar hat' },
-    { name: 'Hat 7', url: '/avatar/hat/HAT0007.png', hint: 'avatar hat' },
   ],
   shirt: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
     { name: 'Shirt 1', url: '/avatar/shirt/SHIRT0001.png', hint: 'avatar shirt' },
-    { name: 'PGH Shirt', url: '/avatar/shirt/SHIRT0003.png', hint: 'pittsburgh shirt' },
-    { name: 'Shirt 4', url: '/avatar/shirt/SHIRT0004.png', hint: 'avatar shirt' },
-    { name: 'Shirt 6', url: '/avatar/shirt/SHIRT0006.png', hint: 'avatar shirt' },
+    { name: 'Shirt 5', url: '/avatar/shirt/SHIRT0005.png', hint: 'avatar shirt' },
+    { name: 'Shirt 7', url: '/avatar/shirt/SHIRT0007.png', hint: 'avatar shirt' },
+    { name: 'Shirt 8', url: '/avatar/shirt/SHIRT0008.png', hint: 'avatar shirt' },
   ],
   pants: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
     { name: 'Pants 1', url: '/avatar/pants/PANTS0001.png', hint: 'avatar pants' },
     { name: 'Pants 2', url: '/avatar/pants/PANTS0002.png', hint: 'avatar pants' },
     { name: 'Pants 3', url: '/avatar/pants/PANTS0003.png', hint: 'avatar pants' },
-    { name: 'Pants 4', url: '/avatar/pants/PANTS0004.png', hint: 'avatar pants' },
   ],
   shoes: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
@@ -68,7 +66,6 @@ export const avatarOptions: AvatarOptions = {
     { name: 'Shoes 4', url: '/avatar/shoes/SHOES0004.png', hint: 'avatar shoes' },
     { name: 'Shoes 5', url: '/avatar/shoes/SHOES0005.png', hint: 'avatar shoes' },
     { name: 'Shoes 6', url: '/avatar/shoes/SHOES0006.png', hint: 'avatar shoes' },
-    { name: 'Shoes 7', url: '/avatar/shoes/SHOES0007.png', hint: 'avatar shoes' },
   ],
   accessory: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
