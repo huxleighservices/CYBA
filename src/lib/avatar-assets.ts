@@ -49,10 +49,8 @@ export const avatarOptions: AvatarOptions = {
   shirt: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
     { name: 'Shirt 1', url: '/avatar/shirt/SHIRT0001.png', hint: 'avatar shirt' },
-    { name: 'Shirt 2', url: '/avatar/shirt/SHIRT0002.png', hint: 'avatar shirt' },
-    { name: 'Shirt 3', url: '/avatar/shirt/SHIRT0003.png', hint: 'avatar shirt' },
+    { name: 'PGH Shirt', url: '/avatar/shirt/SHIRT0003.png', hint: 'pittsburgh shirt' },
     { name: 'Shirt 4', url: '/avatar/shirt/SHIRT0004.png', hint: 'avatar shirt' },
-    { name: 'Shirt 5', url: '/avatar/shirt/SHIRT0005.png', hint: 'avatar shirt' },
     { name: 'Shirt 6', url: '/avatar/shirt/SHIRT0006.png', hint: 'avatar shirt' },
   ],
   pants: [
@@ -69,6 +67,8 @@ export const avatarOptions: AvatarOptions = {
     { name: 'Shoes 3', url: '/avatar/shoes/SHOES0003.png', hint: 'avatar shoes' },
     { name: 'Shoes 4', url: '/avatar/shoes/SHOES0004.png', hint: 'avatar shoes' },
     { name: 'Shoes 5', url: '/avatar/shoes/SHOES0005.png', hint: 'avatar shoes' },
+    { name: 'Shoes 6', url: '/avatar/shoes/SHOES0006.png', hint: 'avatar shoes' },
+    { name: 'Shoes 7', url: '/avatar/shoes/SHOES0007.png', hint: 'avatar shoes' },
   ],
   accessory: [
     { name: 'None', url: '/images/transparent.png', hint: 'nothing empty' },
