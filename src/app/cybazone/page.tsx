@@ -120,7 +120,7 @@ export default function CybazonePage() {
             <DialogTitle>
               <span className="sr-only">CYBAZONE</span>
               <Image
-                src="https://preview.redd.it/cybazone-logo-v0-weh6u4jcz4kg1.png?width=1080&crop=smart&auto=webp&s=170ecdc62fb796fd7dffe8e8c4e00ff0aa04f3a0"
+                src="https://preview.redd.it/cybazone-2-v0-pg6fhpkr65kg1.png?width=1080&crop=smart&auto=webp&s=6df4067e5f00ad1660deb7f6b1b13dcb326f26f0"
                 alt="CYBAZONE Logo"
                 width={180}
                 height={30}
