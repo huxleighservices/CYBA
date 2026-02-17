@@ -13,7 +13,13 @@ import {
   arrayUnion,
   arrayRemove,
   increment,
+  setDoc,
 } from 'firebase/firestore';
+import {
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+} from 'firebase/storage';
 import {
   Loader2,
   Home,
@@ -58,6 +64,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { Progress } from '@/components/ui/progress';
 
 // --- Types & Schemas ---
 
@@ -68,7 +75,7 @@ type UserProfile = {
 
 const postSchema = z.object({
   content: z.string().min(1, 'Post cannot be empty.').max(500, 'Post is too long.'),
-  imageUrl: z.string().url('Please enter a valid URL.').optional().or(z.literal('')),
+  image: z.custom<FileList>().optional(),
 });
 type PostFormValues = z.infer<typeof postSchema>;
 
@@ -221,34 +228,52 @@ function CybazoneMainView() {
 // --- Create Post Form ---
 
 function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserProfile }) {
-  const { firestore } = useFirebase();
+  const { firestore, storage } = useFirebase();
   const { toast } = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  
   const form = useForm<PostFormValues>({
     resolver: zodResolver(postSchema),
-    defaultValues: { content: '', imageUrl: '' },
+    defaultValues: { content: '', image: undefined },
   });
 
   const onSubmit = async (values: PostFormValues) => {
-    if (!user || !userProfile) return;
+    if (!user || !userProfile || !storage) return;
+
+    setIsUploading(true);
+    const postRef = doc(collection(firestore, 'cybazone_posts'));
+    let imageUrl: string | null = null;
+    const imageFile = values.image?.[0];
 
     try {
-      await addDoc(collection(firestore, 'cybazone_posts'), {
+      if (imageFile) {
+        const filePath = `cybazone_posts/${user.uid}/${postRef.id}/${imageFile.name}`;
+        const fileRef = storageRef(storage, filePath);
+        await uploadBytes(fileRef, imageFile);
+        imageUrl = await getDownloadURL(fileRef);
+      }
+
+      await setDoc(postRef, {
         authorId: user.uid,
         authorUsername: userProfile.username,
         authorAvatar: userProfile.avatarConfig || {},
         content: values.content,
-        imageUrl: values.imageUrl || null,
+        imageUrl: imageUrl,
         timestamp: serverTimestamp(),
         likeCount: 0,
         likedBy: [],
       });
+      
       toast({ title: 'Posted!', description: 'Your post is now live in the CYBAZONE.' });
       form.reset();
       setIsExpanded(false);
+
     } catch (error) {
       console.error('Error creating post:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not create post.' });
+      toast({ variant: 'destructive', title: 'Upload Error', description: 'Could not create post. The file might be too large or another error occurred.' });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -269,7 +294,7 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
                         <Textarea
                           {...field}
                           placeholder={`What's on your mind, ${userProfile.username}?`}
-                          className="text-base border-none focus-visible:ring-0 shadow-none"
+                          className="text-base border-none focus-visible:ring-0 shadow-none p-0"
                           onFocus={() => setIsExpanded(true)}
                         />
                       </FormControl>
@@ -282,20 +307,28 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
                     <>
                          <FormField
                             control={form.control}
-                            name="imageUrl"
-                            render={({ field }) => (
-                                <FormItem>
+                            name="image"
+                            render={({ field: { onChange, value, ...rest } }) => (
+                              <FormItem>
+                                <FormLabel>Image or Video</FormLabel>
                                 <FormControl>
-                                    <Input {...field} placeholder="Image URL (optional)" className="text-sm" />
+                                  <Input 
+                                    type="file" 
+                                    accept="image/*,video/*"
+                                    onChange={(e) => onChange(e.target.files)}
+                                    className="text-sm" 
+                                    {...rest}
+                                  />
                                 </FormControl>
+                                <FormDescription>Max file size: 25MB</FormDescription>
                                 <FormMessage />
-                                </FormItem>
+                              </FormItem>
                             )}
                         />
                         <div className="flex justify-end">
-                            <Button type="submit" disabled={form.formState.isSubmitting}>
-                                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Post
+                            <Button type="submit" disabled={isUploading}>
+                                {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {isUploading ? 'Posting...' : 'Post'}
                             </Button>
                         </div>
                     </>
@@ -384,13 +417,21 @@ function PostCard({ post }: { post: any }) {
   
         {post.imageUrl && (
           <div className="bg-gray-50">
-            <Image
-              src={post.imageUrl}
-              alt="Post image"
-              width={800}
-              height={800}
-              className="w-full h-auto max-h-[60vh] object-contain"
-            />
+             {post.imageUrl.includes('.mp4') || post.imageUrl.includes('.webm') ? (
+              <video
+                src={post.imageUrl}
+                controls
+                className="w-full h-auto max-h-[60vh] object-contain"
+              />
+            ) : (
+              <Image
+                src={post.imageUrl}
+                alt="Post image"
+                width={800}
+                height={800}
+                className="w-full h-auto max-h-[60vh] object-contain"
+              />
+            )}
           </div>
         )}
         
