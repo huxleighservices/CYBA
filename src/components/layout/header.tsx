@@ -9,12 +9,12 @@ import {
   Youtube,
   Facebook,
   Home,
-  Users,
   ShoppingBag,
   PenSquare,
   Trophy,
   Menu,
   Sparkles,
+  Orbit,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
@@ -42,10 +42,10 @@ import {
 
 const navLinks = [
   { href: '/', label: 'Home', icon: Home },
-  { href: '/membership', label: 'Membership', icon: Users },
+  { href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
+  { href: '/cybazone', label: 'CYBAZONE', icon: Orbit },
   { href: '/merch', label: 'Merch', icon: ShoppingBag },
   { href: '/blog', label: 'Blog', icon: PenSquare },
-  { href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   { href: '/extras', label: 'Boosts/Rewards', icon: Sparkles },
 ];
 
