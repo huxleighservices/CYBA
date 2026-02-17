@@ -3,7 +3,15 @@
 import { useState } from 'react';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import { Loader2 } from 'lucide-react';
+import {
+  Loader2,
+  Home,
+  Compass,
+  Heart,
+  ShoppingBag,
+  Megaphone,
+  User as ProfileIcon,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import {
@@ -21,6 +29,31 @@ type UserProfile = {
     avatarConfig?: AvatarConfig;
 };
 
+function CybazoneHeader() {
+  const navItems = [
+    { icon: Home, label: 'Feed' },
+    { icon: Compass, label: 'Discover' },
+    { icon: Heart, label: 'Engagement' },
+    { icon: ShoppingBag, label: 'Shop' },
+    { icon: Megaphone, label: 'Ads' },
+    { icon: ProfileIcon, label: 'Profile' },
+  ];
+
+  return (
+    <header className="w-full bg-white border-b border-gray-200 px-4 py-2 flex-shrink-0">
+      <nav className="flex justify-around items-center">
+        {navItems.map((item, index) => (
+          <Button key={index} variant="ghost" className="flex flex-col h-auto p-2 text-gray-500 hover:text-primary hover:bg-primary/10">
+            <item.icon className="h-6 w-6" />
+            <span className="text-xs mt-1">{item.label}</span>
+          </Button>
+        ))}
+      </nav>
+    </header>
+  );
+}
+
+
 function LoggedInView() {
     const { firestore, user } = useFirebase();
     const userDocRef = useMemoFirebase(
@@ -34,18 +67,22 @@ function LoggedInView() {
     }
 
     return (
-        <div className="text-center">
-            {userProfile && (
-                <div className="mb-8 flex justify-center">
-                    <AvatarDisplay avatarConfig={userProfile.avatarConfig} size={160} />
-                </div>
-            )}
-            <h2 className="text-4xl font-bold text-black">
-                Welcome to the CYBAZONE, {userProfile?.username || 'CYBA'}!
-            </h2>
-            <p className="text-gray-600 mt-2">
-                The future of creative collaboration is here.
-            </p>
+        <div className="h-full w-full flex flex-col bg-white">
+            <CybazoneHeader />
+            <main className="flex-grow flex flex-col items-center justify-center text-center p-8 overflow-y-auto">
+                {userProfile && (
+                    <div className="mb-8 flex justify-center">
+                        <AvatarDisplay avatarConfig={userProfile.avatarConfig} size={160} />
+                    </div>
+                )}
+                <h2 className="text-4xl font-bold text-black">
+                    Welcome to the CYBAZONE, {userProfile?.username || 'CYBA'}!
+                </h2>
+                <p className="text-gray-600 mt-2">
+                    The future of creative collaboration is here.
+                </p>
+                 <p className="text-gray-400 mt-8">(Content for the selected feed will go here)</p>
+            </main>
         </div>
   );
 }
@@ -102,7 +139,7 @@ export default function CybazonePage() {
             </DialogTitle>
           </DialogHeader>
           
-          <div className="flex-grow flex items-center justify-center p-8 overflow-y-auto">
+          <div className="flex-grow flex items-center justify-center overflow-y-auto">
             {isUserLoading ? (
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
             ) : user ? (
