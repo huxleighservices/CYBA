@@ -538,7 +538,7 @@ function CommentSection({ post }: { post: any }) {
                 render={({ field }) => (
                     <FormItem className="flex-grow">
                         <FormControl>
-                            <Input {...field} placeholder="Write a comment..." className="text-sm rounded-full bg-gray-50" />
+                            <Input {...field} placeholder="Write a comment..." className="text-sm rounded-full bg-gray-50 text-black" />
                         </FormControl>
                     </FormItem>
                 )}
