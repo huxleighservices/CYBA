@@ -328,6 +328,89 @@
         "timestamp"
       ]
     },
+    "CybazonePost": {
+      "title": "CybazonePost",
+      "type": "object",
+      "description": "Represents a post in the CYBAZONE social feed.",
+      "properties": {
+        "authorId": {
+          "type": "string",
+          "description": "The UID of the user who created the post."
+        },
+        "authorUsername": {
+          "type": "string",
+          "description": "The username of the post's author."
+        },
+        "authorAvatar": {
+          "type": "object",
+          "description": "The avatar configuration of the post's author."
+        },
+        "content": {
+          "type": "string",
+          "description": "The text content of the post."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "An optional URL for an image in the post.",
+          "format": "uri"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The server timestamp of when the post was created.",
+          "format": "date-time"
+        },
+        "likeCount": {
+          "type": "number",
+          "description": "The number of likes the post has received."
+        },
+        "likedBy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "An array of user UIDs who have liked the post."
+        }
+      },
+      "required": [
+        "authorId",
+        "authorUsername",
+        "content",
+        "timestamp"
+      ]
+    },
+    "CybazoneComment": {
+      "title": "CybazoneComment",
+      "type": "object",
+      "description": "Represents a comment on a Cybazone post.",
+      "properties": {
+        "postId": {
+          "type": "string"
+        },
+        "authorId": {
+          "type": "string"
+        },
+        "authorUsername": {
+          "type": "string"
+        },
+        "authorAvatar": {
+          "type": "object"
+        },
+        "content": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "postId",
+        "authorId",
+        "authorUsername",
+        "content",
+        "timestamp"
+      ]
+    },
     "Category": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Category",
@@ -505,6 +588,26 @@
               "description": "The unique identifier of the forum post."
             }
           ]
+        }
+      },
+      {
+        "path": "/cybazone_posts/{postId}",
+        "definition": {
+          "entityName": "CybazonePost",
+          "schema": {
+            "$ref": "#/backend/entities/CybazonePost"
+          },
+          "description": "Stores all posts for the main CYBAZONE feed."
+        }
+      },
+      {
+        "path": "/cybazone_posts/{postId}/comments/{commentId}",
+        "definition": {
+          "entityName": "CybazoneComment",
+          "schema": {
+            "$ref": "#/backend/entities/CybazoneComment"
+          },
+          "description": "Stores comments for a specific post."
         }
       },
       {
