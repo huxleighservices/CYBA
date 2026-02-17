@@ -39,7 +39,13 @@ const nextConfig: NextConfig = {
         hostname: 'i.natgeofe.com',
         port: '',
         pathname: '/**',
-      }
+      },
+      {
+        protocol: 'https',
+        hostname: 'preview.redd.it',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   serverActions: {

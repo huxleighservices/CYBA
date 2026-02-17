@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { AvatarDisplay } from '@/components/AvatarDisplay';
 import type { AvatarConfig } from '@/lib/avatar-assets';
+import Image from 'next/image';
 
 type UserProfile = {
     username: string;
@@ -90,8 +91,15 @@ export default function CybazonePage() {
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="bg-white max-w-none w-[calc(100%-2rem)] sm:w-[95vw] h-[90vh] flex flex-col p-0 text-black rounded-lg shadow-2xl border-primary border-2">
            <DialogHeader className="p-4 border-b border-gray-200 flex flex-row items-center justify-between flex-shrink-0">
-            <DialogTitle className="text-2xl font-bold text-primary tracking-widest">
-                CYBAZONE
+            <DialogTitle>
+                <span className="sr-only">CYBAZONE</span>
+                <Image
+                    src="https://preview.redd.it/cybazone-logo-v0-weh6u4jcz4kg1.png?width=1080&crop=smart&auto=webp&s=170ecdc62fb796fd7dffe8e8c4e00ff0aa04f3a0"
+                    alt="CYBAZONE Logo"
+                    width={180}
+                    height={30}
+                    priority
+                />
             </DialogTitle>
             <DialogClose asChild>
               <Button variant="ghost" size="icon" className="text-gray-500 hover:text-black">
