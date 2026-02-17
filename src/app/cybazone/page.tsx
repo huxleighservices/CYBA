@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useFirebase, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import {
   doc,
@@ -207,7 +207,7 @@ function CybazoneMainView() {
   return (
     <div className="h-full w-full flex flex-col bg-white">
       <CybazoneHeader />
-      <main className="flex-grow flex flex-col overflow-y-auto bg-gray-50">
+      <main className="flex-grow flex flex-col overflow-y-auto bg-white">
         <div className="p-4 sm:p-6 md:p-8">
             {user && userProfile && <CreatePostForm user={user} userProfile={userProfile} />}
             <Separator className="my-8" />
@@ -253,7 +253,7 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
   };
 
   return (
-    <Card className="shadow-md border-gray-200">
+    <Card className="shadow-md border-gray-200 bg-white">
       <CardContent className="p-4">
         <div className="flex gap-4 items-start">
           <AvatarDisplay avatarConfig={userProfile.avatarConfig} size={40} />
@@ -269,7 +269,7 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
                         <Textarea
                           {...field}
                           placeholder={`What's on your mind, ${userProfile.username}?`}
-                          className="text-base border-none focus-visible:ring-0 shadow-none p-0"
+                          className="text-base border-none focus-visible:ring-0 shadow-none"
                           onFocus={() => setIsExpanded(true)}
                         />
                       </FormControl>
@@ -370,7 +370,7 @@ function PostCard({ post }: { post: any }) {
     };
   
     return (
-      <Card className="shadow-md border-gray-200 overflow-hidden">
+      <Card className="shadow-md border-gray-200 overflow-hidden bg-white">
         <CardContent className="p-5">
           <div className="flex gap-4 items-start mb-4">
             <AvatarDisplay avatarConfig={post.authorAvatar} size={40} />
@@ -383,7 +383,7 @@ function PostCard({ post }: { post: any }) {
         </CardContent>
   
         {post.imageUrl && (
-          <div className="bg-gray-100">
+          <div className="bg-gray-50">
             <Image
               src={post.imageUrl}
               alt="Post image"
@@ -475,13 +475,13 @@ function CommentSection({ post }: { post: any }) {
     };
   
     return (
-      <div className="bg-gray-50 px-5 py-4 border-t">
+      <div className="bg-white px-5 py-4 border-t">
         {isLoading && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
         <div className="space-y-4 mb-4">
             {comments?.map(comment => (
                 <div key={comment.id} className="flex gap-3 items-start">
                     <AvatarDisplay avatarConfig={comment.authorAvatar} size={32} />
-                    <div className="bg-gray-100 rounded-lg px-3 py-2 text-sm w-full">
+                    <div className="bg-gray-50 rounded-lg px-3 py-2 text-sm w-full">
                         <span className="font-bold text-black mr-2">{comment.authorUsername}</span>
                         <p className="inline text-gray-800">{comment.content}</p>
                     </div>
@@ -497,7 +497,7 @@ function CommentSection({ post }: { post: any }) {
                 render={({ field }) => (
                     <FormItem className="flex-grow">
                         <FormControl>
-                            <Input {...field} placeholder="Write a comment..." className="text-sm rounded-full bg-gray-100" />
+                            <Input {...field} placeholder="Write a comment..." className="text-sm rounded-full bg-gray-50" />
                         </FormControl>
                     </FormItem>
                 )}
