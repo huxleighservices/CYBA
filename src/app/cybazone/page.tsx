@@ -294,7 +294,7 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
                         <Textarea
                           {...field}
                           placeholder={`What's on your mind, ${userProfile.username}?`}
-                          className="text-base border-none focus-visible:ring-0 shadow-none p-0"
+                          className="text-base border-none focus-visible:ring-0 shadow-none"
                           onFocus={() => setIsExpanded(true)}
                         />
                       </FormControl>
