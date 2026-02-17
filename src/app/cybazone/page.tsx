@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import { Loader2, X } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import {
@@ -11,7 +11,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogClose,
 } from '@/components/ui/dialog';
 import { AvatarDisplay } from '@/components/AvatarDisplay';
 import type { AvatarConfig } from '@/lib/avatar-assets';
@@ -101,11 +100,6 @@ export default function CybazonePage() {
                     priority
                 />
             </DialogTitle>
-            <DialogClose asChild>
-              <Button variant="ghost" size="icon" className="text-gray-500 hover:text-black">
-                <X className="h-6 w-6" />
-              </Button>
-            </DialogClose>
           </DialogHeader>
           
           <div className="flex-grow flex items-center justify-center p-8 overflow-y-auto">
