@@ -6,16 +6,13 @@ import { v4 as uuidv4 } from 'uuid';
 // --- Firebase Admin Initialization ---
 // This safely initializes the admin SDK or gets the existing instance.
 function initializeFirebaseAdmin(): App {
-  const S_BUCKET = "studio-9029052952-9df3f.appspot.com";
   // When running in a Google Cloud environment (like Firebase Studio or App Hosting),
-  // the Admin SDK automatically detects service account credentials.
-  // We only need to provide the storage bucket.
+  // the Admin SDK automatically detects service account credentials and other settings.
+  // We can call initializeApp() without arguments.
   if (getApps().length > 0) {
     return getApp();
   }
-  return initializeApp({
-    storageBucket: S_BUCKET,
-  });
+  return initializeApp();
 }
 
 export async function POST(request: NextRequest) {

@@ -20,16 +20,12 @@ interface UserDoc {
 // --- Firebase Admin Initialization ---
 // Initialize Firebase Admin SDK if not already done
 function initializeFirebaseAdmin(): App {
-  const S_BUCKET = "studio-9029052952-9df3f.appspot.com";
   // When running in a Google Cloud environment (like Firebase Studio or App Hosting),
   // the Admin SDK automatically detects service account credentials.
-  // We only need to provide the storage bucket for Storage operations.
   if (getApps().length) {
     return getApp();
   }
-  return initializeApp({
-    storageBucket: S_BUCKET,
-  });
+  return initializeApp();
 }
 
 // --- Google Sheets API Helper ---
