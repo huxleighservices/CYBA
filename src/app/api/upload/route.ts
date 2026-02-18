@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, App, cert } from 'firebase-admin/app';
+import { initializeApp, getApps, App, getApp } from 'firebase-admin/app';
 import { getStorage } from 'firebase-admin/storage';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -7,17 +7,13 @@ import { v4 as uuidv4 } from 'uuid';
 // This safely initializes the admin SDK or gets the existing instance.
 function initializeFirebaseAdmin(): App {
   const S_BUCKET = "studio-9029052952-9df3f.appspot.com";
-  const existingApps = getApps();
-  if (existingApps.length > 0) {
-    return existingApps[0];
+  // When running in a Google Cloud environment (like Firebase Studio or App Hosting),
+  // the Admin SDK automatically detects service account credentials.
+  // We only need to provide the storage bucket.
+  if (getApps().length > 0) {
+    return getApp();
   }
-  const adminCredentialsStr = process.env.GOOGLE_SHEETS_CREDENTIALS;
-  if (!adminCredentialsStr) {
-    throw new Error('GOOGLE_SHEETS_CREDENTIALS (for Firebase Admin) is not configured in environment variables.');
-  }
-  const adminCredentials = JSON.parse(adminCredentialsStr);
   return initializeApp({
-    credential: cert(adminCredentials),
     storageBucket: S_BUCKET,
   });
 }

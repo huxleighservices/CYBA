@@ -1,7 +1,7 @@
 // src/app/api/sync-leaderboard/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
-import { initializeApp, getApps, App, cert } from 'firebase-admin/app';
+import { initializeApp, getApps, App, getApp } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 
 // --- Types ---
@@ -20,16 +20,15 @@ interface UserDoc {
 // --- Firebase Admin Initialization ---
 // Initialize Firebase Admin SDK if not already done
 function initializeFirebaseAdmin(): App {
-  if (getApps().length > 0) {
-    return getApps()[0];
+  const S_BUCKET = "studio-9029052952-9df3f.appspot.com";
+  // When running in a Google Cloud environment (like Firebase Studio or App Hosting),
+  // the Admin SDK automatically detects service account credentials.
+  // We only need to provide the storage bucket for Storage operations.
+  if (getApps().length) {
+    return getApp();
   }
-  const adminCredentialsStr = process.env.GOOGLE_SHEETS_CREDENTIALS;
-  if (!adminCredentialsStr) {
-    throw new Error('GOOGLE_SHEETS_CREDENTIALS (for Firebase Admin) not configured');
-  }
-  const adminCredentials = JSON.parse(adminCredentialsStr);
   return initializeApp({
-    credential: cert(adminCredentials),
+    storageBucket: S_BUCKET,
   });
 }
 
