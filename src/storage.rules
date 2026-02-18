@@ -1,0 +1,17 @@
+rules_version = '2';
+
+// These rules are for Firebase Storage and control who can read from and write
+// to your storage bucket. They are different from CORS browser policies.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      // Allow anyone to read files. This is common for public media like
+      // post images and avatars.
+      allow read;
+      
+      // Only allow users who are signed in (request.auth != null) to upload
+      // files. Also, enforce a size limit of 25MB to prevent abuse.
+      allow write: if request.auth != null && request.resource.size < 25 * 1024 * 1024;
+    }
+  }
+}
