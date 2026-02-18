@@ -242,28 +242,42 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
     if (!user || !userProfile || !storage) return;
 
     setIsUploading(true);
-    const postRef = doc(collection(firestore, 'cybazone_posts'));
-    let imageUrl: string | null = null;
-    const imageFile = values.image?.[0];
-
+    
     try {
+      const imageFile = values.image?.[0];
+
       if (imageFile) {
+        // Logic for posts with an image
+        const postRef = doc(collection(firestore, 'cybazone_posts'));
         const filePath = `cybazone_posts/${user.uid}/${postRef.id}/${imageFile.name}`;
         const fileRef = storageRef(storage, filePath);
+        
         await uploadBytes(fileRef, imageFile);
-        imageUrl = await getDownloadURL(fileRef);
-      }
+        const imageUrl = await getDownloadURL(fileRef);
 
-      await setDoc(postRef, {
-        authorId: user.uid,
-        authorUsername: userProfile.username,
-        authorAvatar: userProfile.avatarConfig || {},
-        content: values.content,
-        imageUrl: imageUrl,
-        timestamp: serverTimestamp(),
-        likeCount: 0,
-        likedBy: [],
-      });
+        await setDoc(postRef, {
+          authorId: user.uid,
+          authorUsername: userProfile.username,
+          authorAvatar: userProfile.avatarConfig || {},
+          content: values.content,
+          imageUrl: imageUrl,
+          timestamp: serverTimestamp(),
+          likeCount: 0,
+          likedBy: [],
+        });
+      } else {
+        // Logic for text-only posts
+        await addDoc(collection(firestore, 'cybazone_posts'), {
+          authorId: user.uid,
+          authorUsername: userProfile.username,
+          authorAvatar: userProfile.avatarConfig || {},
+          content: values.content,
+          imageUrl: null,
+          timestamp: serverTimestamp(),
+          likeCount: 0,
+          likedBy: [],
+        });
+      }
       
       toast({ title: 'Posted!', description: 'Your post is now live in the CYBAZONE.' });
       form.reset();
