@@ -1,3 +1,4 @@
+
 // src/app/api/sync-leaderboard/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
@@ -25,7 +26,11 @@ function initializeFirebaseAdmin(): App {
   if (getApps().length) {
     return getApp();
   }
-  return initializeApp();
+  // By providing the project ID, we give a hint to the SDK, while still allowing it
+  // to use Application Default Credentials for authentication.
+  return initializeApp({
+    projectId: "studio-9029052952-9df3f"
+  });
 }
 
 // --- Google Sheets API Helper ---

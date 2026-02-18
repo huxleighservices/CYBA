@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeApp, getApps, App, getApp } from 'firebase-admin/app';
 import { getStorage } from 'firebase-admin/storage';
@@ -8,11 +9,14 @@ import { v4 as uuidv4 } from 'uuid';
 function initializeFirebaseAdmin(): App {
   // When running in a Google Cloud environment (like Firebase Studio or App Hosting),
   // the Admin SDK automatically detects service account credentials and other settings.
-  // We can call initializeApp() without arguments.
   if (getApps().length > 0) {
     return getApp();
   }
-  return initializeApp();
+  // By providing the project ID, we give a hint to the SDK, while still allowing it
+  // to use Application Default Credentials for authentication.
+  return initializeApp({
+    projectId: "studio-9029052952-9df3f"
+  });
 }
 
 export async function POST(request: NextRequest) {
