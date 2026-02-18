@@ -16,11 +16,6 @@ import {
   setDoc,
 } from 'firebase/firestore';
 import {
-  ref as storageRef,
-  uploadBytes,
-  getDownloadURL,
-} from 'firebase/storage';
-import {
   Loader2,
   Home,
   Compass,
@@ -228,56 +223,70 @@ function CybazoneMainView() {
 // --- Create Post Form ---
 
 function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserProfile }) {
-  const { firestore, storage } = useFirebase();
+  const { firestore } = useFirebase();
   const { toast } = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   
   const form = useForm<PostFormValues>({
     resolver: zodResolver(postSchema),
     defaultValues: { content: '', image: undefined },
   });
 
+  const toBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+    });
+
   const onSubmit = async (values: PostFormValues) => {
-    if (!user || !userProfile || !storage) return;
+    if (!user || !userProfile) return;
 
     setIsUploading(true);
+    setUploadProgress(null);
     
     try {
+      let imageUrl: string | null = null;
       const imageFile = values.image?.[0];
 
       if (imageFile) {
-        // Logic for posts with an image
-        const postRef = doc(collection(firestore, 'cybazone_posts'));
-        const filePath = `cybazone_posts/${user.uid}/${postRef.id}/${imageFile.name}`;
-        const fileRef = storageRef(storage, filePath);
-        
-        await uploadBytes(fileRef, imageFile);
-        const imageUrl = await getDownloadURL(fileRef);
+        setUploadProgress(10);
+        const fileDataUri = await toBase64(imageFile);
+        setUploadProgress(50);
 
-        await setDoc(postRef, {
-          authorId: user.uid,
-          authorUsername: userProfile.username,
-          authorAvatar: userProfile.avatarConfig || {},
-          content: values.content,
-          imageUrl: imageUrl,
-          timestamp: serverTimestamp(),
-          likeCount: 0,
-          likedBy: [],
+        const response = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                fileDataUri: fileDataUri,
+                fileName: imageFile.name,
+                fileType: imageFile.type,
+            }),
         });
-      } else {
-        // Logic for text-only posts
-        await addDoc(collection(firestore, 'cybazone_posts'), {
-          authorId: user.uid,
-          authorUsername: userProfile.username,
-          authorAvatar: userProfile.avatarConfig || {},
-          content: values.content,
-          imageUrl: null,
-          timestamp: serverTimestamp(),
-          likeCount: 0,
-          likedBy: [],
-        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ details: 'Server returned non-JSON error.' }));
+            throw new Error(errorData.details || 'Server failed to upload file.');
+        }
+
+        const { imageUrl: uploadedUrl } = await response.json();
+        imageUrl = uploadedUrl;
+        setUploadProgress(100);
       }
+
+      await addDoc(collection(firestore, 'cybazone_posts'), {
+        authorId: user.uid,
+        authorUsername: userProfile.username,
+        authorAvatar: userProfile.avatarConfig || {},
+        content: values.content,
+        imageUrl: imageUrl,
+        timestamp: serverTimestamp(),
+        likeCount: 0,
+        likedBy: [],
+      });
       
       toast({ title: 'Posted!', description: 'Your post is now live in the CYBAZONE.' });
       form.reset();
@@ -285,9 +294,10 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
 
     } catch (error) {
       console.error('Error creating post:', error);
-      toast({ variant: 'destructive', title: 'Upload Error', description: 'Could not create post. The file might be too large or another error occurred.' });
+      toast({ variant: 'destructive', title: 'Post Error', description: error instanceof Error ? error.message : 'Could not create post. Please try again.' });
     } finally {
       setIsUploading(false);
+      setUploadProgress(null);
     }
   };
 
@@ -308,7 +318,7 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
                         <Textarea
                           {...field}
                           placeholder={`What's on your mind, ${userProfile.username}?`}
-                          className="text-base border-none focus-visible:ring-0 shadow-none"
+                          className="text-base border-none focus-visible:ring-0 shadow-none p-0"
                           onFocus={() => setIsExpanded(true)}
                         />
                       </FormControl>
@@ -339,10 +349,13 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
                               </FormItem>
                             )}
                         />
+                        {isUploading && uploadProgress !== null && (
+                          <Progress value={uploadProgress} className="w-full h-2" />
+                        )}
                         <div className="flex justify-end">
                             <Button type="submit" disabled={isUploading}>
                                 {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {isUploading ? 'Posting...' : 'Post'}
+                                Post
                             </Button>
                         </div>
                     </>
