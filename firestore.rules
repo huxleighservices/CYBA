@@ -11,6 +11,7 @@
  * least privilege.
  *
  * Triggering re-deploy to fix permissions.
+ * Second attempt to force rule redeployment.
  */
 rules_version = '2';
 service cloud.firestore {
