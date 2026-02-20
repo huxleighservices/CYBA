@@ -172,22 +172,31 @@ function LoggedOutView() {
 
 function CybazoneHeader() {
     const navItems = [
-      { icon: Home, label: 'Feed' },
-      { icon: Compass, label: 'Discover' },
-      { icon: Heart, label: 'Engagement' },
-      { icon: ShoppingBag, label: 'Shop' },
-      { icon: Megaphone, label: 'Ads' },
-      { icon: ProfileIcon, label: 'Profile' },
+      { icon: Home, label: 'Feed', href: null },
+      { icon: Compass, label: 'Discover', href: null },
+      { icon: Heart, label: 'Engagement', href: null },
+      { icon: ShoppingBag, label: 'Shop', href: '/merch' },
+      { icon: Megaphone, label: 'Ads', href: null },
+      { icon: ProfileIcon, label: 'Profile', href: '/profile' },
     ];
   
     return (
       <header className="w-full bg-black border-b border-gray-800 px-4 py-2 flex-shrink-0">
         <nav className="flex justify-around items-center">
           {navItems.map((item, index) => (
-            <Button key={index} variant="ghost" className="flex flex-col h-auto p-2 text-gray-400 hover:text-primary hover:bg-primary/10">
-              <item.icon className="h-6 w-6" />
-              <span className="text-xs mt-1">{item.label}</span>
-            </Button>
+            item.href ? (
+                <Button key={index} variant="ghost" className="flex flex-col h-auto p-2 text-gray-400 hover:text-primary hover:bg-primary/10" asChild>
+                    <Link href={item.href}>
+                        <item.icon className="h-6 w-6" />
+                        <span className="text-xs mt-1">{item.label}</span>
+                    </Link>
+                </Button>
+            ) : (
+                <Button key={index} variant="ghost" className="flex flex-col h-auto p-2 text-gray-400 hover:text-primary hover:bg-primary/10">
+                    <item.icon className="h-6 w-6" />
+                    <span className="text-xs mt-1">{item.label}</span>
+                </Button>
+            )
           ))}
         </nav>
       </header>
@@ -241,79 +250,71 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
     setUploadProgress(null);
     
     try {
-      const imageFile = values.image?.[0];
+        const imageFile = values.image?.[0];
+        
+        let uploadedUrl: string | null = null;
 
-      if (imageFile) {
-        setUploadProgress(10);
-        const reader = new FileReader();
-        reader.readAsDataURL(imageFile);
-        reader.onloadend = async () => {
-          const fileDataUri = reader.result as string;
-          setUploadProgress(30);
+        if (imageFile) {
+            setUploadProgress(10); // Start progress
+            const reader = new FileReader();
+            
+            // This will be a promise that resolves with the data URL
+            const readAsDataURL = new Promise<string>((resolve, reject) => {
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(imageFile);
+            });
 
-          const response = await fetch('/api/upload', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              fileDataUri: fileDataUri,
-              fileName: imageFile.name,
-              fileType: imageFile.type,
-            }),
-          });
-          
-          setUploadProgress(70);
+            const fileDataUri = await readAsDataURL;
+            setUploadProgress(30);
 
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ details: 'Server returned non-JSON error.' }));
-            throw new Error(errorData.details || 'Server failed to upload file.');
-          }
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                fileDataUri: fileDataUri,
+                fileName: imageFile.name,
+                fileType: imageFile.type,
+                }),
+            });
+            
+            setUploadProgress(70);
 
-          const { imageUrl } = await response.json();
-          setUploadProgress(90);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ details: 'Server returned non-JSON error.' }));
+                throw new Error(errorData.details || 'Server failed to upload file.');
+            }
 
-          // Once uploaded, create the post document
-          await addDoc(collection(firestore, 'cybazone_posts'), {
-            authorId: user.uid,
-            authorUsername: userProfile.username,
-            authorAvatar: userProfile.avatarConfig || {},
-            content: values.content,
-            imageUrl: imageUrl,
-            timestamp: serverTimestamp(),
-            likeCount: 0,
-            likedBy: [],
-          });
-          setUploadProgress(100);
-          toast({ title: 'Posted!', description: 'Your post is now live in the CYBAZONE.' });
-          form.reset();
-          setIsExpanded(false);
-          setIsUploading(false);
-          setUploadProgress(null);
+            const { imageUrl } = await response.json();
+            uploadedUrl = imageUrl;
+            setUploadProgress(90);
         }
-      } else {
-         // Create post without an image
-         await addDoc(collection(firestore, 'cybazone_posts'), {
+
+        // Now, create the post document with or without the image URL
+        await addDoc(collection(firestore, 'cybazone_posts'), {
             authorId: user.uid,
             authorUsername: userProfile.username,
             authorAvatar: userProfile.avatarConfig || {},
             content: values.content,
-            imageUrl: null,
+            imageUrl: uploadedUrl, // This will be null if no image was uploaded
             timestamp: serverTimestamp(),
             likeCount: 0,
             likedBy: [],
         });
+        
+        setUploadProgress(100);
         toast({ title: 'Posted!', description: 'Your post is now live in the CYBAZONE.' });
         form.reset();
         setIsExpanded(false);
-        setIsUploading(false);
-      }
 
     } catch (error) {
       console.error('Error creating post:', error);
       toast({ variant: 'destructive', title: 'Post Error', description: error instanceof Error ? error.message : 'Could not create post. Please try again.' });
-      setIsUploading(false);
-      setUploadProgress(null);
+    } finally {
+        setIsUploading(false);
+        setUploadProgress(null);
     }
-  };
+};
 
   return (
     <Card className="shadow-md border-gray-800 bg-black">
@@ -579,7 +580,7 @@ function CommentSection({ post }: { post: any }) {
                 render={({ field }) => (
                     <FormItem className="flex-grow">
                         <FormControl>
-                            <Input {...field} placeholder="Write a comment..." className="text-sm rounded-full bg-gray-800 text-white placeholder:text-gray-500 border-gray-700" />
+                            <Input {...field} placeholder="Write a comment..." className="text-sm rounded-full bg-gray-800 text-black placeholder:text-gray-500 border-gray-700" />
                         </FormControl>
                     </FormItem>
                 )}
@@ -590,3 +591,5 @@ function CommentSection({ post }: { post: any }) {
       </div>
     );
   }
+
+    
