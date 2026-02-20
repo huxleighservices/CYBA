@@ -17,6 +17,7 @@ export type AvatarConfig = {
   shoes: number;
   accessory: number;
   layerOrder: AvatarLayer[];
+  emojiStatus?: string;
 };
 
 type AvatarOptions = {
@@ -99,4 +100,5 @@ export const defaultAvatarConfig: AvatarConfig = {
   shoes: 0,
   accessory: 0,
   layerOrder: defaultLayerOrder,
+  emojiStatus: undefined,
 };

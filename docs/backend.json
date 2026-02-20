@@ -184,6 +184,32 @@
               }
             }
           }
+        },
+        "bio": {
+          "type": "string",
+          "description": "User's public biography."
+        },
+        "location": {
+          "type": "string",
+          "description": "User's public location."
+        },
+        "emojiStatus": {
+          "type": "string",
+          "description": "A single emoji for the user's status."
+        },
+        "followers": {
+          "type": "array",
+          "description": "Array of user IDs who follow this user.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "following": {
+          "type": "array",
+          "description": "Array of user IDs this user follows.",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
