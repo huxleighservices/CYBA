@@ -117,8 +117,8 @@ export default function CybazonePage() {
       </div>
 
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-        <DialogContent className="bg-white max-w-none w-[calc(100%-2rem)] sm:w-[95vw] lg:w-[80vw] xl:w-[60vw] h-[90vh] flex flex-col p-0 text-black rounded-lg shadow-2xl border-primary border-2">
-          <DialogHeader className="p-4 border-b border-gray-200 flex flex-row items-center justify-between flex-shrink-0">
+        <DialogContent className="bg-black max-w-none w-[calc(100%-2rem)] sm:w-[95vw] lg:w-[80vw] xl:w-[60vw] h-[90vh] flex flex-col p-0 text-white rounded-lg shadow-2xl border-primary border-2">
+          <DialogHeader className="p-4 border-b border-gray-800 flex flex-row items-center justify-between flex-shrink-0">
             <DialogTitle>
               <span className="sr-only">CYBAZONE</span>
               <Image
@@ -151,10 +151,10 @@ export default function CybazonePage() {
 function LoggedOutView() {
   return (
     <div className="text-center p-4">
-      <h2 className="text-4xl font-bold text-black">
+      <h2 className="text-4xl font-bold text-white">
         You must be logged in to enter the CYBAZONE.
       </h2>
-      <p className="text-gray-600 mt-2">Please sign in to continue.</p>
+      <p className="text-gray-400 mt-2">Please sign in to continue.</p>
       <div className="mt-6 flex justify-center gap-4">
         <Button asChild className="bg-primary hover:bg-primary/90">
           <Link href="/login">Sign In</Link>
@@ -181,10 +181,10 @@ function CybazoneHeader() {
     ];
   
     return (
-      <header className="w-full bg-white border-b border-gray-200 px-4 py-2 flex-shrink-0">
+      <header className="w-full bg-black border-b border-gray-800 px-4 py-2 flex-shrink-0">
         <nav className="flex justify-around items-center">
           {navItems.map((item, index) => (
-            <Button key={index} variant="ghost" className="flex flex-col h-auto p-2 text-gray-500 hover:text-primary hover:bg-primary/10">
+            <Button key={index} variant="ghost" className="flex flex-col h-auto p-2 text-gray-400 hover:text-primary hover:bg-primary/10">
               <item.icon className="h-6 w-6" />
               <span className="text-xs mt-1">{item.label}</span>
             </Button>
@@ -207,12 +207,12 @@ function CybazoneMainView() {
   }
 
   return (
-    <div className="h-full w-full flex flex-col bg-white">
+    <div className="h-full w-full flex flex-col bg-black">
       <CybazoneHeader />
-      <main className="flex-grow flex flex-col overflow-y-auto bg-white">
+      <main className="flex-grow flex flex-col overflow-y-auto bg-black">
         <div className="p-4 sm:p-6 md:p-8">
             {user && userProfile && <CreatePostForm user={user} userProfile={userProfile} />}
-            <Separator className="my-8" />
+            <Separator className="my-8 bg-gray-800" />
             <PostFeed />
         </div>
       </main>
@@ -234,14 +234,6 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
     defaultValues: { content: '', image: undefined },
   });
 
-  const toBase64 = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (error) => reject(error);
-    });
-
   const onSubmit = async (values: PostFormValues) => {
     if (!user || !userProfile) return;
 
@@ -249,60 +241,82 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
     setUploadProgress(null);
     
     try {
-      let imageUrl: string | null = null;
       const imageFile = values.image?.[0];
 
       if (imageFile) {
         setUploadProgress(10);
-        const fileDataUri = await toBase64(imageFile);
-        setUploadProgress(50);
+        const reader = new FileReader();
+        reader.readAsDataURL(imageFile);
+        reader.onloadend = async () => {
+          const fileDataUri = reader.result as string;
+          setUploadProgress(30);
 
-        const response = await fetch('/api/upload', {
+          const response = await fetch('/api/upload', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                fileDataUri: fileDataUri,
-                fileName: imageFile.name,
-                fileType: imageFile.type,
+              fileDataUri: fileDataUri,
+              fileName: imageFile.name,
+              fileType: imageFile.type,
             }),
-        });
+          });
+          
+          setUploadProgress(70);
 
-        if (!response.ok) {
+          if (!response.ok) {
             const errorData = await response.json().catch(() => ({ details: 'Server returned non-JSON error.' }));
             throw new Error(errorData.details || 'Server failed to upload file.');
+          }
+
+          const { imageUrl } = await response.json();
+          setUploadProgress(90);
+
+          // Once uploaded, create the post document
+          await addDoc(collection(firestore, 'cybazone_posts'), {
+            authorId: user.uid,
+            authorUsername: userProfile.username,
+            authorAvatar: userProfile.avatarConfig || {},
+            content: values.content,
+            imageUrl: imageUrl,
+            timestamp: serverTimestamp(),
+            likeCount: 0,
+            likedBy: [],
+          });
+          setUploadProgress(100);
+          toast({ title: 'Posted!', description: 'Your post is now live in the CYBAZONE.' });
+          form.reset();
+          setIsExpanded(false);
+          setIsUploading(false);
+          setUploadProgress(null);
         }
-
-        const { imageUrl: uploadedUrl } = await response.json();
-        imageUrl = uploadedUrl;
-        setUploadProgress(100);
+      } else {
+         // Create post without an image
+         await addDoc(collection(firestore, 'cybazone_posts'), {
+            authorId: user.uid,
+            authorUsername: userProfile.username,
+            authorAvatar: userProfile.avatarConfig || {},
+            content: values.content,
+            imageUrl: null,
+            timestamp: serverTimestamp(),
+            likeCount: 0,
+            likedBy: [],
+        });
+        toast({ title: 'Posted!', description: 'Your post is now live in the CYBAZONE.' });
+        form.reset();
+        setIsExpanded(false);
+        setIsUploading(false);
       }
-
-      await addDoc(collection(firestore, 'cybazone_posts'), {
-        authorId: user.uid,
-        authorUsername: userProfile.username,
-        authorAvatar: userProfile.avatarConfig || {},
-        content: values.content,
-        imageUrl: imageUrl,
-        timestamp: serverTimestamp(),
-        likeCount: 0,
-        likedBy: [],
-      });
-      
-      toast({ title: 'Posted!', description: 'Your post is now live in the CYBAZONE.' });
-      form.reset();
-      setIsExpanded(false);
 
     } catch (error) {
       console.error('Error creating post:', error);
       toast({ variant: 'destructive', title: 'Post Error', description: error instanceof Error ? error.message : 'Could not create post. Please try again.' });
-    } finally {
       setIsUploading(false);
       setUploadProgress(null);
     }
   };
 
   return (
-    <Card className="shadow-md border-gray-200 bg-white">
+    <Card className="shadow-md border-gray-800 bg-black">
       <CardContent className="p-4">
         <div className="flex gap-4 items-start">
           <AvatarDisplay avatarConfig={userProfile.avatarConfig} size={40} />
@@ -318,7 +332,7 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
                         <Textarea
                           {...field}
                           placeholder={`What's on your mind, ${userProfile.username}?`}
-                          className="text-base border-none focus-visible:ring-0 shadow-none p-0"
+                          className="text-base bg-black text-white border-none focus-visible:ring-0 shadow-none"
                           onFocus={() => setIsExpanded(true)}
                         />
                       </FormControl>
@@ -340,7 +354,7 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
                                     type="file" 
                                     accept="image/*,video/*"
                                     onChange={(e) => onChange(e.target.files)}
-                                    className="text-sm" 
+                                    className="text-sm bg-gray-900 border-gray-800 text-white" 
                                     {...rest}
                                   />
                                 </FormControl>
@@ -430,20 +444,20 @@ function PostCard({ post }: { post: any }) {
     };
   
     return (
-      <Card className="shadow-md border-gray-200 overflow-hidden bg-white">
+      <Card className="shadow-md border-gray-800 overflow-hidden bg-black">
         <CardContent className="p-5">
           <div className="flex gap-4 items-start mb-4">
             <AvatarDisplay avatarConfig={post.authorAvatar} size={40} />
             <div>
-              <p className="font-bold text-black">{post.authorUsername}</p>
-              <p className="text-xs text-gray-500">{formatTimestamp(post.timestamp)}</p>
+              <p className="font-bold text-white">{post.authorUsername}</p>
+              <p className="text-xs text-gray-400">{formatTimestamp(post.timestamp)}</p>
             </div>
           </div>
-          <p className="text-gray-800 whitespace-pre-wrap mb-4">{post.content}</p>
+          <p className="text-gray-200 whitespace-pre-wrap mb-4">{post.content}</p>
         </CardContent>
   
         {post.imageUrl && (
-          <div className="bg-gray-50">
+          <div className="bg-black">
              {post.imageUrl.includes('.mp4') || post.imageUrl.includes('.webm') ? (
               <video
                 src={post.imageUrl}
@@ -464,34 +478,34 @@ function PostCard({ post }: { post: any }) {
         
         <Collapsible>
             <div className="px-5 py-2">
-                 <div className="flex justify-between items-center text-sm text-gray-500">
+                 <div className="flex justify-between items-center text-sm text-gray-400">
                     <span>{post.likeCount || 0} Likes</span>
                     <CollapsibleTrigger asChild>
-                        <Button variant="link" className="p-0 h-auto text-gray-500">
+                        <Button variant="link" className="p-0 h-auto text-gray-400">
                             {/* In a real app, you'd fetch comment count here */}
                             View comments
                         </Button>
                     </CollapsibleTrigger>
                 </div>
 
-                <Separator className="my-2" />
+                <Separator className="my-2 bg-gray-800" />
 
                 <div className="grid grid-cols-4 gap-1 text-center">
-                    <Button variant="ghost" onClick={handleLike} className="flex items-center gap-2 text-gray-600 hover:text-primary">
+                    <Button variant="ghost" onClick={handleLike} className="flex items-center gap-2 text-gray-400 hover:text-primary">
                         <Heart className={cn("h-5 w-5", isLiked && "fill-current text-red-500")} />
                         Like
                     </Button>
                      <CollapsibleTrigger asChild>
-                        <Button variant="ghost" className="flex items-center gap-2 text-gray-600 hover:text-primary">
+                        <Button variant="ghost" className="flex items-center gap-2 text-gray-400 hover:text-primary">
                             <MessageCircle className="h-5 w-5" />
                             Comment
                         </Button>
                     </CollapsibleTrigger>
-                    <Button variant="ghost" className="flex items-center gap-2 text-gray-600 hover:text-primary">
+                    <Button variant="ghost" className="flex items-center gap-2 text-gray-400 hover:text-primary">
                         <Share2 className="h-5 w-5" />
                         Share
                     </Button>
-                     <a href={`mailto:contactcyba@gmail.com?subject=Report Post ID: ${post.id}`} className="flex items-center justify-center gap-2 text-gray-600 hover:text-destructive h-10 px-4 py-2 text-sm font-medium">
+                     <a href={`mailto:contactcyba@gmail.com?subject=Report Post ID: ${post.id}`} className="flex items-center justify-center gap-2 text-gray-400 hover:text-destructive h-10 px-4 py-2 text-sm font-medium">
                         <Flag className="h-5 w-5" />
                         Report
                     </a>
@@ -543,15 +557,15 @@ function CommentSection({ post }: { post: any }) {
     };
   
     return (
-      <div className="bg-white px-5 py-4 border-t">
+      <div className="bg-black px-5 py-4 border-t border-gray-800">
         {isLoading && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
         <div className="space-y-4 mb-4">
             {comments?.map(comment => (
                 <div key={comment.id} className="flex gap-3 items-start">
                     <AvatarDisplay avatarConfig={comment.authorAvatar} size={32} />
-                    <div className="bg-gray-50 rounded-lg px-3 py-2 text-sm w-full">
-                        <span className="font-bold text-black mr-2">{comment.authorUsername}</span>
-                        <p className="inline text-gray-800">{comment.content}</p>
+                    <div className="bg-gray-900 rounded-lg px-3 py-2 text-sm w-full">
+                        <span className="font-bold text-white mr-2">{comment.authorUsername}</span>
+                        <p className="inline text-gray-200">{comment.content}</p>
                     </div>
                 </div>
             ))}
@@ -565,7 +579,7 @@ function CommentSection({ post }: { post: any }) {
                 render={({ field }) => (
                     <FormItem className="flex-grow">
                         <FormControl>
-                            <Input {...field} placeholder="Write a comment..." className="text-sm rounded-full bg-gray-50 text-black" />
+                            <Input {...field} placeholder="Write a comment..." className="text-sm rounded-full bg-gray-800 text-white placeholder:text-gray-500 border-gray-700" />
                         </FormControl>
                     </FormItem>
                 )}
