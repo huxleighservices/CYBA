@@ -9,6 +9,8 @@
  * This is NOT a secure configuration for a production environment. Before going
  * live, you should implement stricter rules that follow the principle of
  * least privilege.
+ *
+ * Triggering re-deploy to fix permissions.
  */
 rules_version = '2';
 service cloud.firestore {
