@@ -1,25 +1,20 @@
 /**
- * WARNING: These rules are completely open.
+ * WARNING: These rules are very permissive.
  *
- * This ruleset allows any client to read, write, and delete any data in your
- * Firestore database. This is configured to bypass permission errors during
- * rapid development and relies on the application's UI (e.g., a password-protected
- * admin page) for security.
+ * This ruleset allows any client that is authenticated to read, write, and delete
+ * any data in your Firestore database. This is configured to bypass permission
+ * errors during rapid development.
  *
  * This is NOT a secure configuration for a production environment. Before going
  * live, you should implement stricter rules that follow the principle of
  * least privilege.
- *
- * Triggering re-deploy to fix permissions.
- * Second attempt to force rule redeployment.
- * Final attempt to force rule redeployment.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read and write access to all documents in the database.
+    // Allow read and write access to all documents if the user is signed in.
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
   }
 }
