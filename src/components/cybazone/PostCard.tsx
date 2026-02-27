@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { AvatarDisplay } from '@/components/AvatarDisplay';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageCircle, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, Repeat } from 'lucide-react';
 import { useFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import { doc, arrayUnion, arrayRemove, increment, updateDoc } from 'firebase/firestore';
 import { formatDistanceToNow } from 'date-fns';
@@ -70,6 +70,20 @@ export function PostCard({ post }: { post: CybazonePost }) {
       }
   };
 
+  const handleComment = () => {
+    toast({
+      title: "Coming Soon!",
+      description: "Commenting functionality is under development.",
+    });
+  };
+
+  const handleRepost = () => {
+    toast({
+      title: "Coming Soon!",
+      description: "Reposting functionality is under development.",
+    });
+  };
+
   const formattedDate = post.timestamp?.toDate ? formatDistanceToNow(post.timestamp.toDate(), { addSuffix: true }) : 'just now';
 
   return (
@@ -98,19 +112,20 @@ export function PostCard({ post }: { post: CybazonePost }) {
         )}
       </CardContent>
       <CardFooter className="flex justify-start items-center p-4 pt-2 mt-2 border-t border-border">
-        <div className="flex items-center gap-1 text-foreground/80">
+        <div className="flex items-center gap-4 text-foreground/80">
             <Button variant="ghost" size="sm" onClick={handleLike} className="flex items-center gap-2 hover:bg-primary/10">
                 <Heart className={hasLiked ? 'fill-primary text-primary' : 'text-foreground/60'} />
                 <span className="font-semibold">{post.likeCount > 0 ? post.likeCount : ''}</span>
             </Button>
-        </div>
-        {/* Comment button - future functionality */}
-        {/* <div className="flex items-center gap-2 text-foreground/80">
-            <Button variant="ghost" size="sm">
-                <MessageCircle className="h-5 w-5 mr-1" />
-                Comment
+            
+            <Button variant="ghost" size="sm" onClick={handleComment} className="flex items-center gap-2 hover:bg-primary/10">
+                <MessageCircle className="text-foreground/60" />
             </Button>
-        </div> */}
+            
+            <Button variant="ghost" size="sm" onClick={handleRepost} className="flex items-center gap-2 hover:bg-primary/10">
+                <Repeat className="text-foreground/60" />
+            </Button>
+        </div>
       </CardFooter>
     </Card>
   );
