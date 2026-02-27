@@ -51,7 +51,6 @@ import {
 const navLinks = [
   { href: '/', label: 'Feed', icon: PenSquare },
   { href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
-  { href: '/cybazone', label: 'CYBAZONE', icon: Orbit },
   { href: '/create', label: 'Create', icon: PlusCircle },
   { href: '/shop', label: 'Shop', icon: ShoppingBag },
   { href: '/boosts', label: 'Boosts', icon: Gem },

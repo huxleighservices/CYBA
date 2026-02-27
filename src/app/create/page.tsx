@@ -109,7 +109,7 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
         
         setUploadProgress(100);
         toast({ title: 'Posted!', description: 'Your post is now live.' });
-        router.push('/cybazone');
+        router.push('/');
 
     } catch (error) {
       console.error('Error creating post:', error);
