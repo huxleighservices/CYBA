@@ -9,7 +9,7 @@ import {
   Youtube,
   Facebook,
   ShoppingBag,
-  PenSquare,
+  Newspaper,
   Trophy,
   Menu,
   Orbit,
@@ -49,9 +49,8 @@ import {
 
 
 const navLinks = [
-  { href: '/', label: 'Feed', icon: PenSquare },
+  { href: '/', label: 'Feed', icon: Newspaper },
   { href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
-  { href: '/create', label: 'Create', icon: PlusCircle },
   { href: '/shop', label: 'Shop', icon: ShoppingBag },
   { href: '/boosts', label: 'Boosts', icon: Gem },
   { href: '/rewards', label: 'Rewards', icon: Award },
@@ -94,6 +93,12 @@ function AuthButton() {
         <Image src="/CCoin.png?v=2" alt="CYBACOIN" width={32} height={32} />
         <span className="font-bold">{userProfile?.cybaCoinBalance || 0}</span>
       </div>
+      <Button asChild size="sm">
+        <Link href="/create">
+          <PlusCircle />
+          <span>Create</span>
+        </Link>
+      </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-8 w-8 rounded-full">
