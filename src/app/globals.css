@@ -90,4 +90,27 @@
       transform: translateX(-100%);
     }
   }
+
+  .circuit-background {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background-color: #000;
+    background-image:
+      linear-gradient(hsla(var(--primary) / 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, hsla(var(--primary) / 0.1) 1px, transparent 1px),
+      linear-gradient(hsla(0, 0%, 100%, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, hsla(0, 0%, 100%, 0.05) 1px, transparent 1px);
+    background-size: 75px 75px, 75px 75px, 15px 15px, 15px 15px;
+    animation: move-lines 7s linear infinite;
+  }
+
+  @keyframes move-lines {
+    0% {
+      background-position: 0 0, 0 0, 0 0, 0 0;
+    }
+    100% {
+      background-position: -75px -75px, -75px -75px, -15px -15px, -15px -15px;
+    }
+  }
 }
