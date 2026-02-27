@@ -8,13 +8,13 @@ import {
   Instagram,
   Youtube,
   Facebook,
-  Home,
   ShoppingBag,
   PenSquare,
   Trophy,
   Menu,
-  Sparkles,
   Orbit,
+  Award,
+  Gem,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
@@ -41,12 +41,12 @@ import {
 } from '@/components/ui/sheet';
 
 const navLinks = [
-  { href: '/', label: 'Home', icon: Home },
+  { href: '/', label: 'Feed', icon: PenSquare },
   { href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   { href: '/cybazone', label: 'CYBAZONE', icon: Orbit },
   { href: '/merch', label: 'Merch', icon: ShoppingBag },
-  { href: '/blog', label: 'Blog', icon: PenSquare },
-  { href: '/extras', label: 'Boosts/Rewards', icon: Sparkles },
+  { href: '/boosts', label: 'Boosts', icon: Gem },
+  { href: '/rewards', label: 'Rewards', icon: Award },
 ];
 
 function AuthButton() {
@@ -123,13 +123,13 @@ function MainNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="hidden md:flex items-center space-x-2">
+    <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
       {navLinks.map((link) => (
         <Link
           key={link.href}
           href={link.href}
           className={cn(
-            'text-sm font-medium transition-colors hover:bg-muted/50 px-4 py-2 rounded-full',
+            'text-sm font-medium transition-colors hover:bg-muted/50 px-3 py-2 lg:px-4 rounded-full',
             pathname === link.href ? 'bg-muted text-primary' : 'text-foreground/60'
           )}
         >
