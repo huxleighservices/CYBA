@@ -124,7 +124,7 @@ function AuthButton() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Button asChild size="sm">
+        <Button asChild size="sm" className="bg-primary hover:bg-primary/90">
           <Link href="/create">
             <PlusCircle />
             <span>Create</span>
@@ -220,7 +220,7 @@ export function Header() {
           <Link href="/" className="flex items-center space-x-2">
             <Image src="/cyblogo.png" alt="CYBA Logo" width={40} height={40} className="animate-slow-spin" />
             <div className="hidden sm:block">
-              <Image src="https://preview.redd.it/cybazone-2-v0-pg6fhpkr65kg1.png?width=1080&crop=smart&auto=webp&s=6df4067e5f00ad1660deb7f6b1b13dcb326f26f0" alt="CYBAZONE Logo" width={140} height={24} />
+              <Image src="https://preview.redd.it/cybazone-2-v0-pg6fhpkr65kg1.png?width=1080&crop=smart&auto=webp&s=6df4067e5f00ad1660deb7f6b1b13dcb326f26f0" alt="CYBAZONE Logo" width={233} height={40} />
             </div>
           </Link>
         </div>
