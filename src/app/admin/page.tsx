@@ -102,7 +102,7 @@ const blogPostSchema = z.object({
   imageUrl: z.string().url('Must be a valid URL.').or(z.literal('')),
 });
 
-const merchandiseSchema = z.object({
+const shopItemSchema = z.object({
   name: z.string().min(1, 'Name is required.'),
   description: z.string().min(1, 'Description is required.'),
   price: z.coerce.number().min(0, 'Price must be a positive number.'),
@@ -727,14 +727,14 @@ function BlogPostForm({ post, user }: { post?: any; user: any }) {
   );
 }
 
-// --- Merch Management ---
-function MerchManagement() {
+// --- Shop Management ---
+function ShopManagement() {
   const { firestore } = useFirebase();
-  const merchRef = useMemoFirebase(
+  const shopRef = useMemoFirebase(
     () => collection(firestore, 'merchandise'),
     [firestore]
   );
-  const { data: merchandise, isLoading } = useCollection(merchRef);
+  const { data: shopItems, isLoading } = useCollection(shopRef);
 
   const handleDelete = (id: string) => {
     if (confirm('Are you sure you want to delete this item?')) {
@@ -746,12 +746,12 @@ function MerchManagement() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Merchandise Management</CardTitle>
+          <CardTitle>Shop Management</CardTitle>
           <CardDescription>
-            Create, edit, and delete merchandise.
+            Create, edit, and delete shop items.
           </CardDescription>
         </div>
-        <MerchForm />
+        <ShopForm />
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -767,13 +767,13 @@ function MerchManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {merchandise?.map((item) => (
+              {shopItems?.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>{item.name}</TableCell>
                   <TableCell>${item.price.toFixed(2)}</TableCell>
                   <TableCell>{item.cybaCoinPrice ?? 'N/A'}</TableCell>
                   <TableCell className="text-right space-x-2">
-                    <MerchForm item={item} />
+                    <ShopForm item={item} />
                     <Button
                       variant="destructive"
                       size="icon"
@@ -792,13 +792,13 @@ function MerchManagement() {
   );
 }
 
-function MerchForm({ item }: { item?: any }) {
+function ShopForm({ item }: { item?: any }) {
   const [open, setOpen] = useState(false);
   const { firestore } = useFirebase();
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof merchandiseSchema>>({
-    resolver: zodResolver(merchandiseSchema),
+  const form = useForm<z.infer<typeof shopItemSchema>>({
+    resolver: zodResolver(shopItemSchema),
     defaultValues: item
       ? {
           ...item,
@@ -840,7 +840,7 @@ function MerchForm({ item }: { item?: any }) {
     }
   }, [item, form, open]);
 
-  const onSubmit = (values: z.infer<typeof merchandiseSchema>) => {
+  const onSubmit = (values: z.infer<typeof shopItemSchema>) => {
     const dataToSave = {
         ...values,
         cybaCoinPrice: values.cybaCoinPrice || null,
@@ -850,10 +850,10 @@ function MerchForm({ item }: { item?: any }) {
       setDocumentNonBlocking(doc(firestore, 'merchandise', item.id), dataToSave, {
         merge: true,
       });
-      toast({ title: 'Merchandise updated!' });
+      toast({ title: 'Shop item updated!' });
     } else {
       addDocumentNonBlocking(collection(firestore, 'merchandise'), dataToSave);
-      toast({ title: 'Merchandise created!' });
+      toast({ title: 'Shop item created!' });
     }
     setOpen(false);
     form.reset();
@@ -874,7 +874,7 @@ function MerchForm({ item }: { item?: any }) {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{item ? 'Edit' : 'Create'} Merchandise</DialogTitle>
+          <DialogTitle>{item ? 'Edit' : 'Create'} Shop Item</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -1667,7 +1667,7 @@ function AdminPanel() {
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="verification">Verification</TabsTrigger>
           <TabsTrigger value="blog">Blog</TabsTrigger>
-          <TabsTrigger value="merch">Merchandise</TabsTrigger>
+          <TabsTrigger value="shop">Shop</TabsTrigger>
           <TabsTrigger value="memberships">Memberships</TabsTrigger>
           <TabsTrigger value="extras">Extras</TabsTrigger>
           <TabsTrigger value="avatars">Avatars</TabsTrigger>
@@ -1682,8 +1682,8 @@ function AdminPanel() {
         <TabsContent value="blog" className="mt-6">
           <BlogManagement />
         </TabsContent>
-        <TabsContent value="merch" className="mt-6">
-          <MerchManagement />
+        <TabsContent value="shop" className="mt-6">
+          <ShopManagement />
         </TabsContent>
         <TabsContent value="memberships" className="mt-6">
           <MembershipManagement />

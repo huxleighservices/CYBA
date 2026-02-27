@@ -15,6 +15,7 @@ import {
   Orbit,
   Award,
   Gem,
+  PlusCircle,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
@@ -39,12 +40,20 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+
 
 const navLinks = [
   { href: '/', label: 'Feed', icon: PenSquare },
   { href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   { href: '/cybazone', label: 'CYBAZONE', icon: Orbit },
-  { href: '/merch', label: 'Merch', icon: ShoppingBag },
+  { href: '/create', label: 'Create', icon: PlusCircle },
+  { href: '/shop', label: 'Shop', icon: ShoppingBag },
   { href: '/boosts', label: 'Boosts', icon: Gem },
   { href: '/rewards', label: 'Rewards', icon: Award },
 ];
@@ -124,18 +133,31 @@ function MainNav() {
 
   return (
     <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
-      {navLinks.map((link) => (
-        <Link
-          key={link.href}
-          href={link.href}
-          className={cn(
-            'text-sm font-medium transition-colors hover:bg-muted/50 px-3 py-2 lg:px-4 rounded-full',
-            pathname === link.href ? 'bg-muted text-primary' : 'text-foreground/60'
-          )}
-        >
-          {link.label}
-        </Link>
-      ))}
+      <TooltipProvider>
+        {navLinks.map((link) => (
+          <Tooltip key={link.href}>
+            <TooltipTrigger asChild>
+              <Button
+                asChild
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  'rounded-full w-12 h-12',
+                  pathname === link.href ? 'bg-muted text-primary' : 'text-foreground/60'
+                )}
+              >
+                <Link href={link.href}>
+                  <link.icon className="h-6 w-6" />
+                  <span className="sr-only">{link.label}</span>
+                </Link>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{link.label}</p>
+            </TooltipContent>
+          </Tooltip>
+        ))}
+      </TooltipProvider>
     </nav>
   );
 }
@@ -156,7 +178,7 @@ function MobileNav() {
           <SheetClose asChild>
              <Link href="/" className="flex items-center gap-2">
               <Image src="/cyblogo.png" alt="CYBA Logo" width={30} height={30} />
-              <span className="text-xl font-bold">CYBA</span>
+              <Image src="https://preview.redd.it/cybazone-2-v0-pg6fhpkr65kg1.png?width=1080&crop=smart&auto=webp&s=6df4067e5f00ad1660deb7f6b1b13dcb326f26f0" alt="CYBAZONE Logo" width={120} height={20} />
             </Link>
           </SheetClose>
         </SheetHeader>
@@ -186,11 +208,13 @@ export function Header() {
     <header className="sticky top-0 z-20 w-full bg-background/80 backdrop-blur-md">
       <div className="container mx-auto flex h-16 items-center">
         {/* Left side */}
-        <div className="flex items-center gap-2 md:gap-6">
+        <div className="flex items-center gap-2 md:gap-4">
           <MobileNav />
           <Link href="/" className="flex items-center space-x-2">
             <Image src="/cyblogo.png" alt="CYBA Logo" width={40} height={40} className="animate-slow-spin" />
-            <span className="hidden font-bold sm:inline-block">CYBA</span>
+            <div className="hidden sm:block">
+              <Image src="https://preview.redd.it/cybazone-2-v0-pg6fhpkr65kg1.png?width=1080&crop=smart&auto=webp&s=6df4067e5f00ad1660deb7f6b1b13dcb326f26f0" alt="CYBAZONE Logo" width={140} height={24} />
+            </div>
           </Link>
         </div>
 
