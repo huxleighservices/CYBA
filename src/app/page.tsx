@@ -45,11 +45,15 @@ export default function FeedPage() {
   return (
     <div className="container mx-auto px-4 py-16">
       <div className="text-center max-w-3xl mx-auto">
-        <h1 className="text-4xl md:text-6xl font-headline font-bold text-glow mb-4">
-          CYBAZONE FEED
-        </h1>
+        <Image
+          src="https://preview.redd.it/cybazone-2-v0-pg6fhpkr65kg1.png?width=1080&crop=smart&auto=webp&s=6df4067e5f00ad1660deb7f6b1b13dcb326f26f0"
+          alt="CYBAZONE Logo"
+          width={466}
+          height={80}
+          className="mx-auto mb-4"
+        />
         <p className="text-lg text-foreground/80 mb-12">
-          Updates from inside the CYBAZONE
+          Catch Up On Your Feed
         </p>
       </div>
 
