@@ -24,7 +24,7 @@ export default function FeedPage() {
           alt="CYBAZONE Logo"
           width={466}
           height={80}
-          className="mx-auto mb-4"
+          className="mx-auto mb-4 cyba-logo-glow"
         />
         <p className="text-lg text-foreground/80 mb-12">
           Catch Up On Your Feed
