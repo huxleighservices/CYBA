@@ -1,26 +1,40 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, App, getApp } from 'firebase-admin/app';
+import { initializeApp, getApps, App, getApp, cert } from 'firebase-admin/app';
 import { getStorage } from 'firebase-admin/storage';
 import { v4 as uuidv4 } from 'uuid';
 
 // --- Firebase Admin Initialization ---
 // This safely initializes the admin SDK or gets the existing instance.
 function initializeFirebaseAdmin(): App {
-  // When running in a Google Cloud environment (like Firebase Studio or App Hosting),
-  // the Admin SDK automatically detects service account credentials.
   if (getApps().length > 0) {
     return getApp();
   }
-  // Let the SDK use Application Default Credentials.
-  return initializeApp();
+  
+  const credentialsStr = process.env.GOOGLE_SHEETS_CREDENTIALS;
+  if (!credentialsStr) {
+    console.error('Upload API Error: GOOGLE_SHEETS_CREDENTIALS environment variable not found.');
+    throw new Error('Server configuration error.');
+  }
+
+  try {
+    const serviceAccount = JSON.parse(credentialsStr);
+    // Initialize with explicit credentials and bucket
+    return initializeApp({
+      credential: cert(serviceAccount),
+      storageBucket: "studio-9029052952-9df3f.appspot.com",
+    });
+  } catch (e) {
+    console.error('Upload API Error: Failed to parse or use service account credentials.', e);
+    throw new Error('Server authentication configuration error.');
+  }
 }
 
 export async function POST(request: NextRequest) {
     try {
         const adminApp = initializeFirebaseAdmin();
-        // Explicitly specify the bucket name to avoid configuration issues.
-        const bucket = getStorage(adminApp).bucket("studio-9029052952-9df3f.appspot.com");
+        // The bucket is specified in initializeApp, so just call bucket()
+        const bucket = getStorage(adminApp).bucket();
 
         const body = await request.json();
         const { fileDataUri, fileName, fileType } = body;

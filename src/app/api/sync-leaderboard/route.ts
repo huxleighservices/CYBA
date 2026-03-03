@@ -2,7 +2,7 @@
 // src/app/api/sync-leaderboard/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
-import { initializeApp, getApps, App, getApp } from 'firebase-admin/app';
+import { initializeApp, getApps, App, getApp, cert } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 
 // --- Types ---
@@ -19,15 +19,27 @@ interface UserDoc {
 }
 
 // --- Firebase Admin Initialization ---
-// Initialize Firebase Admin SDK if not already done
 function initializeFirebaseAdmin(): App {
-  // When running in a Google Cloud environment (like Firebase App Hosting),
-  // the Admin SDK automatically detects service account credentials.
-  if (getApps().length) {
+  if (getApps().length > 0) {
     return getApp();
   }
-  // Let the SDK use Application Default Credentials.
-  return initializeApp();
+
+  const credentialsStr = process.env.GOOGLE_SHEETS_CREDENTIALS;
+  if (!credentialsStr) {
+      console.error('Sync API Error: GOOGLE_SHEETS_CREDENTIALS environment variable not found.');
+      throw new Error('Server configuration error.');
+  }
+
+  try {
+      const serviceAccount = JSON.parse(credentialsStr);
+      // Initialize with explicit credentials
+      return initializeApp({
+          credential: cert(serviceAccount),
+      });
+  } catch(e) {
+      console.error('Sync API Error: Failed to parse or use service account credentials.', e);
+      throw new Error('Server authentication configuration error.');
+  }
 }
 
 // --- Google Sheets API Helper ---
