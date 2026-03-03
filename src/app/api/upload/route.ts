@@ -12,10 +12,11 @@ function initializeFirebaseAdmin(): App {
   if (getApps().length > 0) {
     return getApp();
   }
-  // By providing the project ID, we give a hint to the SDK, while still allowing it
-  // to use Application Default Credentials for authentication.
+  // By providing the project ID and storage bucket, we ensure the Admin SDK
+  // is correctly configured for all services.
   return initializeApp({
-    projectId: "studio-9029052952-9df3f"
+    projectId: "studio-9029052952-9df3f",
+    storageBucket: "studio-9029052952-9df3f.appspot.com"
   });
 }
 
