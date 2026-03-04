@@ -181,7 +181,7 @@ function MobileNav() {
           <SheetClose asChild>
              <Link href="/" className="flex items-center gap-2">
               <Image src="/cyblogo.png" alt="CYBA Logo" width={30} height={30} />
-              <Image src="https://preview.redd.it/cybazone-2-v0-pg6fhpkr65kg1.png?width=1080&crop=smart&auto=webp&s=6df4067e5f00ad1660deb7f6b1b13dcb326f26f0" alt="CYBAZONE Logo" width={120} height={20} />
+              <Image src="https://preview.redd.it/cybazone-2-v0-pg6fhpkr65kg1.png?width=1080&crop=smart&auto=webp&s=6df4067e5f00ad1660deb7f6b1b13dcb326f26f0" alt="CYBAZONE Logo" width={80} height={13} />
             </Link>
           </SheetClose>
         </SheetHeader>
@@ -216,7 +216,7 @@ export function Header() {
           <Link href="/" className="flex items-center space-x-2">
             <Image src="/cyblogo.png" alt="CYBA Logo" width={40} height={40} className="animate-slow-spin" />
             <div className="hidden sm:block">
-              <Image src="https://preview.redd.it/cybazone-2-v0-pg6fhpkr65kg1.png?width=1080&crop=smart&auto=webp&s=6df4067e5f00ad1660deb7f6b1b13dcb326f26f0" alt="CYBAZONE Logo" width={233} height={40} />
+              <Image src="https://preview.redd.it/cybazone-2-v0-pg6fhpkr65kg1.png?width=1080&crop=smart&auto=webp&s=6df4067e5f00ad1660deb7f6b1b13dcb326f26f0" alt="CYBAZONE Logo" width={156} height={27} />
             </div>
           </Link>
         </div>
@@ -227,7 +227,7 @@ export function Header() {
         </div>
 
         {/* Right side */}
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end">
           <AuthButton />
         </div>
       </div>
