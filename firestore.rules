@@ -1,36 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    match /users/{userId} {
-      allow read, write: if request.auth != null;
-    }
-    match /blogPosts/{blogPostId} {
-      allow read, write: if request.auth != null;
-    }
-    match /merchandise/{merchandiseId} {
-      allow read, write: if request.auth != null;
-    }
-    match /memberships/{membershipId} {
-       allow read, write: if request.auth != null;
-    }
-    match /extras/{extraId} {
-       allow read, write: if request.auth != null;
-    }
-    match /forumPosts/{forumPostId} {
-       allow read, write: if request.auth != null;
-    }
-    match /cybazone_posts/{postId} {
-       allow read, write: if request.auth != null;
-    }
-    match /cybazone_posts/{postId}/comments/{commentId} {
-       allow read, write: if request.auth != null;
-    }
-    match /categories/{categoryId} {
-       allow read, write: if request.auth != null;
-    }
-    match /leaderboard/{leaderboardEntryId} {
-      allow read, write: if request.auth != null;
+    // Allow read and write access to all documents in the database.
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }

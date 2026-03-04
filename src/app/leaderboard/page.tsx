@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { useFirebase } from '@/firebase';
 import { Loader2, Trophy, Medal, Flame, RefreshCw } from 'lucide-react';
 import {
@@ -59,20 +58,13 @@ const getString = (value: any): string => {
 };
 
 export default function LeaderboardPage() {
-  const { user, isUserLoading } = useFirebase();
-  const router = useRouter();
+  const { user } = useFirebase();
   const { toast } = useToast();
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login');
-    }
-  }, [isUserLoading, user, router]);
 
   const triggerSync = useCallback(async () => {
     setIsSyncing(true);
@@ -118,7 +110,7 @@ export default function LeaderboardPage() {
       setLastUpdated(new Date());
       setError(null);
       
-      // After a successful fetch, trigger the background sync
+      // After a successful fetch, trigger the background sync if a user is logged in
       if (user) {
           await triggerSync();
       }
@@ -130,31 +122,25 @@ export default function LeaderboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, triggerSync]);
+  }, [user, triggerSync, toast]);
 
   // Initial fetch and setup interval
   useEffect(() => {
-    if (user) {
-      fetchLeaderboard();
-      const interval = setInterval(fetchLeaderboard, 60000); // Refresh every 60 seconds
-      return () => clearInterval(interval);
-    }
-  }, [user, fetchLeaderboard]);
+    fetchLeaderboard();
+    const interval = setInterval(() => fetchLeaderboard(), 60000); // Refresh every 60 seconds
+    return () => clearInterval(interval);
+  }, [fetchLeaderboard]);
 
 
-  if (isUserLoading || (user && isLoading && leaderboardData.length === 0)) {
+  if (isLoading && leaderboardData.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p className="text-sm text-muted-foreground">Loading leaderboard...</p>
         </div>
       </div>
     );
-  }
-
-  if (!user) {
-    return null;
   }
 
   return (
