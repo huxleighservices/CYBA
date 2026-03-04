@@ -4,10 +4,9 @@ import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import { notFound, useRouter } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
-import { useEffect } from 'react';
 
 // Function to create a slug from a title (must be identical to the one on the blog list page)
 const createSlug = (title: string) => {
@@ -30,25 +29,15 @@ const formatDate = (timestamp: any) => {
 };
 
 export default function PostPage({ params }: { params: { slug: string } }) {
-  const { firestore, user, isUserLoading } = useFirebase();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push(`/login?redirect=/post/${params.slug}`);
-    }
-  }, [isUserLoading, user, router, params.slug]);
+  const { firestore } = useFirebase();
 
   const blogPostsRef = useMemoFirebase(
-    () => (user ? collection(firestore, 'blogPosts') : null),
-    [firestore, user]
+    () => collection(firestore, 'blogPosts'),
+    [firestore]
   );
-  const { data: blogPosts, isLoading: isLoadingPosts } =
-    useCollection(blogPostsRef);
+  const { data: blogPosts, isLoading } = useCollection(blogPostsRef);
 
-  const isLoading = isUserLoading || (user && isLoadingPosts);
-
-  if (isLoading || !user) {
+  if (isLoading) {
     return (
       <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -59,16 +48,7 @@ export default function PostPage({ params }: { params: { slug: string } }) {
   const post = blogPosts?.find((p) => createSlug(p.title) === params.slug);
 
   if (!post) {
-    // Wait for loading to finish before showing notFound
-    if (!isLoading) {
-      notFound();
-    }
-    // Can show a loading skeleton here as well
-    return (
-      <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    notFound();
   }
 
   return (

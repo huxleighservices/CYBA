@@ -13,8 +13,6 @@ import { Check, Loader2, DollarSign } from 'lucide-react';
 import Link from 'next/link';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 
 function ItemCard({ item }: { item: any }) {
   return (
@@ -56,30 +54,19 @@ function ItemCard({ item }: { item: any }) {
 }
 
 export default function BoostsPage() {
-  const { firestore, user, isUserLoading } = useFirebase();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login?redirect=/boosts');
-    }
-  }, [isUserLoading, user, router]);
+  const { firestore } = useFirebase();
 
   const boostsQuery = useMemoFirebase(
     () =>
-      user
-        ? query(
-            collection(firestore, 'extras'),
-            where('type', '==', 'boost'),
-            orderBy('order')
-          )
-        : null,
-    [firestore, user]
+      query(
+        collection(firestore, 'extras'),
+        where('type', '==', 'boost'),
+        orderBy('order')
+      ),
+    [firestore]
   );
   const { data: boosts, isLoading: isLoadingBoosts } =
     useCollection(boostsQuery);
-
-  const isLoading = isUserLoading || isLoadingBoosts;
 
   return (
     <div className="container mx-auto px-4 py-16">
@@ -92,7 +79,7 @@ export default function BoostsPage() {
         </p>
       </div>
 
-      {isLoading || !user ? (
+      {isLoadingBoosts ? (
         <div className="flex justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>

@@ -15,29 +15,17 @@ import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 
 export default function ShopPage() {
-  const { firestore, user, isUserLoading } = useFirebase();
-  const router = useRouter();
+  const { firestore } = useFirebase();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login?redirect=/shop');
-    }
-  }, [isUserLoading, user, router]);
-
   const merchRef = useMemoFirebase(
-    () =>
-      user ? query(collection(firestore, 'merchandise'), orderBy('name')) : null,
-    [firestore, user]
+    () => query(collection(firestore, 'merchandise'), orderBy('name')),
+    [firestore]
   );
   const { data: merchandise, isLoading: isLoadingMerch } =
     useCollection(merchRef);
-
-  const isLoading = isUserLoading || isLoadingMerch;
 
   const handleCybacoinPurchase = () => {
     toast({
@@ -57,7 +45,7 @@ export default function ShopPage() {
         </p>
       </div>
 
-      {isLoading || !user ? (
+      {isLoadingMerch ? (
         <div className="flex justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>

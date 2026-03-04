@@ -14,8 +14,6 @@ import Link from 'next/link';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import Image from 'next/image';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 
 function ItemCard({ item }: { item: any }) {
   return (
@@ -57,30 +55,19 @@ function ItemCard({ item }: { item: any }) {
 }
 
 export default function RewardsPage() {
-  const { firestore, user, isUserLoading } = useFirebase();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login?redirect=/rewards');
-    }
-  }, [isUserLoading, user, router]);
+  const { firestore } = useFirebase();
 
   const rewardsQuery = useMemoFirebase(
     () =>
-      user
-        ? query(
-            collection(firestore, 'extras'),
-            where('type', '==', 'reward'),
-            orderBy('order')
-          )
-        : null,
-    [firestore, user]
+      query(
+        collection(firestore, 'extras'),
+        where('type', '==', 'reward'),
+        orderBy('order')
+      ),
+    [firestore]
   );
   const { data: rewards, isLoading: isLoadingRewards } =
     useCollection(rewardsQuery);
-
-  const isLoading = isUserLoading || isLoadingRewards;
 
   return (
     <div className="container mx-auto px-4 py-16">
@@ -93,7 +80,7 @@ export default function RewardsPage() {
         </p>
       </div>
 
-      {isLoading || !user ? (
+      {isLoadingRewards ? (
         <div className="flex justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
