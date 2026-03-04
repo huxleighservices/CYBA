@@ -9,7 +9,7 @@ export function Footer() {
     <footer className="w-full bg-black text-white">
       <div className="container mx-auto flex items-center justify-between py-4 text-sm">
         <div className="text-foreground/60">
-          Website developed by{' '}
+          developed by{' '}
           <a
             href="https://www.huxleigh.com"
             target="_blank"
@@ -18,12 +18,6 @@ export function Footer() {
           >
             Huxleigh
           </a>
-        </div>
-
-        <div className="absolute left-1/2 -translate-x-1/2">
-          <Button asChild>
-            <Link href="/contact">Get in Touch</Link>
-          </Button>
         </div>
 
         <div className="flex items-center gap-4">

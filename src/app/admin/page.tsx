@@ -31,7 +31,6 @@ import {
   Loader2,
   Link2,
   Database,
-  Settings as SettingsIcon,
   Palette,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -87,11 +86,6 @@ import Image from 'next/image';
 // Schemas
 const passwordSchema = z.object({
   password: z.string().min(1, 'Password is required.'),
-});
-
-const settingsSchema = z.object({
-  playlistId: z.string().min(1, { message: "Please enter a valid YouTube Playlist ID." }),
-  playlistLength: z.coerce.number().min(1, { message: "Enter the number of videos in the playlist." }),
 });
 
 const blogPostSchema = z.object({
@@ -200,102 +194,6 @@ function PasswordForm({ onSuccess }: { onSuccess: () => void }) {
     </Card>
   );
 }
-
-// --- Site Settings Management ---
-function SettingsManagement() {
-  const { firestore } = useFirebase();
-  const { toast } = useToast();
-
-  const settingsDocRef = useMemoFirebase(() => doc(firestore, 'settings', 'radio'), [firestore]);
-  const { data: settingsData, isLoading } = useDoc<{ playlistId: string; playlistLength: number }>(settingsDocRef);
-
-  const form = useForm<z.infer<typeof settingsSchema>>({
-    resolver: zodResolver(settingsSchema),
-    defaultValues: {
-      playlistId: '',
-      playlistLength: 50,
-    },
-  });
-
-  useEffect(() => {
-    if (settingsData) {
-      form.reset({
-        playlistId: settingsData.playlistId || '',
-        playlistLength: settingsData.playlistLength || 50,
-      });
-    }
-  }, [settingsData, form]);
-
-  function onSubmit(values: z.infer<typeof settingsSchema>) {
-    setDocumentNonBlocking(settingsDocRef, values, { merge: true });
-    toast({
-      title: "Settings Saved",
-      description: "CYBARADIO settings have been updated.",
-    });
-  }
-
-  if (isLoading) {
-    return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>;
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Site Settings</CardTitle>
-        <CardDescription>Manage global settings for the website.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-lg">
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">CYBARADIO Configuration</h3>
-              
-              <FormField
-                control={form.control}
-                name="playlistId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>YouTube Playlist ID</FormLabel>
-                    <FormControl>
-                      <Input placeholder="PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      The playlist ID from the YouTube URL (after "list=").
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="playlistLength"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Playlist Length</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={1} placeholder="50" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      The number of videos in the playlist. Used to shuffle to a random video when unmuting.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Settings
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
-  );
-}
-
 
 // --- User Management ---
 function UserManagement() {
@@ -1663,7 +1561,7 @@ function AdminPanel() {
       </div>
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 gap-2">
+        <TabsList className="grid w-full grid-cols-7 gap-2">
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="verification">Verification</TabsTrigger>
           <TabsTrigger value="blog">Blog</TabsTrigger>
@@ -1671,7 +1569,6 @@ function AdminPanel() {
           <TabsTrigger value="memberships">Memberships</TabsTrigger>
           <TabsTrigger value="extras">Extras</TabsTrigger>
           <TabsTrigger value="avatars">Avatars</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
         <TabsContent value="users" className="mt-6">
           <UserManagement />
@@ -1693,9 +1590,6 @@ function AdminPanel() {
         </TabsContent>
         <TabsContent value="avatars" className="mt-6">
             <AvatarManagement />
-        </TabsContent>
-        <TabsContent value="settings" className="mt-6">
-          <SettingsManagement />
         </TabsContent>
       </Tabs>
     </div>

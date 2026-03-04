@@ -5,14 +5,10 @@ import { Button } from '@/components/ui/button';
 import {
   User,
   LogOut,
-  Instagram,
-  Youtube,
-  Facebook,
   ShoppingBag,
   Newspaper,
   Trophy,
   Menu,
-  Orbit,
   Award,
   Gem,
   PlusCircle,
@@ -89,11 +85,11 @@ function AuthButton() {
 
   return (
     <div className="flex items-center gap-4">
-      <div className="flex items-center gap-2 text-primary">
-        <Image src="/CCoin.png?v=2" alt="CYBACOIN" width={32} height={32} />
-        <span className="font-bold">{userProfile?.cybaCoinBalance || 0}</span>
-      </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 bg-card rounded-full p-1 border border-border">
+        <div className="flex items-center gap-2 text-primary pl-2">
+          <Image src="/CCoin.png?v=2" alt="CYBACOIN" width={28} height={28} />
+          <span className="font-bold text-sm">{userProfile?.cybaCoinBalance || 0}</span>
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -123,14 +119,14 @@ function AuthButton() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-
-        <Button asChild size="sm" className="bg-primary hover:bg-primary/90">
-          <Link href="/create">
-            <PlusCircle />
-            <span>Create</span>
-          </Link>
-        </Button>
       </div>
+
+      <Button asChild size="sm" className="bg-primary hover:bg-primary/90">
+        <Link href="/create">
+          <PlusCircle />
+          <span>Create</span>
+        </Link>
+      </Button>
     </div>
   );
 }
@@ -232,38 +228,6 @@ export function Header() {
 
         {/* Right side */}
         <div className="flex items-center justify-end gap-2">
-          <div className="hidden md:flex items-center gap-1 bg-muted/50 rounded-full p-1">
-            <a
-              href="https://www.instagram.com/cybazone/?hl=en"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Instagram className="h-5 w-5" />
-                <span className="sr-only">Instagram</span>
-              </Button>
-            </a>
-            <a
-              href="https://www.youtube.com/hashtag/cyba"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Youtube className="h-5 w-5" />
-                <span className="sr-only">YouTube</span>
-              </Button>
-            </a>
-            <a
-              href="https://www.facebook.com/people/Cybazone/61570841902450/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Facebook className="h-5 w-5" />
-                <span className="sr-only">Facebook</span>
-              </Button>
-            </a>
-          </div>
           <AuthButton />
         </div>
       </div>
