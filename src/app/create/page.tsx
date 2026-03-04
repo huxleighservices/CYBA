@@ -105,6 +105,9 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
             timestamp: serverTimestamp(),
             likeCount: 0,
             likedBy: [],
+            commentCount: 0,
+            repostCount: 0,
+            repostedBy: [],
         });
         
         setUploadProgress(100);

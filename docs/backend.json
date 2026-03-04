@@ -395,6 +395,21 @@
             "type": "string"
           },
           "description": "An array of user UIDs who have liked the post."
+        },
+        "commentCount": {
+          "type": "number",
+          "description": "The number of comments on the post."
+        },
+        "repostCount": {
+          "type": "number",
+          "description": "The number of times the post has been reposted."
+        },
+        "repostedBy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "An array of user UIDs who have reposted the post."
         }
       },
       "required": [
