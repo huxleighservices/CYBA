@@ -5,16 +5,25 @@ import { Loader2 } from 'lucide-react';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { PostCard, type CybazonePost } from '@/components/cybazone/PostCard';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function FeedPage() {
-  const { firestore } = useFirebase();
-  
+  const { firestore, user, isUserLoading } = useFirebase();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [isUserLoading, user, router]);
+
   const postsQuery = useMemoFirebase(
-    () => query(collection(firestore, 'cybazone_posts'), orderBy('timestamp', 'desc')),
-    [firestore]
+    () => (user ? query(collection(firestore, 'cybazone_posts'), orderBy('timestamp', 'desc')) : null),
+    [firestore, user]
   );
-  
-  const { data: posts, isLoading } = useCollection<CybazonePost>(postsQuery);
+
+  const { data: posts, isLoading: isLoadingPosts } = useCollection<CybazonePost>(postsQuery);
 
   return (
     <div className="container mx-auto px-4 py-16">
@@ -31,7 +40,7 @@ export default function FeedPage() {
         </p>
       </div>
 
-      {isLoading ? (
+      {isUserLoading || (user && isLoadingPosts) ? (
         <div className="flex justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -41,12 +50,12 @@ export default function FeedPage() {
             <PostCard key={post.id} post={post} />
           ))}
         </div>
-      ) : (
+      ) : user ? (
         <div className="text-center text-foreground/60 p-12 border-dashed border-2 border-muted-foreground/30 rounded-lg max-w-2xl mx-auto">
           <h3 className="text-xl font-bold">The Feed is Quiet...</h3>
           <p>Be the first to post and get the conversation started!</p>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

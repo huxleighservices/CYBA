@@ -13,6 +13,8 @@ import { Check, Loader2, DollarSign } from 'lucide-react';
 import Link from 'next/link';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 function ItemCard({ item }: { item: any }) {
   return (
@@ -53,15 +55,31 @@ function ItemCard({ item }: { item: any }) {
   );
 }
 
-
 export default function BoostsPage() {
-  const { firestore } = useFirebase();
-  
+  const { firestore, user, isUserLoading } = useFirebase();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login?redirect=/boosts');
+    }
+  }, [isUserLoading, user, router]);
+
   const boostsQuery = useMemoFirebase(
-    () => query(collection(firestore, 'extras'), where('type', '==', 'boost'), orderBy('order')),
-    [firestore]
+    () =>
+      user
+        ? query(
+            collection(firestore, 'extras'),
+            where('type', '==', 'boost'),
+            orderBy('order')
+          )
+        : null,
+    [firestore, user]
   );
-  const { data: boosts, isLoading } = useCollection(boostsQuery);
+  const { data: boosts, isLoading: isLoadingBoosts } =
+    useCollection(boostsQuery);
+
+  const isLoading = isUserLoading || isLoadingBoosts;
 
   return (
     <div className="container mx-auto px-4 py-16">
@@ -74,17 +92,19 @@ export default function BoostsPage() {
         </p>
       </div>
 
-      {isLoading ? (
+      {isLoading || !user ? (
         <div className="flex justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {boosts?.length > 0 ? (
-                boosts.map((item) => <ItemCard key={item.id} item={item} />)
-            ) : (
-                <p className="col-span-full text-center text-foreground/60">No boosts available at the moment.</p>
-            )}
+          {boosts?.length > 0 ? (
+            boosts.map((item) => <ItemCard key={item.id} item={item} />)
+          ) : (
+            <p className="col-span-full text-center text-foreground/60">
+              No boosts available at the moment.
+            </p>
+          )}
         </div>
       )}
     </div>

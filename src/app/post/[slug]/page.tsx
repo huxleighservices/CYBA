@@ -4,9 +4,10 @@ import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import { notFound } from 'next/navigation';
+import { notFound, useRouter } from 'next/navigation';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
+import { useEffect } from 'react';
 
 // Function to create a slug from a title (must be identical to the one on the blog list page)
 const createSlug = (title: string) => {
@@ -18,25 +19,36 @@ const createSlug = (title: string) => {
 };
 
 const formatDate = (timestamp: any) => {
-    if (!timestamp || !timestamp.toDate) {
-      return 'Just now';
-    }
-    return new Date(timestamp.toDate()).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
+  if (!timestamp || !timestamp.toDate) {
+    return 'Just now';
+  }
+  return new Date(timestamp.toDate()).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+};
 
 export default function PostPage({ params }: { params: { slug: string } }) {
-  const { firestore } = useFirebase();
-  const blogPostsRef = useMemoFirebase(
-    () => collection(firestore, 'blogPosts'),
-    [firestore]
-  );
-  const { data: blogPosts, isLoading } = useCollection(blogPostsRef);
+  const { firestore, user, isUserLoading } = useFirebase();
+  const router = useRouter();
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push(`/login?redirect=/post/${params.slug}`);
+    }
+  }, [isUserLoading, user, router, params.slug]);
+
+  const blogPostsRef = useMemoFirebase(
+    () => (user ? collection(firestore, 'blogPosts') : null),
+    [firestore, user]
+  );
+  const { data: blogPosts, isLoading: isLoadingPosts } =
+    useCollection(blogPostsRef);
+
+  const isLoading = isUserLoading || (user && isLoadingPosts);
+
+  if (isLoading || !user) {
     return (
       <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -67,7 +79,7 @@ export default function PostPage({ params }: { params: { slug: string } }) {
           className="inline-flex items-center text-primary hover:underline"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Feed 
+          Back to Feed
         </Link>
       </div>
 
@@ -78,7 +90,9 @@ export default function PostPage({ params }: { params: { slug: string } }) {
         <h1 className="text-4xl md:text-5xl font-headline font-bold text-glow mb-4">
           {post.title}
         </h1>
-        <p className="text-sm text-foreground/60 mb-8">{formatDate(post.publicationDate)}</p>
+        <p className="text-sm text-foreground/60 mb-8">
+          {formatDate(post.publicationDate)}
+        </p>
 
         {post.imageUrl && (
           <div className="relative aspect-video rounded-lg overflow-hidden mb-8 shadow-lg shadow-primary/10">

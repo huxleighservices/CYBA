@@ -15,20 +15,34 @@ import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function ShopPage() {
-  const { firestore } = useFirebase();
+  const { firestore, user, isUserLoading } = useFirebase();
+  const router = useRouter();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login?redirect=/shop');
+    }
+  }, [isUserLoading, user, router]);
+
   const merchRef = useMemoFirebase(
-    () => query(collection(firestore, 'merchandise'), orderBy('name')),
-    [firestore]
+    () =>
+      user ? query(collection(firestore, 'merchandise'), orderBy('name')) : null,
+    [firestore, user]
   );
-  const { data: merchandise, isLoading } = useCollection(merchRef);
-  
+  const { data: merchandise, isLoading: isLoadingMerch } =
+    useCollection(merchRef);
+
+  const isLoading = isUserLoading || isLoadingMerch;
+
   const handleCybacoinPurchase = () => {
     toast({
-      title: "Coming Soon!",
-      description: "CYBACOIN checkout is not yet implemented.",
+      title: 'Coming Soon!',
+      description: 'CYBACOIN checkout is not yet implemented.',
     });
   };
 
@@ -43,7 +57,7 @@ export default function ShopPage() {
         </p>
       </div>
 
-      {isLoading ? (
+      {isLoading || !user ? (
         <div className="flex justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
@@ -73,29 +87,34 @@ export default function ShopPage() {
                 </CardDescription>
               </CardContent>
               <CardFooter className="p-6 pt-0 flex-col items-stretch space-y-4">
-                 <div className="flex justify-between items-center">
-                    <p className="text-2xl font-bold text-primary">
-                        ${item.price.toFixed(2)}
-                    </p>
-                    <Button asChild>
-                        <Link href={item.buyNowUrl} target="_blank">
-                            Buy Now
-                        </Link>
-                    </Button>
+                <div className="flex justify-between items-center">
+                  <p className="text-2xl font-bold text-primary">
+                    ${item.price.toFixed(2)}
+                  </p>
+                  <Button asChild>
+                    <Link href={item.buyNowUrl} target="_blank">
+                      Buy Now
+                    </Link>
+                  </Button>
                 </div>
 
                 {item.cybaCoinPrice > 0 && (
-                    <div className="flex justify-between items-center border-t border-primary/20 pt-4">
-                       <div className="flex items-center gap-2">
-                         <Image src="/CCoin.png?v=2" alt="CYBACOIN" width={37} height={37} />
-                         <p className="text-2xl font-bold text-primary">
-                            {item.cybaCoinPrice}
-                        </p>
-                       </div>
-                        <Button onClick={handleCybacoinPurchase}>
-                            Buy with CYBACOIN
-                        </Button>
+                  <div className="flex justify-between items-center border-t border-primary/20 pt-4">
+                    <div className="flex items-center gap-2">
+                      <Image
+                        src="/CCoin.png?v=2"
+                        alt="CYBACOIN"
+                        width={37}
+                        height={37}
+                      />
+                      <p className="text-2xl font-bold text-primary">
+                        {item.cybaCoinPrice}
+                      </p>
                     </div>
+                    <Button onClick={handleCybacoinPurchase}>
+                      Buy with CYBACOIN
+                    </Button>
+                  </div>
                 )}
               </CardFooter>
             </Card>
