@@ -14,15 +14,20 @@ function initializeFirebaseAdmin(): App {
   const credentialsStr = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
   
   try {
-    const serviceAccount = credentialsStr ? JSON.parse(credentialsStr) : undefined;
-    
-    // Initialize with explicit credentials if available (for local dev), 
-    // otherwise default to Application Default Credentials (for deployed environments).
-    // The storageBucket is specified to ensure the correct bucket is used.
-    return initializeApp({
-      credential: serviceAccount ? cert(serviceAccount) : undefined,
-      storageBucket: "studio-9029052952-9df3f.appspot.com",
-    });
+    if (credentialsStr) {
+      const serviceAccount = JSON.parse(credentialsStr);
+      // Initialize with explicit service account for local dev
+      return initializeApp({
+        credential: cert(serviceAccount),
+        storageBucket: "studio-9029052952-9df3f.appspot.com",
+      });
+    } else {
+      // Initialize with Application Default Credentials for deployed env,
+      // but still provide the bucket.
+      return initializeApp({
+        storageBucket: "studio-9029052952-9df3f.appspot.com",
+      });
+    }
   } catch (e) {
     console.error('Upload API Error: Failed to parse or use service account credentials.', e);
     throw new Error('Server authentication configuration error.');
@@ -32,7 +37,6 @@ function initializeFirebaseAdmin(): App {
 export async function POST(request: NextRequest) {
     try {
         const adminApp = initializeFirebaseAdmin();
-        // The bucket is specified in initializeApp, so just call bucket()
         const bucket = getStorage(adminApp).bucket();
 
         const body = await request.json();
