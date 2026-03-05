@@ -24,20 +24,14 @@ function initializeFirebaseAdmin(): App {
     return getApp();
   }
 
-  const credentialsStr = process.env.GOOGLE_SHEETS_CREDENTIALS;
-  if (!credentialsStr) {
-      console.error('Sync API Error: GOOGLE_SHEETS_CREDENTIALS environment variable not found.');
-      throw new Error('Server configuration error.');
-  }
-
+  // When running in a Google Cloud environment (like App Hosting),
+  // initializeApp() with no arguments will automatically use
+  // Application Default Credentials. This is the preferred way for server-side
+  // authentication in deployed environments.
   try {
-      const serviceAccount = JSON.parse(credentialsStr);
-      // Initialize with explicit credentials
-      return initializeApp({
-          credential: cert(serviceAccount),
-      });
+      return initializeApp();
   } catch(e) {
-      console.error('Sync API Error: Failed to parse or use service account credentials.', e);
+      console.error('Sync API Error: Failed to initialize Firebase Admin SDK.', e);
       throw new Error('Server authentication configuration error.');
   }
 }

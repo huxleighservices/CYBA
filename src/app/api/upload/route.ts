@@ -11,17 +11,16 @@ function initializeFirebaseAdmin(): App {
     return getApp();
   }
   
-  const credentialsStr = process.env.GOOGLE_SHEETS_CREDENTIALS;
-  if (!credentialsStr) {
-    console.error('Upload API Error: GOOGLE_SHEETS_CREDENTIALS environment variable not found.');
-    throw new Error('Server configuration error.');
-  }
-
+  const credentialsStr = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  
   try {
-    const serviceAccount = JSON.parse(credentialsStr);
-    // Initialize with explicit credentials and bucket
+    const serviceAccount = credentialsStr ? JSON.parse(credentialsStr) : undefined;
+    
+    // Initialize with explicit credentials if available (for local dev), 
+    // otherwise default to Application Default Credentials (for deployed environments).
+    // The storageBucket is specified to ensure the correct bucket is used.
     return initializeApp({
-      credential: cert(serviceAccount),
+      credential: serviceAccount ? cert(serviceAccount) : undefined,
       storageBucket: "studio-9029052952-9df3f.appspot.com",
     });
   } catch (e) {
