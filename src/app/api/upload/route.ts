@@ -1,35 +1,25 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, App, getApp, cert } from 'firebase-admin/app';
+import { initializeApp, getApps, App, getApp } from 'firebase-admin/app';
 import { getStorage } from 'firebase-admin/storage';
 import { v4 as uuidv4 } from 'uuid';
 
 // --- Firebase Admin Initialization ---
-// This safely initializes the admin SDK or gets the existing instance.
 function initializeFirebaseAdmin(): App {
+  // This safely initializes the admin SDK or gets the existing instance.
   if (getApps().length > 0) {
     return getApp();
   }
   
-  const credentialsStr = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  
   try {
-    if (credentialsStr) {
-      const serviceAccount = JSON.parse(credentialsStr);
-      // Initialize with explicit service account for local dev
-      return initializeApp({
-        credential: cert(serviceAccount),
-        storageBucket: "studio-9029052952-9df3f.appspot.com",
-      });
-    } else {
-      // Initialize with Application Default Credentials for deployed env,
-      // but still provide the bucket.
-      return initializeApp({
-        storageBucket: "studio-9029052952-9df3f.appspot.com",
-      });
-    }
+    // When running in a Google Cloud environment (like App Hosting),
+    // initializeApp() with no arguments will automatically use
+    // Application Default Credentials and discover other configuration.
+    // For local development, this relies on `gcloud auth application-default login`.
+    return initializeApp();
   } catch (e) {
-    console.error('Upload API Error: Failed to parse or use service account credentials.', e);
+    console.error('Upload API Error: Failed to initialize Firebase Admin SDK.', e);
+    // This generic error is caught by the client and displayed.
     throw new Error('Server authentication configuration error.');
   }
 }
@@ -37,6 +27,7 @@ function initializeFirebaseAdmin(): App {
 export async function POST(request: NextRequest) {
     try {
         const adminApp = initializeFirebaseAdmin();
+        // Get the default bucket from the project configuration.
         const bucket = getStorage(adminApp).bucket();
 
         const body = await request.json();
@@ -69,6 +60,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
         console.error('--- Upload API Error ---', error);
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during file upload.';
+        // The `details` field is what the client-side `create/page.tsx` uses.
         return NextResponse.json({ error: 'Upload failed.', details: errorMessage }, { status: 500 });
     }
 }
