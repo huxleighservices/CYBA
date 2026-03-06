@@ -70,9 +70,13 @@ export function AvatarDisplay({
                 zIndex: 99,
             }}
         >
-            <div className="relative" style={{ bottom: `${size/40}px` }}>
-              {config.emojiStatus}
-            </div>
+            {config.emojiStatus === 'CYBA_SWIRL' ? (
+                <Image src="/cyblogo.png" alt="CYBA Swirl" width={size/3} height={size/3} className="animate-slow-spin" />
+              ) : (
+                <div className="relative" style={{ bottom: `${size/40}px` }}>
+                  {config.emojiStatus}
+                </div>
+            )}
             <div
                 className="absolute w-0 h-0"
                 style={{

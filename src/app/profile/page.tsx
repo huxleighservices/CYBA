@@ -61,7 +61,7 @@ function AvatarEditor({ initialConfig, userId }: { initialConfig?: Partial<Avata
     setIsSaving(false);
   };
   
-  const emojiList = ['😀', '😎', '🔥', '🚀', '💯', 'CYBA', '🎵', '🎙️', '✨', '💻'];
+  const emojiList = ['😀', '😎', '🔥', '🚀', '💯', 'CYBA_SWIRL', '🎵', '🎙️', '✨', '💻'];
 
   return (
     <div className="space-y-6">
@@ -70,14 +70,14 @@ function AvatarEditor({ initialConfig, userId }: { initialConfig?: Partial<Avata
       </div>
 
       <Tabs defaultValue="skin" className="w-full">
-        <TabsList className="h-auto flex flex-wrap justify-center gap-1 p-1 mb-6">
-          <TabsTrigger value="skin">Skin</TabsTrigger>
-          <TabsTrigger value="hat">Hat</TabsTrigger>
-          <TabsTrigger value="shirt">Shirt</TabsTrigger>
-          <TabsTrigger value="pants">Pants</TabsTrigger>
-          <TabsTrigger value="shoes">Shoes</TabsTrigger>
-          <TabsTrigger value="accessory">Accessory</TabsTrigger>
-          <TabsTrigger value="status">Status</TabsTrigger>
+        <TabsList className="h-auto flex-wrap justify-center gap-1 p-1 mb-6">
+            <TabsTrigger value="skin">Skin</TabsTrigger>
+            <TabsTrigger value="hat">Hat</TabsTrigger>
+            <TabsTrigger value="shirt">Shirt</TabsTrigger>
+            <TabsTrigger value="pants">Pants</TabsTrigger>
+            <TabsTrigger value="shoes">Shoes</TabsTrigger>
+            <TabsTrigger value="accessory">Accessory</TabsTrigger>
+            <TabsTrigger value="status">Status</TabsTrigger>
         </TabsList>
         
         {(Object.keys(avatarOptions) as AvatarLayer[]).map((category) => (
@@ -131,7 +131,11 @@ function AvatarEditor({ initialConfig, userId }: { initialConfig?: Partial<Avata
                             className="text-xl"
                             onClick={() => handleEmojiSelect(emoji)}
                         >
-                            {emoji}
+                            {emoji === 'CYBA_SWIRL' ? (
+                                <Image src="/cyblogo.png" alt="CYBA Swirl" width={24} height={24} className="animate-slow-spin" />
+                            ) : (
+                                emoji
+                            )}
                         </Button>
                     ))}
                      <Button 
