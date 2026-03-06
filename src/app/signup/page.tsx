@@ -67,6 +67,7 @@ export default function SignupPage() {
             const userData = {
               id: firebaseUser.uid,
               username,
+              username_lowercase: username.toLowerCase(),
               email,
               cybaCoinBalance: 0, // Initialize CYBACOIN balance
             };

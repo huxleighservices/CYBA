@@ -121,6 +121,10 @@
           "type": "string",
           "description": "User's username."
         },
+        "username_lowercase": {
+          "type": "string",
+          "description": "Lowercase version of the username for case-insensitive lookups."
+        },
         "email": {
           "type": "string",
           "description": "User's email address.",

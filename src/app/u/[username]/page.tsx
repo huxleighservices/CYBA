@@ -27,7 +27,7 @@ export default function UserPublicProfilePage() {
       username
         ? query(
             collection(firestore, 'users'),
-            where('username', '==', username),
+            where('username_lowercase', '==', username.toLowerCase()),
             limit(1)
           )
         : null,
