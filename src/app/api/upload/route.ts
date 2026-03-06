@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { initializeApp, getApps, App, getApp } from 'firebase-admin/app';
 import { getStorage } from 'firebase-admin/storage';
 import { v4 as uuidv4 } from 'uuid';
+import { firebaseConfig } from '@/firebase/config';
 
 // --- Firebase Admin Initialization ---
 function initializeFirebaseAdmin(): App {
@@ -13,10 +14,11 @@ function initializeFirebaseAdmin(): App {
   
   try {
     // When running in a Google Cloud environment (like App Hosting),
-    // initializeApp() with no arguments will automatically use
-    // Application Default Credentials and discover other configuration.
-    // For local development, this relies on `gcloud auth application-default login`.
-    return initializeApp();
+    // initializeApp() will automatically use Application Default Credentials.
+    // We MUST provide the storageBucket name to interact with Storage.
+    return initializeApp({
+      storageBucket: firebaseConfig.storageBucket,
+    });
   } catch (e) {
     console.error('Upload API Error: Failed to initialize Firebase Admin SDK.', e);
     // This generic error is caught by the client and displayed.
@@ -27,7 +29,7 @@ function initializeFirebaseAdmin(): App {
 export async function POST(request: NextRequest) {
     try {
         const adminApp = initializeFirebaseAdmin();
-        // Get the default bucket from the project configuration.
+        // Now getStorage().bucket() will work because the app is initialized with the bucket name.
         const bucket = getStorage(adminApp).bucket();
 
         const body = await request.json();
