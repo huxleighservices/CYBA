@@ -1,45 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // --- User Data ---
-    // Users can read any profile, but can only write to their own document.
-    match /users/{userId} {
-      allow read;
-      allow write: if request.auth.uid == userId;
+    match /{document=**} {
+      allow read, write;
     }
-
-    // --- CYBAZONE (Social Feed) ---
-    // This rule allows any authenticated user to query (list) the posts collection.
-    match /cybazone_posts {
-      allow list: if request.auth != null;
-    }
-    // This rule allows authenticated users to get, create, update, and delete individual posts.
-    match /cybazone_posts/{postId} {
-      allow get, create, update, delete: if request.auth != null;
-    }
-
-    // This rule allows reading the comments subcollection.
-    match /cybazone_posts/{postId}/comments {
-      allow list: if request.auth != null;
-    }
-    // This rule defines permissions for individual comments.
-    match /cybazone_posts/{postId}/comments/{commentId} {
-      allow get, create, delete: if request.auth != null;
-      allow update: if false; // Comments cannot be edited.
-    }
-
-
-    // --- Admin-managed Content ---
-    // All content under these collections is public to read, but only
-    // authenticated users (assumed to be admins via the admin panel) can write.
-    match /blogPosts/{docId} { allow read; allow write: if request.auth != null; }
-    match /merchandise/{docId} { allow read; allow write: if request.auth != null; }
-    match /memberships/{docId} { allow read; allow write: if request.auth != null; }
-    match /extras/{docId} { allow read; allow write: if request.auth != null; }
-    match /categories/{docId} { allow read; allow write: if request.auth != null; }
-    match /leaderboard/{docId} { allow read; allow write: if request.auth != null; }
-    match /settings/{docId} { allow read; allow write: if request.auth != null; }
-    match /forumPosts/{docId} { allow read; allow write: if request.auth != null; }
   }
 }
