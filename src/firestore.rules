@@ -10,23 +10,25 @@ service cloud.firestore {
     }
 
     // --- CYBAZONE (Social Feed) ---
+    // This rule allows any authenticated user to query (list) the posts collection.
+    match /cybazone_posts {
+      allow list: if request.auth != null;
+    }
+    // This rule allows authenticated users to get, create, update, and delete individual posts.
     match /cybazone_posts/{postId} {
-      allow read;
-      allow create: if request.auth != null;
-      // Allow updates for likes, reposts, etc.
-      allow update: if request.auth != null;
-      // Allow any authenticated user to delete posts and their comments.
-      // This is a simpler rule to resolve permission issues during development.
-      allow delete: if request.auth != null;
+      allow get, create, update, delete: if request.auth != null;
     }
 
-    match /cybazone_posts/{postId}/comments/{commentId} {
-      allow read;
-      allow create: if request.auth != null;
-      allow update: if false; // Comments cannot be edited.
-      // Allow any authenticated user to delete posts and their comments.
-      allow delete: if request.auth != null;
+    // This rule allows reading the comments subcollection.
+    match /cybazone_posts/{postId}/comments {
+      allow list: if request.auth != null;
     }
+    // This rule defines permissions for individual comments.
+    match /cybazone_posts/{postId}/comments/{commentId} {
+      allow get, create, delete: if request.auth != null;
+      allow update: if false; // Comments cannot be edited.
+    }
+
 
     // --- Admin-managed Content ---
     // All content under these collections is public to read, but only
