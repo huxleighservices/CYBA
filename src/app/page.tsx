@@ -47,7 +47,9 @@ export default function FeedPage() {
       ) : posts && posts.length > 0 ? (
         <div className="space-y-8">
           {posts.map((post) => (
-            <PostCard key={post.id} post={post} />
+            <div key={post.id} className="w-full max-w-2xl mx-auto">
+              <PostCard post={post} />
+            </div>
           ))}
         </div>
       ) : user ? (

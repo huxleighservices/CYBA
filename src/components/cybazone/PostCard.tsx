@@ -187,11 +187,15 @@ export function PostCard({ post }: { post: CybazonePost }) {
 
   return (
     <>
-      <Card className="w-full max-w-2xl mx-auto border-primary/20 bg-card/50">
+      <Card className="w-full h-full flex flex-col border-primary/20 bg-card/50">
         <CardHeader className="flex flex-row items-center gap-4 p-4">
-          <AvatarDisplay avatarConfig={post.authorAvatar} size={48} />
+          <Link href={`/u/${post.authorUsername}`}>
+            <AvatarDisplay avatarConfig={post.authorAvatar} size={48} />
+          </Link>
           <div className="flex flex-col">
-            <p className="font-bold">{post.authorUsername}</p>
+            <Link href={`/u/${post.authorUsername}`} className="hover:underline">
+              <p className="font-bold">{post.authorUsername}</p>
+            </Link>
             <p className="text-xs text-foreground/60">{formattedDate}</p>
           </div>
           {user && user.uid === post.authorId && (
@@ -233,7 +237,7 @@ export function PostCard({ post }: { post: CybazonePost }) {
             </div>
           )}
         </CardHeader>
-        <CardContent className="p-4 pt-0 space-y-4">
+        <CardContent className="p-4 pt-0 space-y-4 flex-grow">
           <p className="text-base text-foreground/90 whitespace-pre-wrap">
             {post.content}
           </p>
