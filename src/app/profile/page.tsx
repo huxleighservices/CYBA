@@ -70,14 +70,14 @@ function AvatarEditor({ initialConfig, userId }: { initialConfig?: Partial<Avata
       </div>
 
       <Tabs defaultValue="skin" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 gap-1 mb-4">
+        <TabsList className="h-auto flex flex-wrap justify-center gap-1 p-1 mb-6">
           <TabsTrigger value="skin">Skin</TabsTrigger>
           <TabsTrigger value="hat">Hat</TabsTrigger>
           <TabsTrigger value="shirt">Shirt</TabsTrigger>
           <TabsTrigger value="pants">Pants</TabsTrigger>
           <TabsTrigger value="shoes">Shoes</TabsTrigger>
           <TabsTrigger value="accessory">Accessory</TabsTrigger>
-          <TabsTrigger value="status" className="col-span-2">Status</TabsTrigger>
+          <TabsTrigger value="status">Status</TabsTrigger>
         </TabsList>
         
         {(Object.keys(avatarOptions) as AvatarLayer[]).map((category) => (
