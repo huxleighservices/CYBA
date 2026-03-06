@@ -1,9 +1,6 @@
-
-// src/app/api/sync-leaderboard/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
-import { initializeApp, getApps, App, getApp, cert } from 'firebase-admin/app';
-import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { adminDb } from '../firebase-admin';
 
 // --- Types ---
 interface LeaderboardEntry {
@@ -16,24 +13,6 @@ interface UserDoc {
   leaderboardCybaName?: string;
   cybaCoinBalance?: number;
   [key: string]: any;
-}
-
-// --- Firebase Admin Initialization ---
-function initializeFirebaseAdmin(): App {
-  if (getApps().length > 0) {
-    return getApp();
-  }
-
-  // When running in a Google Cloud environment (like App Hosting),
-  // initializeApp() with no arguments will automatically use
-  // Application Default Credentials. This is the preferred way for server-side
-  // authentication in deployed environments.
-  try {
-      return initializeApp();
-  } catch(e) {
-      console.error('Sync API Error: Failed to initialize Firebase Admin SDK.', e);
-      throw new Error('Server authentication configuration error.');
-  }
 }
 
 // --- Google Sheets API Helper ---
@@ -61,9 +40,6 @@ async function getSheetData(): Promise<LeaderboardEntry[]> {
   const rows = response.data.values || [];
   if (rows.length < 2) return [];
 
-  // FIXED: Use explicit column indices based on actual sheet structure
-  // A=0: CYBANAME, B=1: CYBA IG, C=2: TIER, D=3: OUTWARD, E=4: INWARD, 
-  // F=5: FEATURES, G=6: EXTRAS, H=7: CYBACOIN, I=8: Last Updated
   const NAME_INDEX = 0;  // Column A - CYBANAME
   const COIN_INDEX = 7;  // Column H - CYBACOIN
 
@@ -73,13 +49,10 @@ async function getSheetData(): Promise<LeaderboardEntry[]> {
   })).filter(entry => entry.cybaName);
 }
 
-
 // --- Main API Route Handler ---
 export async function POST(request: NextRequest) {
   try {
-    // Initialize Firebase Admin
-    const adminApp = initializeFirebaseAdmin();
-    const db: Firestore = getFirestore(adminApp);
+    const db = adminDb;
     
     // 1. Fetch data from Google Sheet
     const sheetData = await getSheetData();
@@ -108,7 +81,6 @@ export async function POST(request: NextRequest) {
           const sheetCoinBalance = sheetMap.get(lowerCaseLinkedName)!;
           const firestoreCoinBalance = userData.cybaCoinBalance || 0;
           
-          // If balance is different, stage an update in the batch
           if (sheetCoinBalance !== firestoreCoinBalance) {
             batch.update(userDoc.ref, { cybaCoinBalance: sheetCoinBalance });
             updatedCount++;

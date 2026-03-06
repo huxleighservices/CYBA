@@ -88,7 +88,7 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ details: 'Server returned non-JSON error.' }));
-                throw new Error(errorData.details || 'Server failed to upload file.');
+                throw new Error(errorData.details + ' | code: ' + errorData.code || 'Server failed to upload file.');
             }
 
             const { imageUrl } = await response.json();

@@ -1,36 +1,10 @@
-
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, App, getApp } from 'firebase-admin/app';
-import { getStorage } from 'firebase-admin/storage';
 import { v4 as uuidv4 } from 'uuid';
-import { firebaseConfig } from '@/firebase/config';
-
-// --- Firebase Admin Initialization ---
-function initializeFirebaseAdmin(): App {
-  // This safely initializes the admin SDK or gets the existing instance.
-  if (getApps().length > 0) {
-    return getApp();
-  }
-  
-  try {
-    // When running in a Google Cloud environment (like App Hosting),
-    // initializeApp() will automatically use Application Default Credentials.
-    // We MUST provide the storageBucket name to interact with Storage.
-    return initializeApp({
-      storageBucket: firebaseConfig.storageBucket,
-    });
-  } catch (e) {
-    console.error('Upload API Error: Failed to initialize Firebase Admin SDK.', e);
-    // This generic error is caught by the client and displayed.
-    throw new Error('Server authentication configuration error.');
-  }
-}
+import { adminStorage } from '../firebase-admin';
 
 export async function POST(request: NextRequest) {
     try {
-        const adminApp = initializeFirebaseAdmin();
-        // Now getStorage().bucket() will work because the app is initialized with the bucket name.
-        const bucket = getStorage(adminApp).bucket();
+        const bucket = adminStorage.bucket();
 
         const body = await request.json();
         const { fileDataUri, fileName, fileType } = body;
@@ -51,18 +25,22 @@ export async function POST(request: NextRequest) {
 
         await file.save(buffer, {
             metadata: { contentType: fileType },
-            public: true // Make the file public upon upload
         });
 
-        // The public URL can be constructed directly
-        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+        // Generate a signed URL valid for 10 years
+        const [signedUrl] = await file.getSignedUrl({
+            action: 'read',
+            expires: Date.now() + 1000 * 60 * 60 * 24 * 365 * 10,
+        });
 
-        return NextResponse.json({ imageUrl: publicUrl }, { status: 200 });
+        return NextResponse.json({ imageUrl: signedUrl }, { status: 200 });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('--- Upload API Error ---', error);
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during file upload.';
-        // The `details` field is what the client-side `create/page.tsx` uses.
-        return NextResponse.json({ error: 'Upload failed.', details: errorMessage }, { status: 500 });
-    }
+        return NextResponse.json({ 
+            error: 'Upload failed.',
+            details: error?.message || 'Unknown error',
+            code: error?.code || 'none',
+        }, { status: 500 });
+    } 
 }

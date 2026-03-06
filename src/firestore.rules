@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- User Data ---
+    // Users can read any profile, but can only write to their own document.
+    match /users/{userId} {
+      allow read;
+      allow write: if request.auth.uid == userId;
+    }
+
+    // --- CYBAZONE (Social Feed) ---
+    match /cybazone_posts/{postId} {
+      allow read;
+      allow create: if request.auth != null;
+      // Allow updates for likes, reposts, etc.
+      allow update: if request.auth != null;
+      // Only the post's author can delete it.
+      allow delete: if request.auth.uid == get(/databases/$(database)/documents/cybazone_posts/$(postId)).data.authorId;
+    }
+
+    match /cybazone_posts/{postId}/comments/{commentId} {
+      allow read;
+      allow create: if request.auth != null;
+      allow update: if false; // Comments cannot be edited.
+      // A comment can be deleted by its author OR by the author of the parent post.
+      // This is required for the main post deletion to cascade and delete all comments.
+      allow delete: if request.auth.uid == get(/databases/$(database)/documents/cybazone_posts/$(postId)/comments/$(commentId)).data.authorId
+                    || request.auth.uid == get(/databases/$(database)/documents/cybazone_posts/$(postId)).data.authorId;
+    }
+
+    // --- Admin-managed Content ---
+    // All content under these collections is public to read, but only
+    // authenticated users (assumed to be admins via the admin panel) can write.
+    match /blogPosts/{docId} { allow read; allow write: if request.auth != null; }
+    match /merchandise/{docId} { allow read; allow write: if request.auth != null; }
+    match /memberships/{docId} { allow read; allow write: if request.auth != null; }
+    match /extras/{docId} { allow read; allow write: if request.auth != null; }
+    match /categories/{docId} { allow read; allow write: if request.auth != null; }
+    match /leaderboard/{docId} { allow read; allow write: if request.auth != null; }
+    match /settings/{docId} { allow read; allow write: if request.auth != null; }
+    match /forumPosts/{docId} { allow read; allow write: if request.auth != null; }
+  }
+}
