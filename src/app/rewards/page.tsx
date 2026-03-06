@@ -57,6 +57,9 @@ function ItemCard({ item }: { item: any }) {
 export default function RewardsPage() {
   const { firestore } = useFirebase();
 
+  console.log('Firestore app project:', (firestore as any)._databaseId?.projectId);
+  console.log('Firestore database:', (firestore as any)._databaseId?.database);
+
   const rewardsQuery = useMemoFirebase(
     () =>
       query(

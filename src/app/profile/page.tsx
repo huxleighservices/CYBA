@@ -39,6 +39,7 @@ type UserProfile = {
   username: string;
   email: string;
   avatarConfig?: AvatarConfig;
+  username_lowercase?: string;
 };
 
 function AvatarEditor({ initialConfig, userId }: { initialConfig?: Partial<AvatarConfig>, userId: string }) {
@@ -218,6 +219,14 @@ export default function ProfilePage() {
   
   const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
+
+  // Backfill username_lowercase for existing users who visit their profile
+  useEffect(() => {
+    if (user && userProfile && userProfile.username && !userProfile.username_lowercase) {
+      const userRef = doc(firestore, 'users', user.uid);
+      setDocumentNonBlocking(userRef, { username_lowercase: userProfile.username.toLowerCase() }, { merge: true });
+    }
+  }, [user, userProfile, firestore]);
 
   if (isUserLoading || isProfileLoading || !user || !userProfile) {
     return (
