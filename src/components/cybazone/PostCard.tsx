@@ -22,6 +22,17 @@ import type { AvatarConfig } from '@/lib/avatar-assets';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { CommentSheet } from './CommentSheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 export type CybazonePost = {
   id: string;
@@ -135,49 +146,38 @@ export function PostCard({ post }: { post: CybazonePost }) {
 
   const handleDelete = async () => {
     if (!user || user.uid !== post.authorId || isDeleting) return;
-    if (
-      confirm(
-        'Are you sure you want to delete this post and all its comments? This action cannot be undone.'
-      )
-    ) {
-      setIsDeleting(true);
-      try {
-        const postRef = doc(firestore, 'cybazone_posts', post.id);
-        const commentsRef = collection(
-          firestore,
-          'cybazone_posts',
-          post.id,
-          'comments'
-        );
 
-        // Note: Deleting images from storage via the client is not implemented
-        // as it's complex and requires more secure, server-side handling.
-        // The image URL will remain, but the post will be gone.
+    setIsDeleting(true);
+    try {
+      const postRef = doc(firestore, 'cybazone_posts', post.id);
+      const commentsRef = collection(
+        firestore,
+        'cybazone_posts',
+        post.id,
+        'comments'
+      );
 
-        // Batch delete comments
-        const commentsSnapshot = await getDocs(commentsRef);
-        const batch = writeBatch(firestore);
-        commentsSnapshot.forEach((doc) => {
-          batch.delete(doc.ref);
-        });
+      const commentsSnapshot = await getDocs(commentsRef);
+      const batch = writeBatch(firestore);
+      commentsSnapshot.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
 
-        // Delete the main post document
-        batch.delete(postRef);
+      batch.delete(postRef);
 
-        await batch.commit();
+      await batch.commit();
 
-        toast({ title: 'Post Deleted Successfully' });
-      } catch (error) {
-        console.error('Error deleting post:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Deletion Failed',
-          description:
-            'Could not delete the post. Please check your permissions or try again later.',
-        });
-      } finally {
-        setIsDeleting(false);
-      }
+      toast({ title: 'Post Deleted Successfully' });
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Deletion Failed',
+        description:
+          'Could not delete the post. Please check your permissions or try again later.',
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -196,19 +196,40 @@ export function PostCard({ post }: { post: CybazonePost }) {
           </div>
           {user && user.uid === post.authorId && (
             <div className="ml-auto">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-destructive"
-                onClick={handleDelete}
-                disabled={isDeleting}
-              >
-                {isDeleting ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <Trash2 className="h-5 w-5" />
-                )}
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-destructive"
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-5 w-5" />
+                    )}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete
+                      your post and all associated comments.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDelete}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           )}
         </CardHeader>
