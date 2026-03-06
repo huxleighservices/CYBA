@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Loader2, LogOut, Save } from 'lucide-react';
+import { Loader2, LogOut, Save, Ban } from 'lucide-react';
 import { doc } from 'firebase/firestore';
 import Image from 'next/image';
 import {
@@ -65,12 +65,12 @@ function AvatarEditor({ initialConfig, userId }: { initialConfig?: Partial<Avata
 
   return (
     <div className="space-y-6">
-      <div className="relative mx-auto w-fit">
-        <AvatarDisplay avatarConfig={config} size={160} />
+      <div className="relative mx-auto w-fit mb-4">
+        <AvatarDisplay avatarConfig={config} size={240} />
       </div>
 
       <Tabs defaultValue="skin" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 gap-1">
+        <TabsList className="grid w-full grid-cols-4 gap-1 mb-4">
           <TabsTrigger value="skin">Skin</TabsTrigger>
           <TabsTrigger value="hat">Hat</TabsTrigger>
           <TabsTrigger value="shirt">Shirt</TabsTrigger>
@@ -82,25 +82,36 @@ function AvatarEditor({ initialConfig, userId }: { initialConfig?: Partial<Avata
         
         {(Object.keys(avatarOptions) as AvatarLayer[]).map((category) => (
           <TabsContent key={category} value={category}>
-            <Carousel opts={{ align: 'start', loop: true }} className="w-full">
+            <Carousel opts={{ align: 'start', loop: false }} className="w-full">
               <CarouselContent>
-                {avatarOptions[category].map((option, index) => (
+                {avatarOptions[category].map((option, index) => {
+                  const isNoneOption = option.name === 'None';
+                  return (
                   <CarouselItem key={option.name} className="basis-1/3 md:basis-1/4">
                     <div className="p-1">
                       <Button
                         variant="outline"
                         className={cn(
-                          "w-full h-24 flex items-center justify-center p-2 flex-col gap-2",
+                          "w-full h-28 flex items-center justify-center p-2 flex-col gap-2",
                           config[category] === index && "ring-2 ring-primary"
                         )}
                         onClick={() => handleSelect(category, index)}
                       >
-                        <Image src={option.url} alt={option.name} width={60} height={60} className="object-contain" data-ai-hint={option.hint} />
-                        <span className="text-xs truncate">{option.name}</span>
+                        {isNoneOption ? (
+                          <div className="flex flex-col items-center justify-center gap-2 text-red-500">
+                            <Ban className="w-10 h-10" />
+                            <span className="text-xs font-semibold">None</span>
+                          </div>
+                        ) : (
+                          <>
+                            <Image src={option.url} alt={option.name} width={60} height={60} className="object-contain" data-ai-hint={option.hint} />
+                            <span className="text-xs truncate">{option.name}</span>
+                          </>
+                        )}
                       </Button>
                     </div>
                   </CarouselItem>
-                ))}
+                )})}
               </CarouselContent>
               <CarouselPrevious />
               <CarouselNext />
