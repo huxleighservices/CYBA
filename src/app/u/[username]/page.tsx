@@ -40,14 +40,14 @@ export default function UserPublicProfilePage() {
   // 2. Fetch posts if user is found
   const postsQuery = useMemoFirebase(
     () =>
-      userProfile
+      userProfile?.id
         ? query(
             collection(firestore, 'cybazone_posts'),
             where('authorId', '==', userProfile.id),
             orderBy('timestamp', 'desc')
           )
         : null,
-    [firestore, userProfile]
+    [firestore, userProfile?.id] // Depend on the stable user ID
   );
   const { data: posts, isLoading: isLoadingPosts } = useCollection<CybazonePost>(postsQuery);
 
@@ -60,12 +60,12 @@ export default function UserPublicProfilePage() {
     );
   }
 
-  // Handle not found
+  // Handle not found. Using a stable dependency on the `users` array.
   useEffect(() => {
-    if (!isLoadingUser && !userProfile) {
+    if (!isLoadingUser && (!users || users.length === 0)) {
       nextNotFound();
     }
-  }, [isLoadingUser, userProfile]);
+  }, [isLoadingUser, users]);
 
   if (!userProfile) {
     // Render a loader while waiting for the notFound to trigger on the client.
