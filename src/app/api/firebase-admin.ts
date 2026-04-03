@@ -14,4 +14,4 @@ function initializeFirebaseAdmin(): App {
 const adminApp = initializeFirebaseAdmin();
 
 export const adminDb = getFirestore(adminApp);
-export const adminStorage = getStorage(adminApp, 'gs://studio-9029052952-9df3f.firebasestorage.app');
+export const adminStorage = getStorage(adminApp);

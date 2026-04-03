@@ -126,4 +126,46 @@
       filter: drop-shadow(0 0 8px hsl(280 80% 70%)) drop-shadow(0 0 20px hsl(280 80% 70% / 0.7));
     }
   }
+
+  /* Seamless ticker loop – duplicate content and translate by 50% */
+  @keyframes ticker-loop {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .ticker-loop {
+    animation: ticker-loop 28s linear infinite;
+  }
+
+  /* Pulsing gold glow for the #1 winner card */
+  @keyframes winner-glow-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 18px rgba(234, 179, 8, 0.5),
+        0 0 40px rgba(234, 179, 8, 0.15),
+        inset 0 1px 0 rgba(234, 179, 8, 0.2);
+    }
+    50% {
+      box-shadow:
+        0 0 30px rgba(234, 179, 8, 0.8),
+        0 0 70px rgba(234, 179, 8, 0.25),
+        inset 0 1px 0 rgba(234, 179, 8, 0.3);
+    }
+  }
+  .winner-glow { animation: winner-glow-pulse 2.5s ease-in-out infinite; }
+
+  /* Sweeping gold shimmer on winner card background */
+  @keyframes gold-shimmer {
+    0%   { background-position: -300% center; }
+    100% { background-position: 300% center; }
+  }
+  .gold-shimmer {
+    background-image: linear-gradient(
+      105deg,
+      transparent 30%,
+      rgba(255, 215, 0, 0.12) 50%,
+      transparent 70%
+    );
+    background-size: 300% auto;
+    animation: gold-shimmer 3s linear infinite;
+  }
 }

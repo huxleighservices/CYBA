@@ -1,9 +1,5 @@
 {
   "projects": {
-    "default": "studio-9029052952-9df3f",
-    "CYBA": "studio-9029052952-9df3f",
-    "feedcyba": "studio-9029052952-9df3f"
-  },
-  "targets": {},
-  "etags": {}
+    "default": "studio-9029052952-9df3f"
+  }
 }

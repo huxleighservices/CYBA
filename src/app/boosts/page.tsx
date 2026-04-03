@@ -85,8 +85,8 @@ export default function BoostsPage() {
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {boosts?.length > 0 ? (
-            boosts.map((item) => <ItemCard key={item.id} item={item} />)
+          {(boosts?.length ?? 0) > 0 ? (
+            boosts?.map((item) => <ItemCard key={item.id} item={item} />)
           ) : (
             <p className="col-span-full text-center text-foreground/60">
               No boosts available at the moment.

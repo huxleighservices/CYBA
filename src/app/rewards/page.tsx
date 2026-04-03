@@ -89,8 +89,8 @@ export default function RewardsPage() {
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {rewards?.length > 0 ? (
-            rewards.map((item) => <ItemCard key={item.id} item={item} />)
+          {(rewards?.length ?? 0) > 0 ? (
+            rewards?.map((item) => <ItemCard key={item.id} item={item} />)
           ) : (
             <p className="col-span-full text-center text-foreground/60">
               No rewards available at the moment.

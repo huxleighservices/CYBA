@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFirebase, useDoc, useMemoFirebase, setDocumentNonBlocking, useCollection } from '@/firebase';
 import { Button } from '@/components/ui/button';
@@ -11,8 +11,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Loader2, LogOut, Save, Ban, User as UserIcon } from 'lucide-react';
-import { doc, collection, query, where, orderBy } from 'firebase/firestore';
+import { Loader2, LogOut, Save, Ban, User as UserIcon, Camera, X, TrendingUp } from 'lucide-react';
+import { doc, collection, query, where, orderBy, updateDoc, deleteField, getDocs, writeBatch } from 'firebase/firestore';
+import { computeLevel, getNextLevel, LEVEL_CONFIG, type Level } from '@/lib/levels';
+import { LevelBadge } from '@/components/LevelBadge';
+import { AnthemPlayer, extractYouTubeId } from '@/components/AnthemPlayer';
+import { Progress } from '@/components/ui/progress';
 import Image from 'next/image';
 import {
   Carousel,
@@ -40,7 +44,183 @@ type UserProfile = {
   email: string;
   avatarConfig?: AvatarConfig;
   username_lowercase?: string;
+  profilePictureUrl?: string;
+  postCount?: number;
+  supportGiven?: number;
+  anthemUrl?: string;
 };
+
+async function batchUpdatePostsLevel(firestore: any, userId: string, level: Level) {
+  const postsSnap = await getDocs(
+    query(collection(firestore, 'cybazone_posts'), where('authorId', '==', userId))
+  );
+  for (let i = 0; i < postsSnap.docs.length; i += 500) {
+    const chunk = postsSnap.docs.slice(i, i + 500);
+    const batch = writeBatch(firestore);
+    chunk.forEach((postDoc) => batch.update(postDoc.ref, { authorLevel: level }));
+    await batch.commit();
+  }
+}
+
+async function batchUpdatePostsProfilePicture(
+  firestore: any,
+  userId: string,
+  imageUrl: string | null
+) {
+  const postsSnap = await getDocs(
+    query(collection(firestore, 'cybazone_posts'), where('authorId', '==', userId))
+  );
+  // Firestore batch limit is 500 ops
+  const chunkSize = 500;
+  for (let i = 0; i < postsSnap.docs.length; i += chunkSize) {
+    const chunk = postsSnap.docs.slice(i, i + chunkSize);
+    const batch = writeBatch(firestore);
+    chunk.forEach((postDoc) => {
+      if (imageUrl) {
+        batch.update(postDoc.ref, { authorProfilePictureUrl: imageUrl });
+      } else {
+        batch.update(postDoc.ref, { authorProfilePictureUrl: deleteField() });
+      }
+    });
+    await batch.commit();
+  }
+}
+
+function ProfilePictureUploader({
+  userId,
+  currentUrl,
+  avatarConfig,
+}: {
+  userId: string;
+  currentUrl?: string;
+  avatarConfig?: AvatarConfig;
+}) {
+  const { firestore } = useFirebase();
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const hasSynced = useRef(false);
+
+  const displayUrl = previewUrl || currentUrl;
+
+  // Silently sync existing profile picture to any posts that are missing it
+  useEffect(() => {
+    if (!currentUrl || hasSynced.current) return;
+    hasSynced.current = true;
+    batchUpdatePostsProfilePicture(firestore, userId, currentUrl).catch(() => {});
+  }, [currentUrl, firestore, userId]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Show local preview immediately
+    const reader = new FileReader();
+    reader.onloadend = () => setPreviewUrl(reader.result as string);
+    reader.readAsDataURL(file);
+
+    setIsUploading(true);
+    try {
+      const fileDataUri = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onloadend = () => resolve(r.result as string);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileDataUri, fileName: file.name, fileType: file.type }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.details || 'Upload failed');
+      }
+
+      const { imageUrl } = await response.json();
+      await updateDoc(doc(firestore, 'users', userId), { profilePictureUrl: imageUrl });
+      await batchUpdatePostsProfilePicture(firestore, userId, imageUrl);
+      setPreviewUrl(null); // let Firestore real-time value take over
+      toast({ title: 'Profile picture updated!', description: 'All your posts have been updated.' });
+    } catch (error) {
+      setPreviewUrl(null);
+      toast({ variant: 'destructive', title: 'Upload failed', description: error instanceof Error ? error.message : 'Please try again.' });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemove = async () => {
+    try {
+      await updateDoc(doc(firestore, 'users', userId), { profilePictureUrl: deleteField() });
+      await batchUpdatePostsProfilePicture(firestore, userId, null);
+      setPreviewUrl(null);
+      toast({ title: 'Profile picture removed.', description: 'All your posts have been updated.' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Could not remove picture.' });
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col items-center gap-4">
+        <div className="relative">
+          <AvatarDisplay
+            avatarConfig={avatarConfig}
+            profilePictureUrl={displayUrl}
+            size={160}
+          />
+          {isUploading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+              <Loader2 className="w-8 h-8 animate-spin text-white" />
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+          >
+            <Camera className="w-4 h-4 mr-2" />
+            {displayUrl ? 'Change Photo' : 'Upload Photo'}
+          </Button>
+          {displayUrl && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRemove}
+              disabled={isUploading}
+              className="text-destructive hover:text-destructive"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Remove
+            </Button>
+          )}
+        </div>
+
+        <p className="text-xs text-muted-foreground text-center">
+          {displayUrl
+            ? 'Your profile picture is shown on your public profile and posts.'
+            : 'Upload a photo to use instead of your avatar.'}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function AvatarEditor({ initialConfig, userId }: { initialConfig?: Partial<AvatarConfig>, userId: string }) {
   const { firestore } = useFirebase();
@@ -161,6 +341,81 @@ function AvatarEditor({ initialConfig, userId }: { initialConfig?: Partial<Avata
   );
 }
 
+function AnthemEditor({ userId, currentUrl, username }: { userId: string; currentUrl?: string; username: string }) {
+  const { firestore } = useFirebase();
+  const { toast } = useToast();
+  const [url, setUrl] = useState(currentUrl ?? '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const videoId = extractYouTubeId(url);
+  const thumbUrl = videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : null;
+
+  const handleSave = async () => {
+    if (!videoId) {
+      toast({ variant: 'destructive', title: 'Invalid URL', description: 'Please enter a valid YouTube link.' });
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await updateDoc(doc(firestore, 'users', userId), { anthemUrl: url.trim() });
+      toast({ title: 'Anthem saved!', description: 'Your anthem is now live on your profile.' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Save failed', description: 'Please try again.' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    setIsSaving(true);
+    try {
+      await updateDoc(doc(firestore, 'users', userId), { anthemUrl: deleteField() });
+      setUrl('');
+      toast({ title: 'Anthem removed.' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Could not remove anthem.' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex justify-center">
+        <AnthemPlayer anthemUrl={url || currentUrl} username={username} />
+      </div>
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-muted-foreground">YouTube URL</label>
+        <input
+          type="url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://www.youtube.com/watch?v=..."
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+      </div>
+      {thumbUrl && (
+        <div className="rounded-lg overflow-hidden border border-border/50">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={thumbUrl} alt="Video thumbnail" className="w-full object-cover" />
+        </div>
+      )}
+      <div className="flex gap-2">
+        <Button onClick={handleSave} disabled={isSaving || !videoId} className="flex-1">
+          {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+          Save Anthem
+        </Button>
+        {(currentUrl || url) && (
+          <Button variant="ghost" onClick={handleRemove} disabled={isSaving} className="text-destructive hover:text-destructive">
+            <X className="w-4 h-4 mr-2" />
+            Remove
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function MyPosts({ userId }: { userId: string }) {
   const { firestore } = useFirebase();
 
@@ -209,6 +464,7 @@ function MyPosts({ userId }: { userId: string }) {
 export default function ProfilePage() {
   const { firestore, auth, user, isUserLoading } = useFirebase();
   const router = useRouter();
+  const hasSyncedLevel = useRef(false);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -216,7 +472,7 @@ export default function ProfilePage() {
       router.push('/login?redirect=/profile');
     }
   }, [isUserLoading, user, router]);
-  
+
   const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
 
@@ -228,6 +484,14 @@ export default function ProfilePage() {
     }
   }, [user, userProfile, firestore]);
 
+  // Auto-sync the user's current level to all their posts (runs once per session)
+  useEffect(() => {
+    if (!user || !userProfile || hasSyncedLevel.current) return;
+    hasSyncedLevel.current = true;
+    const level = computeLevel(userProfile.postCount, userProfile.supportGiven);
+    batchUpdatePostsLevel(firestore, user.uid, level).catch(() => {});
+  }, [user, userProfile, firestore]);
+
   if (isUserLoading || isProfileLoading || !user || !userProfile) {
     return (
       <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center">
@@ -235,6 +499,13 @@ export default function ProfilePage() {
       </div>
     );
   }
+
+  const level = computeLevel(userProfile?.postCount, userProfile?.supportGiven);
+  const levelConfig = LEVEL_CONFIG[level];
+  const nextLevel = getNextLevel(level);
+  const nextConfig = nextLevel ? LEVEL_CONFIG[nextLevel] : null;
+  const postProgress = nextConfig ? Math.min(100, ((userProfile?.postCount ?? 0) / nextConfig.minPosts) * 100) : 100;
+  const supportProgress = nextConfig ? Math.min(100, ((userProfile?.supportGiven ?? 0) / nextConfig.minSupport) * 100) : 100;
 
   return (
     <div className="container mx-auto px-4 py-16">
@@ -259,7 +530,7 @@ export default function ProfilePage() {
             </TabsContent>
 
             <TabsContent value="edit">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start mt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 items-start mt-6">
                     {/* User Info Card */}
                     <Card className="md:col-span-1 border-primary/20 bg-card/50">
                         <CardHeader>
@@ -269,12 +540,39 @@ export default function ProfilePage() {
                         <CardContent className="space-y-4">
                         <div className="space-y-1">
                             <p className="text-sm font-medium text-muted-foreground">Username</p>
-                            <p>{userProfile?.username ?? 'N/A'}</p>
+                            <p className="flex items-center gap-1.5">
+                              {userProfile?.username ?? 'N/A'}
+                              <LevelBadge level={level} />
+                            </p>
                         </div>
                         <div className="space-y-1">
                             <p className="text-sm font-medium text-muted-foreground">Email</p>
                             <p>{user.email}</p>
                         </div>
+
+                        {/* Level progress */}
+                        <div className="rounded-lg border border-border/50 bg-background/40 p-3 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <TrendingUp className="w-4 h-4 text-primary" />
+                              <p className="text-sm font-semibold">
+                                {levelConfig.emoji} {levelConfig.name}
+                                {nextConfig && <span className="text-muted-foreground font-normal text-xs ml-2">→ {nextConfig.name}</span>}
+                              </p>
+                            </div>
+                            <div className="space-y-1.5 text-xs text-muted-foreground">
+                              <div className="flex justify-between">
+                                <span>Posts</span>
+                                <span>{userProfile?.postCount ?? 0}{nextConfig ? ` / ${nextConfig.minPosts}` : ' ✓'}</span>
+                              </div>
+                              <Progress value={postProgress} className="h-1.5" />
+                              <div className="flex justify-between mt-0.5">
+                                <span>Support Given</span>
+                                <span>{userProfile?.supportGiven ?? 0}{nextConfig ? ` / ${nextConfig.minSupport}` : ' ✓'}</span>
+                              </div>
+                              <Progress value={supportProgress} className="h-1.5" />
+                            </div>
+                        </div>
+
                         <Button
                             variant="destructive"
                             className="w-full"
@@ -286,8 +584,25 @@ export default function ProfilePage() {
                         </CardContent>
                     </Card>
 
+                    {/* Profile Picture Card */}
+                    <Card className="md:col-span-1 border-primary/20 bg-card/50">
+                        <CardHeader>
+                            <CardTitle>Profile Picture</CardTitle>
+                            <CardDescription>
+                                Upload a photo to display instead of your avatar.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ProfilePictureUploader
+                                userId={user.uid}
+                                currentUrl={userProfile.profilePictureUrl}
+                                avatarConfig={userProfile.avatarConfig}
+                            />
+                        </CardContent>
+                    </Card>
+
                     {/* Avatar Editor Card */}
-                    <Card className="md:col-span-2 border-primary/20 bg-card/50">
+                    <Card className="md:col-span-2 xl:col-span-1 border-primary/20 bg-card/50">
                         <CardHeader>
                             <CardTitle>Customize Avatar</CardTitle>
                             <CardDescription>
@@ -296,6 +611,23 @@ export default function ProfilePage() {
                         </CardHeader>
                         <CardContent>
                             {userProfile && <AvatarEditor initialConfig={userProfile.avatarConfig} userId={user.uid} />}
+                        </CardContent>
+                    </Card>
+
+                    {/* My Anthem Card */}
+                    <Card className="md:col-span-1 border-primary/20 bg-card/50">
+                        <CardHeader>
+                            <CardTitle>My Anthem</CardTitle>
+                            <CardDescription>
+                                Set a YouTube video that plays when visitors click your record player.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <AnthemEditor
+                                userId={user.uid}
+                                currentUrl={userProfile.anthemUrl}
+                                username={userProfile.username}
+                            />
                         </CardContent>
                     </Card>
                 </div>

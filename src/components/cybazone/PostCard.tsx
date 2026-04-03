@@ -17,11 +17,14 @@ import {
   getDocs,
   writeBatch,
 } from 'firebase/firestore';
+
 import { formatDistanceToNow } from 'date-fns';
 import type { AvatarConfig } from '@/lib/avatar-assets';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { CommentSheet } from './CommentSheet';
+import { LevelBadge } from '@/components/LevelBadge';
+import { type Level } from '@/lib/levels';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +42,8 @@ export type CybazonePost = {
   authorId: string;
   authorUsername: string;
   authorAvatar?: AvatarConfig;
+  authorProfilePictureUrl?: string;
+  authorLevel?: Level;
   content: string;
   imageUrl?: string;
   timestamp: any; // Firestore Timestamp
@@ -47,6 +52,7 @@ export type CybazonePost = {
   commentCount: number;
   repostCount: number;
   repostedBy: string[];
+  hashtags?: string[];
 };
 
 export function PostCard({ post }: { post: CybazonePost }) {
@@ -74,30 +80,27 @@ export function PostCard({ post }: { post: CybazonePost }) {
 
     const postRef = doc(firestore, 'cybazone_posts', post.id);
 
+    const isOthersPost = post.authorId !== user.uid;
+    const userRef = doc(firestore, 'users', user.uid);
+
     if (hasLiked) {
       updateDoc(postRef, {
         likedBy: arrayRemove(user.uid),
         likeCount: increment(-1),
       }).catch((err) => {
         console.error('Error unliking post:', err);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Could not update like status.',
-        });
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not update like status.' });
       });
+      if (isOthersPost) updateDoc(userRef, { supportGiven: increment(-1) }).catch(() => {});
     } else {
       updateDoc(postRef, {
         likedBy: arrayUnion(user.uid),
         likeCount: increment(1),
       }).catch((err) => {
         console.error('Error liking post:', err);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Could not update like status.',
-        });
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not update like status.' });
       });
+      if (isOthersPost) updateDoc(userRef, { supportGiven: increment(1) }).catch(() => {});
     }
   };
 
@@ -116,6 +119,8 @@ export function PostCard({ post }: { post: CybazonePost }) {
     }
 
     const postRef = doc(firestore, 'cybazone_posts', post.id);
+    const isOthersPost = post.authorId !== user.uid;
+    const userRef = doc(firestore, 'users', user.uid);
 
     if (hasReposted) {
       updateDoc(postRef, {
@@ -123,24 +128,18 @@ export function PostCard({ post }: { post: CybazonePost }) {
         repostCount: increment(-1),
       }).catch((err) => {
         console.error('Error unreposting post:', err);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Could not update repost status.',
-        });
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not update repost status.' });
       });
+      if (isOthersPost) updateDoc(userRef, { supportGiven: increment(-1) }).catch(() => {});
     } else {
       updateDoc(postRef, {
         repostedBy: arrayUnion(user.uid),
         repostCount: increment(1),
       }).catch((err) => {
         console.error('Error reposting post:', err);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Could not update repost status.',
-        });
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not update repost status.' });
       });
+      if (isOthersPost) updateDoc(userRef, { supportGiven: increment(1) }).catch(() => {});
     }
   };
 
@@ -167,6 +166,9 @@ export function PostCard({ post }: { post: CybazonePost }) {
 
       await batch.commit();
 
+      // Decrement author's post count
+      updateDoc(doc(firestore, 'users', user.uid), { postCount: increment(-1) }).catch(() => {});
+
       toast({ title: 'Post Deleted Successfully' });
     } catch (error) {
       console.error('Error deleting post:', error);
@@ -190,11 +192,19 @@ export function PostCard({ post }: { post: CybazonePost }) {
       <Card className="w-full h-full flex flex-col border-primary/20 bg-card/50">
         <CardHeader className="flex flex-row items-center gap-4 p-4">
           <Link href={`/u/${post.authorUsername}`}>
-            <AvatarDisplay avatarConfig={post.authorAvatar} size={48} />
+            <AvatarDisplay
+              avatarConfig={post.authorAvatar}
+              profilePictureUrl={post.authorProfilePictureUrl}
+              size={48}
+              level={post.authorLevel}
+            />
           </Link>
           <div className="flex flex-col">
             <Link href={`/u/${post.authorUsername}`} className="hover:underline">
-              <p className="font-bold">{post.authorUsername}</p>
+              <p className="font-bold flex items-center gap-1">
+                {post.authorUsername}
+                {post.authorLevel && <LevelBadge level={post.authorLevel} />}
+              </p>
             </Link>
             <p className="text-xs text-foreground/60">{formattedDate}</p>
           </div>
@@ -239,15 +249,20 @@ export function PostCard({ post }: { post: CybazonePost }) {
         </CardHeader>
         <CardContent className="p-4 pt-0 space-y-4 flex-grow">
           <p className="text-base text-foreground/90 whitespace-pre-wrap">
-            {post.content}
+            {post.content.split(/(#[\w]+)/g).map((part, i) => {
+               if (part.startsWith('#')) {
+                 return <Link key={i} href={`/search?q=${encodeURIComponent(part)}`} className="text-primary font-semibold hover:underline drop-shadow-sm">{part}</Link>;
+               }
+               return <span key={i}>{part}</span>;
+            })}
           </p>
           {post.imageUrl && (
-            <div className="relative aspect-video rounded-lg overflow-hidden border">
+            <div className="relative aspect-square rounded-lg overflow-hidden border">
               <Image
                 src={post.imageUrl}
                 alt="Post image"
                 fill
-                className="object-contain bg-black/20"
+                className="object-cover"
               />
             </div>
           )}
@@ -302,6 +317,7 @@ export function PostCard({ post }: { post: CybazonePost }) {
         open={isCommentsOpen}
         onOpenChange={setIsCommentsOpen}
         postId={post.id}
+        postAuthorId={post.authorId}
       />
     </>
   );

@@ -39,6 +39,7 @@ type Comment = {
   authorId: string;
   authorUsername: string;
   authorAvatar?: AvatarConfig;
+  authorProfilePictureUrl?: string;
   content: string;
   timestamp: any;
 };
@@ -46,9 +47,10 @@ type Comment = {
 type UserProfile = {
     username: string;
     avatarConfig?: AvatarConfig;
+    profilePictureUrl?: string;
 };
 
-function CommentForm({ postId }: { postId: string }) {
+function CommentForm({ postId, postAuthorId }: { postId: string; postAuthorId: string }) {
   const { firestore, user, isUserLoading } = useFirebase();
   const { toast } = useToast();
   const [content, setContent] = useState('');
@@ -74,6 +76,7 @@ function CommentForm({ postId }: { postId: string }) {
         authorId: user.uid,
         authorUsername: userProfile.username,
         authorAvatar: userProfile.avatarConfig || {},
+        authorProfilePictureUrl: userProfile.profilePictureUrl || null,
         content: content.trim(),
         timestamp: serverTimestamp(),
       });
@@ -82,6 +85,11 @@ function CommentForm({ postId }: { postId: string }) {
       await updateDoc(postRef, {
         commentCount: increment(1),
       });
+
+      // Track outward support (only when commenting on others' posts)
+      if (user.uid !== postAuthorId) {
+        updateDoc(doc(firestore, 'users', user.uid), { supportGiven: increment(1) }).catch(() => {});
+      }
 
       setContent('');
     } catch (error) {
@@ -108,7 +116,7 @@ function CommentForm({ postId }: { postId: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t p-4">
-      <AvatarDisplay avatarConfig={userProfile?.avatarConfig} size={32} />
+      <AvatarDisplay avatarConfig={userProfile?.avatarConfig} profilePictureUrl={userProfile?.profilePictureUrl} size={32} />
       <Input
         value={content}
         onChange={(e) => setContent(e.target.value)}
@@ -129,7 +137,7 @@ function CommentItem({ comment }: { comment: Comment }) {
 
   return (
     <div className="flex gap-3 p-4">
-      <AvatarDisplay avatarConfig={comment.authorAvatar} size={32} />
+      <AvatarDisplay avatarConfig={comment.authorAvatar} profilePictureUrl={comment.authorProfilePictureUrl} size={32} />
       <div className="flex-grow">
         <div className="flex items-center gap-2">
           <span className="font-bold text-sm">{comment.authorUsername}</span>
@@ -145,10 +153,12 @@ export function CommentSheet({
   open,
   onOpenChange,
   postId,
+  postAuthorId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   postId: string;
+  postAuthorId: string;
 }) {
   const { firestore } = useFirebase();
 
@@ -187,7 +197,7 @@ export function CommentSheet({
             ))}
         </ScrollArea>
         <SheetFooter className="p-0">
-            <CommentForm postId={postId} />
+            <CommentForm postId={postId} postAuthorId={postAuthorId} />
         </SheetFooter>
       </SheetContent>
     </Sheet>

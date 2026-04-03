@@ -3,29 +3,24 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
-  User,
-  LogOut,
   ShoppingBag,
   Newspaper,
   Trophy,
   Menu,
-  Award,
   Gem,
+  Target,
+  RotateCw,
+  Search,
   PlusCircle,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
+import { AvatarDisplay } from '@/components/AvatarDisplay';
+import type { AvatarConfig } from '@/lib/avatar-assets';
 import { doc } from 'firebase/firestore';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { computeLevel } from '@/lib/levels';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   Sheet,
@@ -45,34 +40,68 @@ import {
 
 
 const navLinks = [
-  { href: '/', label: 'Feed', icon: Newspaper },
-  { href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
-  { href: '/shop', label: 'Shop', icon: ShoppingBag },
-  { href: '/boosts', label: 'Boosts', icon: Gem },
-  { href: '/rewards', label: 'Rewards', icon: Award },
+  { href: '/', label: 'Feed', icon: Newspaper, isNew: false },
+  { href: '/cybaquests', label: 'CYBAQuests', icon: Target, isNew: true },
+  { href: '/leaderboard', label: 'Leaderboard', icon: Trophy, isNew: false },
+  { href: '/winners-wheel', label: "Winner's Wheel", icon: RotateCw, isNew: true },
+  { href: '/boosts', label: 'Boosts', icon: Gem, isNew: false },
+  { href: '/shop', label: 'Shop', icon: ShoppingBag, isNew: false },
 ];
 
+function SearchBar() {
+  const router = useRouter();
+  const [query, setQuery] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (query.trim()) {
+      router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="relative hidden sm:block">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search..."
+        className="h-9 w-40 lg:w-52 rounded-full bg-muted pl-9 pr-4 text-sm outline-none focus:ring-1 focus:ring-primary transition-all"
+      />
+    </form>
+  );
+}
+
 function AuthButton() {
-  const { firestore, auth, user, isUserLoading } = useFirebase();
+  const { firestore, user, isUserLoading } = useFirebase();
   const [isClient, setIsClient] = useState(false);
 
   const userDocRef = useMemoFirebase(
     () => (user ? doc(firestore, 'users', user.uid) : null),
     [firestore, user]
   );
-  const { data: userProfile } = useDoc<{ cybaCoinBalance?: number }>(userDocRef);
+  const { data: userProfile } = useDoc<{
+    avatarConfig?: AvatarConfig;
+    profilePictureUrl?: string;
+    postCount?: number;
+    supportGiven?: number;
+    username?: string;
+    cybaCoinBalance?: number;
+  }>(userDocRef);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
   if (!isClient || isUserLoading) {
-    return <div className="flex items-center gap-2 h-9" />;
+    return <div className="flex items-center gap-3 h-9" />;
   }
 
   if (!user) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
+        <SearchBar />
         <Button variant="outline" size="sm" asChild>
           <Link href="/login">Sign In</Link>
         </Button>
@@ -83,50 +112,34 @@ function AuthButton() {
     );
   }
 
+  const profileHref = userProfile?.username ? `/u/${userProfile.username}` : '/profile';
+
   return (
-    <div className="flex items-center gap-4">
-      <div className="flex items-center gap-2 bg-card rounded-full p-1 border border-border">
-        <div className="flex items-center gap-2 text-primary pl-2">
-          <Image src="/CCoin.png?v=2" alt="CYBACOIN" width={28} height={28} />
-          <span className="font-bold text-sm">{userProfile?.cybaCoinBalance || 0}</span>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <User className="h-5 w-5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end" forceMount>
-            <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">My Account</p>
-                <p className="text-xs leading-none text-muted-foreground">
-                  {user.email}
-                </p>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/profile">
-                <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => auth.signOut()}>
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Log out</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+    <div className="flex items-center gap-3">
+      {/* CybaCoin balance */}
+      <div className="hidden sm:flex items-center gap-1.5 bg-card border border-border rounded-full px-3 py-1">
+        <Image src="/CCoin.png?v=2" alt="CYBACOIN" width={18} height={18} />
+        <span className="text-sm font-bold text-primary tabular-nums">
+          {(userProfile?.cybaCoinBalance ?? 0).toLocaleString()}
+        </span>
       </div>
 
-      <Button asChild size="sm" className="bg-primary hover:bg-primary/90">
-        <Link href="/create">
-          <PlusCircle />
-          <span>Create</span>
-        </Link>
-      </Button>
+      <Link
+        href="/create"
+        className="shrink-0 rounded-full p-1 text-muted-foreground hover:text-primary transition-colors"
+        title="Create post"
+      >
+        <PlusCircle className="h-7 w-7" />
+      </Link>
+      <Link href={profileHref} className="shrink-0">
+        <AvatarDisplay
+          avatarConfig={userProfile?.avatarConfig}
+          profilePictureUrl={userProfile?.profilePictureUrl}
+          size={36}
+          level={computeLevel(userProfile?.postCount, userProfile?.supportGiven)}
+        />
+      </Link>
+      <SearchBar />
     </div>
   );
 }
@@ -145,13 +158,18 @@ function MainNav() {
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  'rounded-full w-12 h-12',
+                  'relative rounded-full w-12 h-12',
                   pathname === link.href ? 'bg-muted text-primary' : 'text-foreground/60'
                 )}
               >
                 <Link href={link.href}>
                   <link.icon className="h-6 w-6" />
                   <span className="sr-only">{link.label}</span>
+                  {link.isNew && (
+                    <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-[9px] font-bold px-1 py-0.5 rounded-full leading-none">
+                      NEW
+                    </span>
+                  )}
                 </Link>
               </Button>
             </TooltipTrigger>
@@ -179,7 +197,7 @@ function MobileNav() {
           <SheetTitle className="sr-only">Mobile Menu</SheetTitle>
           <SheetDescription className="sr-only">Main navigation links for CYBA.</SheetDescription>
           <SheetClose asChild>
-             <Link href="/" className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2">
               <Image src="/cyblogo.png" alt="CYBA Logo" width={30} height={30} />
               <Image src="https://preview.redd.it/cybazone-2-v0-pg6fhpkr65kg1.png?width=1080&crop=smart&auto=webp&s=6df4067e5f00ad1660deb7f6b1b13dcb326f26f0" alt="CYBAZONE Logo" width={80} height={13} />
             </Link>
@@ -195,6 +213,11 @@ function MobileNav() {
                 >
                   <link.icon className="h-5 w-5" />
                   {link.label}
+                  {link.isNew && (
+                    <span className="bg-primary text-primary-foreground text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                      NEW
+                    </span>
+                  )}
                 </Link>
               </SheetClose>
             ))}
