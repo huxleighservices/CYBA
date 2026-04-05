@@ -1,0 +1,9 @@
+﻿src/app/api/firebase-admin.ts(17,50): error TS2554: Expected 0-1 arguments, but got 2.
+src/app/boosts/page.tsx(88,12): error TS18048: 'boosts.length' is possibly 'undefined'.
+src/app/boosts/page.tsx(89,13): error TS18047: 'boosts' is possibly 'null'.
+src/app/rewards/page.tsx(92,12): error TS18048: 'rewards.length' is possibly 'undefined'.
+src/app/rewards/page.tsx(93,13): error TS18047: 'rewards' is possibly 'null'.
+src/components/ui/calendar.tsx(57,9): error TS2353: Object literal may only specify known properties, and 'IconLeft' does not exist in type 'Partial<CustomComponents>'.
+src/components/ui/calendar.tsx(57,22): error TS7031: Binding element 'className' implicitly has an 'any' type.
+src/components/ui/calendar.tsx(60,23): error TS7031: Binding element 'className' implicitly has an 'any' type.
+src/firebase/provider.tsx(7,10): error TS2305: Module '"firebase/storage"' has no exported member 'Storage'.

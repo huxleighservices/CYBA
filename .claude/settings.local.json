@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(firebase projects:list)",
+      "Bash(firebase login:list)",
+      "Bash(firebase use:*)",
+      "Bash(firebase deploy:*)",
+      "Bash(firebase apphosting:backends:get cybaweb)",
+      "Bash(find '/c/Users/david/Downloads/download \\(8\\)' -name \"non-blocking*\" -type f)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :9002)"
+    ]
+  }
+}
