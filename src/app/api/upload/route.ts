@@ -19,21 +19,23 @@ export async function POST(request: NextRequest) {
         }
         
         const buffer = Buffer.from(base64EncodedString, 'base64');
+        const token = uuidv4();
         const uniqueFileName = `${uuidv4()}-${fileName.replace(/\s+/g, '_')}`;
         const filePath = `cybazone_uploads/${uniqueFileName}`;
         const file = bucket.file(filePath);
 
         await file.save(buffer, {
-            metadata: { contentType: fileType },
+            metadata: {
+                contentType: fileType,
+                metadata: { firebaseStorageDownloadTokens: token },
+            },
         });
 
-        // Generate a signed URL valid for 10 years
-        const [signedUrl] = await file.getSignedUrl({
-            action: 'read',
-            expires: Date.now() + 1000 * 60 * 60 * 24 * 365 * 10,
-        });
+        const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+        const encodedPath = encodeURIComponent(filePath);
+        const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media&token=${token}`;
 
-        return NextResponse.json({ imageUrl: signedUrl }, { status: 200 });
+        return NextResponse.json({ imageUrl: downloadUrl }, { status: 200 });
 
     } catch (error: any) {
         console.error('--- Upload API Error ---', error);
