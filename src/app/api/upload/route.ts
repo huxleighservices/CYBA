@@ -4,7 +4,7 @@ import { adminStorage } from '../firebase-admin';
 
 export async function POST(request: NextRequest) {
     try {
-        const bucket = adminStorage.bucket();
+        const bucket = adminStorage.bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
 
         const body = await request.json();
         const { fileDataUri, fileName, fileType } = body;

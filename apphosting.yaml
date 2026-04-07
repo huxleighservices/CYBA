@@ -6,6 +6,11 @@ runConfig:
   memoryMiB: 1024
 
 env:
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: studio-9029052952-9df3f.firebasestorage.app
+    availability:
+      - BUILD
+      - RUNTIME
   - variable: GOOGLE_SHEET_ID
     secret: GOOGLE_SHEET_ID
     availability:
