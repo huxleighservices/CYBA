@@ -125,12 +125,12 @@ function SearchResults() {
     };
 
     return (
-        <div className="container mx-auto px-4 py-8 md:py-12 min-h-screen max-w-4xl">
-            <div className="text-center mb-10">
-                <h1 className="text-3xl md:text-5xl font-headline font-bold text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-400 drop-shadow-sm mb-4">
-                    Discover CYBAZONE
+        <div className="container mx-auto px-4 pt-4 pb-8 md:pb-12 min-h-screen max-w-4xl">
+            <div className="mb-10">
+                <h1 className="text-2xl md:text-3xl font-headline font-bold text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-400 drop-shadow-sm mb-1">
+                    Discover
                 </h1>
-                <p className="text-muted-foreground text-lg">Search for users and trending hashtags across the galaxy.</p>
+                <p className="text-muted-foreground text-sm">Search for users and trending hashtags across the Zone.</p>
             </div>
 
             <div className="relative max-w-2xl mx-auto mb-10 group">

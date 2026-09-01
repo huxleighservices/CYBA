@@ -1,7 +1,2 @@
-'use client';
 import { redirect } from 'next/navigation';
-
-export default function OldBlogPage() {
-  redirect('/');
-  return null;
-}
+export default function BlogPage() { redirect('/'); }

@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFirebase } from '@/firebase';
 import { Loader2, HardHat } from 'lucide-react';
+import { SectionHeader } from '@/components/SectionHeader';
 
 export default function LeaderboardPage() {
   const { user, isUserLoading } = useFirebase();
@@ -30,15 +31,11 @@ export default function LeaderboardPage() {
   // will only be visible to authenticated users.
   if (user) {
     return (
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center max-w-3xl mx-auto">
-          <h1 className="text-4xl md:text-6xl font-headline font-bold text-glow mb-4">
-            Leaderboard
-          </h1>
-          <p className="text-lg text-foreground/80 mb-12">
-            The central hub for the CYBA family. Connect, collaborate, and create.
-          </p>
-        </div>
+      <div className="container mx-auto px-4 pt-4 pb-16">
+        <SectionHeader
+          title="Leaderboard"
+          description="The central hub for the CYBA family. Connect, collaborate, and create."
+        />
 
         <div className="border border-primary/20 rounded-lg bg-card/50 flex flex-col items-center justify-center text-center p-16">
           <HardHat className="h-16 w-16 text-primary mb-4" />

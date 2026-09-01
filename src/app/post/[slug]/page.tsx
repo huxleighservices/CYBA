@@ -1,5 +1,6 @@
 'use client';
 
+import { use } from 'react';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -28,7 +29,8 @@ const formatDate = (timestamp: any) => {
   });
 };
 
-export default function PostPage({ params }: { params: { slug: string } }) {
+export default function PostPage({ params: paramsPromise }: { params: Promise<{ slug: string }> }) {
+  const params = use(paramsPromise);
   const { firestore } = useFirebase();
 
   const blogPostsRef = useMemoFirebase(
@@ -52,7 +54,7 @@ export default function PostPage({ params }: { params: { slug: string } }) {
   }
 
   return (
-    <div className="container mx-auto px-4 py-16 max-w-4xl">
+    <div className="container mx-auto px-4 pt-4 pb-16 max-w-4xl">
       <div className="mb-8">
         <Link
           href="/"
