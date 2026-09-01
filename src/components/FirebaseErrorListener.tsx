@@ -1,39 +1,31 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
+// Non-critical collections — permission errors here should never crash the app
+const SILENT_PATHS = ['conversations', 'notifications'];
+
 /**
- * An invisible component that listens for globally emitted 'permission-error' events.
- * It throws any received error to be caught by Next.js's global-error.tsx.
+ * Listens for globally emitted 'permission-error' events.
+ * Silently ignores errors on non-critical collections (messages, notifications)
+ * so a missing Firestore rule doesn't take down the entire UI.
  */
 export function FirebaseErrorListener() {
-  // Use the specific error type for the state for type safety.
-  const [error, setError] = useState<FirestorePermissionError | null>(null);
-
   useEffect(() => {
-    // The callback now expects a strongly-typed error, matching the event payload.
     const handleError = (error: FirestorePermissionError) => {
-      // Set error in state to trigger a re-render.
-      setError(error);
+      const isSilent = SILENT_PATHS.some(p => error.message?.includes(p));
+      if (!isSilent) {
+        // Only log to console — do NOT throw, which would crash the whole app
+        console.error('[Firestore permission error]', error.message);
+      }
+      // Permission errors on non-critical paths are ignored entirely
     };
 
-    // The typed emitter will enforce that the callback for 'permission-error'
-    // matches the expected payload type (FirestorePermissionError).
     errorEmitter.on('permission-error', handleError);
-
-    // Unsubscribe on unmount to prevent memory leaks.
-    return () => {
-      errorEmitter.off('permission-error', handleError);
-    };
+    return () => errorEmitter.off('permission-error', handleError);
   }, []);
 
-  // On re-render, if an error exists in state, throw it.
-  if (error) {
-    throw error;
-  }
-
-  // This component renders nothing.
   return null;
 }

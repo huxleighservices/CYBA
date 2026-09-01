@@ -44,10 +44,23 @@ export const LEVEL_CONFIG = {
   },
 } as const;
 
-export function computeLevel(postCount: number = 0, supportGiven: number = 0): Level {
-  if (postCount >= 300 && supportGiven >= 3500) return 'storm';
-  if (postCount >= 100 && supportGiven >= 1200) return 'surge';
-  if (postCount >= 30 && supportGiven >= 300) return 'charge';
+export type LevelThresholds = {
+  charge_posts: number; charge_support: number;
+  surge_posts: number; surge_support: number;
+  storm_posts: number; storm_support: number;
+};
+
+export const DEFAULT_LEVEL_THRESHOLDS: LevelThresholds = {
+  charge_posts: 30, charge_support: 300,
+  surge_posts: 100, surge_support: 1200,
+  storm_posts: 300, storm_support: 3500,
+};
+
+export function computeLevel(postCount: number = 0, supportGiven: number = 0, cfg?: Partial<LevelThresholds>): Level {
+  const t = { ...DEFAULT_LEVEL_THRESHOLDS, ...cfg };
+  if (postCount >= t.storm_posts && supportGiven >= t.storm_support) return 'storm';
+  if (postCount >= t.surge_posts && supportGiven >= t.surge_support) return 'surge';
+  if (postCount >= t.charge_posts && supportGiven >= t.charge_support) return 'charge';
   return 'spark';
 }
 

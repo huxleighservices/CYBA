@@ -1,4 +1,4 @@
-export type QuestRequirementType = 'posts' | 'supportGiven';
+export type QuestRequirementType = 'posts' | 'supportGiven' | 'profilePictureSet' | 'bioSet';
 
 export interface QuestRequirement {
   type: QuestRequirementType;
@@ -9,7 +9,6 @@ export interface QuestRequirement {
 
 export interface Quest {
   id: string;
-  world: 1 | 2 | 3;
   level: number;
   title: string;
   description: string;
@@ -17,179 +16,244 @@ export interface Quest {
   nodeEmoji: string;
   requirements: QuestRequirement[];
   reward: { coins: number; badge?: string; title?: string };
-  position: { x: number; y: number }; // 0–100 percentage on the map
   prerequisiteIds: string[];
   difficulty: 'easy' | 'medium' | 'hard' | 'legendary';
 }
 
-export const WORLD_THEMES = {
-  1: {
-    name: 'THE SOCIAL PLAINS',
-    accent: '#22c55e',
-    emoji: '🌿',
-    svgGradient: ['#14532d', '#052e16'],
-    yRange: [60, 100],
-  },
-  2: {
-    name: 'CREATOR MOUNTAINS',
-    accent: '#a855f7',
-    emoji: '⛰️',
-    svgGradient: ['#3b0764', '#1a0533'],
-    yRange: [25, 60],
-  },
-  3: {
-    name: "LEGEND'S TOWER",
-    accent: '#ef4444',
-    emoji: '🔥',
-    svgGradient: ['#1a0000', '#0c0a09'],
-    yRange: [0, 25],
-  },
-} as const;
+export type UserStats = {
+  posts: number;
+  supportGiven: number;
+  profilePictureSet: number; // 0 or 1
+  bioSet: number;            // 0 or 1
+};
 
 export const QUESTS: Quest[] = [
-  // ── World 1: The Social Plains ──
+  {
+    id: 'tut_pfp',
+    level: 1,
+    title: 'SHOW YOUR FACE',
+    description: 'Upload a profile picture so the CYBAZONE knows who you are.',
+    flavorText: '"First impressions run the zone."',
+    nodeEmoji: '📸',
+    requirements: [{ type: 'profilePictureSet', label: 'Profile picture uploaded', target: 1, icon: '📸' }],
+    reward: { coins: 50 },
+    prerequisiteIds: [],
+    difficulty: 'easy',
+  },
+  {
+    id: 'tut_bio',
+    level: 2,
+    title: 'SAY WHO YOU ARE',
+    description: 'Write your bio. Tell the world what you\'re about.',
+    flavorText: '"Your story starts here."',
+    nodeEmoji: '✍️',
+    requirements: [{ type: 'bioSet', label: 'Bio written', target: 1, icon: '✍️' }],
+    reward: { coins: 50 },
+    prerequisiteIds: [],
+    difficulty: 'easy',
+  },
+  {
+    id: 'tut_post',
+    level: 3,
+    title: 'DROP YOUR FIRST',
+    description: 'Make your first post on the CYBAZONE feed.',
+    flavorText: '"The zone was waiting for you."',
+    nodeEmoji: '🎤',
+    requirements: [{ type: 'posts', label: 'Posts made', target: 1, icon: '📝' }],
+    reward: { coins: 100, title: 'Posted Up' },
+    prerequisiteIds: [],
+    difficulty: 'easy',
+  },
+  {
+    id: 'tut_support',
+    level: 4,
+    title: 'SHOW THE LOVE',
+    description: 'Like, comment, or share someone else\'s post on the feed.',
+    flavorText: '"Real ones support the wave."',
+    nodeEmoji: '💙',
+    requirements: [{ type: 'supportGiven', label: 'Creators supported', target: 1, icon: '🤝' }],
+    reward: { coins: 75 },
+    prerequisiteIds: [],
+    difficulty: 'easy',
+  },
   {
     id: 'w1q1',
-    world: 1,
-    level: 1,
+    level: 5,
     title: 'FIRST NOTE',
     description: 'Drop your first post in the CYBAZONE. Every legend starts somewhere.',
-    flavorText: '"A journey of a thousand bars begins with a single post."',
+    flavorText: '"A journey of a thousand posts begins with a single drop."',
     nodeEmoji: '🎵',
     requirements: [{ type: 'posts', label: 'Posts Made', target: 1, icon: '📝' }],
     reward: { coins: 50, title: 'Newcomer' },
-    position: { x: 13, y: 82 },
     prerequisiteIds: [],
     difficulty: 'easy',
   },
   {
     id: 'w1q2',
-    world: 1,
-    level: 2,
+    level: 6,
     title: 'SPREAD LOVE',
-    description: 'Support 5 fellow artists. Real ones lift each other up.',
+    description: 'Support 5 fellow creators. Real ones lift each other up.',
     flavorText: '"Support the wave and the wave will carry you."',
     nodeEmoji: '💛',
-    requirements: [{ type: 'supportGiven', label: 'Artists Supported', target: 5, icon: '🤝' }],
+    requirements: [{ type: 'supportGiven', label: 'Creators Supported', target: 5, icon: '🤝' }],
     reward: { coins: 75 },
-    position: { x: 33, y: 74 },
     prerequisiteIds: ['w1q1'],
     difficulty: 'easy',
   },
   {
     id: 'w1q3',
-    world: 1,
-    level: 3,
+    level: 7,
     title: 'SOCIAL BUTTERFLY',
     description: 'Post regularly and keep supporting the community.',
     flavorText: '"Consistency is the cheat code."',
     nodeEmoji: '🦋',
     requirements: [
       { type: 'posts', label: 'Posts Made', target: 5, icon: '📝' },
-      { type: 'supportGiven', label: 'Artists Supported', target: 15, icon: '🤝' },
+      { type: 'supportGiven', label: 'Creators Supported', target: 15, icon: '🤝' },
     ],
     reward: { coins: 150, title: 'Social Butterfly' },
-    position: { x: 57, y: 66 },
     prerequisiteIds: ['w1q2'],
     difficulty: 'easy',
   },
-
-  // ── World 2: Creator Mountains ──
   {
     id: 'w2q1',
-    world: 2,
-    level: 1,
+    level: 8,
     title: 'CONTENT DROPS',
-    description: "Keep creating. The mountain isn't climbed in a day.",
+    description: "Keep creating. The grind is the glory.",
     flavorText: '"The grind is the glory."',
     nodeEmoji: '⚡',
     requirements: [
       { type: 'posts', label: 'Posts Made', target: 10, icon: '📝' },
-      { type: 'supportGiven', label: 'Artists Supported', target: 25, icon: '🤝' },
+      { type: 'supportGiven', label: 'Creators Supported', target: 25, icon: '🤝' },
     ],
     reward: { coins: 250 },
-    position: { x: 76, y: 55 },
     prerequisiteIds: ['w1q3'],
     difficulty: 'medium',
   },
   {
     id: 'w2q2',
-    world: 2,
-    level: 2,
+    level: 9,
     title: 'PILLAR OF CYBA',
     description: "You're becoming essential to this community. Keep going.",
     flavorText: '"They know your name now."',
     nodeEmoji: '🏛️',
     requirements: [
       { type: 'posts', label: 'Posts Made', target: 20, icon: '📝' },
-      { type: 'supportGiven', label: 'Artists Supported', target: 50, icon: '🤝' },
+      { type: 'supportGiven', label: 'Creators Supported', target: 50, icon: '🤝' },
     ],
     reward: { coins: 400, title: 'Pillar of CYBA' },
-    position: { x: 52, y: 46 },
     prerequisiteIds: ['w2q1'],
     difficulty: 'medium',
   },
   {
     id: 'w2q3',
-    world: 2,
-    level: 3,
+    level: 10,
     title: 'MOUNTAIN KING',
-    description: "You've conquered the Creator Mountains. The tower awaits.",
+    description: "You've hit new heights. The top is in sight.",
     flavorText: '"The view from the top hits different."',
     nodeEmoji: '👑',
     requirements: [
       { type: 'posts', label: 'Posts Made', target: 30, icon: '📝' },
-      { type: 'supportGiven', label: 'Artists Supported', target: 80, icon: '🤝' },
+      { type: 'supportGiven', label: 'Creators Supported', target: 80, icon: '🤝' },
     ],
     reward: { coins: 600, badge: 'Mountain Crown', title: 'Mountain King' },
-    position: { x: 27, y: 38 },
     prerequisiteIds: ['w2q2'],
     difficulty: 'hard',
   },
-
-  // ── World 3: Legend's Tower ──
   {
     id: 'w3q1',
-    world: 3,
-    level: 1,
+    level: 11,
     title: 'HALL OF FAME',
     description: "You've entered the realm of legends. Almost there.",
     flavorText: '"History remembers those who showed up every day."',
     nodeEmoji: '🌟',
     requirements: [
       { type: 'posts', label: 'Posts Made', target: 50, icon: '📝' },
-      { type: 'supportGiven', label: 'Artists Supported', target: 125, icon: '🤝' },
+      { type: 'supportGiven', label: 'Creators Supported', target: 125, icon: '🤝' },
     ],
     reward: { coins: 1000, title: 'Hall of Famer' },
-    position: { x: 50, y: 20 },
     prerequisiteIds: ['w2q3'],
     difficulty: 'hard',
   },
   {
     id: 'w3q2',
-    world: 3,
-    level: 2,
+    level: 12,
     title: 'CYBA LEGEND',
     description: 'The pinnacle. There is no higher. You ARE the CYBAZONE.',
     flavorText: '"PRESS START TO CLAIM YOUR LEGACY."',
     nodeEmoji: '💎',
     requirements: [
       { type: 'posts', label: 'Posts Made', target: 100, icon: '📝' },
-      { type: 'supportGiven', label: 'Artists Supported', target: 250, icon: '🤝' },
+      { type: 'supportGiven', label: 'Creators Supported', target: 250, icon: '🤝' },
     ],
     reward: { coins: 5000, badge: 'CYBA Legend', title: 'CYBA LEGEND' },
-    position: { x: 50, y: 8 },
     prerequisiteIds: ['w3q1'],
     difficulty: 'legendary',
   },
 ];
+
+// ─── Custom (admin-created) quests ───────────────────────────────────────────
+
+export interface CustomQuest {
+  id: string;
+  title: string;
+  description: string;
+  flavorText: string;
+  nodeEmoji: string;
+  difficulty: 'easy' | 'medium' | 'hard' | 'legendary';
+  order?: number;
+  isMediaQuest?: boolean;
+  mediaInstructions?: string;
+  payout: {
+    type: 'cybacoin' | 'cash';
+    amount: number;
+  };
+  unlockPrice?: { currency: 'cc' | 'cash'; amount: number } | null;
+  showOnRewardsPage?: boolean;
+  active: boolean;
+  createdAt?: any;
+  // Weekly slot limits (media quests only)
+  weeklySlots?: number;   // 0 or undefined = unlimited
+  slotResetDay?: number;  // 0=Sun, 1=Mon, … 6=Sat (default 0)
+  // Level gate
+  requiredLevel?: 'spark' | 'charge' | 'surge' | 'storm';
+  // Auto-tracked milestone (non-media quests only) — claimable once the member's live counter
+  // meets milestoneThreshold. Currently only 'promo_clicks' exists (all-time PROMO BLAST
+  // click-throughs, summed across every ad the member has ever run).
+  milestoneType?: 'promo_clicks';
+  milestoneThreshold?: number;
+}
+
+export type SubmissionStatus = 'pending' | 'approved' | 'rejected';
+
+export interface QuestSubmission {
+  id: string;
+  submissionType?: 'quest' | 'reward';
+  // Quest-specific (submissionType === 'quest')
+  questId?: string;
+  questTitle?: string;
+  // Reward-specific
+  rewardId?: string;
+  rewardName?: string;
+  // Payout
+  payout?: { type: 'cybacoin' | 'cash'; amount: number } | null;
+  // Common
+  userId: string;
+  username: string;
+  mediaUrl: string;
+  mediaType: 'image' | 'video';
+  status: SubmissionStatus;
+  submittedAt?: any;
+  reviewedAt?: any;
+  reviewNote?: string;
+}
 
 export type QuestStatus = 'locked' | 'available' | 'in-progress' | 'claimable' | 'completed';
 
 export function getQuestStatus(
   quest: Quest,
   completedQuestIds: string[],
-  userStats: { posts: number; supportGiven: number }
+  userStats: UserStats,
 ): QuestStatus {
   if (completedQuestIds.includes(quest.id)) return 'completed';
   const prereqsMet = quest.prerequisiteIds.every(id => completedQuestIds.includes(id));
@@ -202,7 +266,7 @@ export function getQuestStatus(
 
 export function getQuestProgress(
   quest: Quest,
-  userStats: { posts: number; supportGiven: number }
+  userStats: UserStats,
 ) {
   return quest.requirements.map(req => ({
     label: req.label,
@@ -211,10 +275,4 @@ export function getQuestProgress(
     target: req.target,
     pct: Math.min(100, Math.round(((userStats[req.type] ?? 0) / req.target) * 100)),
   }));
-}
-
-export function getWorldProgress(world: 1 | 2 | 3, completedQuestIds: string[]) {
-  const worldQuests = QUESTS.filter(q => q.world === world);
-  const completed = worldQuests.filter(q => completedQuestIds.includes(q.id)).length;
-  return { completed, total: worldQuests.length, pct: Math.round((completed / worldQuests.length) * 100) };
 }
