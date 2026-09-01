@@ -1,6 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useRouter } from 'next/navigation';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -22,6 +24,11 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { useFirebase } from '@/firebase';
+import { addDoc, collection, serverTimestamp, getDoc, doc, query, where, limit, getDocs } from 'firebase/firestore';
+import { MessageCircle, Loader2 } from 'lucide-react';
+
+const CYBAZONE_SYSTEM_USERNAME = 'cybazone';
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -37,6 +44,53 @@ const formSchema = z.object({
 
 export default function ContactPage() {
   const { toast } = useToast();
+  const { firestore, user } = useFirebase();
+  const router = useRouter();
+  const [messaging, setMessaging] = useState(false);
+
+  const handleMessageUs = async () => {
+    if (!user) { router.push('/login?redirect=/contact'); return; }
+    setMessaging(true);
+    try {
+      const sysSnap = await getDocs(query(
+        collection(firestore, 'users'),
+        where('username_lowercase', '==', CYBAZONE_SYSTEM_USERNAME),
+        limit(1),
+      ));
+      if (sysSnap.empty) {
+        toast({ variant: 'destructive', title: 'Direct messaging isn\'t set up yet', description: 'Use the form below instead.' });
+        return;
+      }
+      const sysDoc = sysSnap.docs[0];
+      const sysData = sysDoc.data() as any;
+      const key = [user.uid, sysDoc.id].sort().join('_');
+      const existing = await getDocs(query(collection(firestore, 'conversations'), where('participantKey', '==', key)));
+      if (!existing.empty) { router.push(`/messages/${existing.docs[0].id}`); return; }
+
+      const mySnap = await getDoc(doc(firestore, 'users', user.uid));
+      const myData = mySnap.data() as any;
+      const convRef = await addDoc(collection(firestore, 'conversations'), {
+        type: 'direct',
+        participants: [user.uid, sysDoc.id],
+        participantInfo: {
+          [user.uid]: { username: myData?.username ?? 'Me', profilePictureUrl: myData?.profilePictureUrl ?? null, avatarConfig: myData?.avatarConfig ?? null },
+          [sysDoc.id]: { username: sysData?.username ?? 'CYBAZONE', profilePictureUrl: sysData?.profilePictureUrl ?? null, avatarConfig: sysData?.avatarConfig ?? null },
+        },
+        participantKey: key,
+        unreadCounts: { [user.uid]: 0, [sysDoc.id]: 0 },
+        createdAt: serverTimestamp(),
+        createdBy: user.uid,
+        lastMessageAt: serverTimestamp(),
+        lastMessage: '',
+        name: null,
+      });
+      router.push(`/messages/${convRef.id}`);
+    } catch {
+      toast({ variant: 'destructive', title: 'Could not open chat', description: 'Please try again.' });
+    } finally {
+      setMessaging(false);
+    }
+  };
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -67,7 +121,16 @@ export default function ContactPage() {
             Have a question or a project? Drop us a line.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-5">
+          <Button className="w-full" onClick={handleMessageUs} disabled={messaging}>
+            {messaging ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <MessageCircle className="h-4 w-4 mr-2" />}
+            Message Us Directly
+          </Button>
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border/50" />
+            <span className="text-xs text-muted-foreground">or use the form</span>
+            <div className="h-px flex-1 bg-border/50" />
+          </div>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField

@@ -198,3 +198,25 @@ export function sfxLocked() {
   note(c, 160, now, 0.08, 0.18, 'sawtooth');
   note(c, 120, now + 0.1, 0.1, 0.15, 'sawtooth');
 }
+
+// ─── Notification sound ──────────────────────────────────────────
+
+/** Cyberpunk "zap" blip for new notification arrival — a bright pitch-up chirp. */
+export function sfxNotification() {
+  const c = getCtx();
+  if (!c) return;
+  const now = c.currentTime;
+  const osc = c.createOscillator();
+  const g = c.createGain();
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(720, now);
+  osc.frequency.exponentialRampToValueAtTime(1400, now + 0.08);
+  g.gain.setValueAtTime(0.0001, now);
+  g.gain.linearRampToValueAtTime(0.16, now + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+  osc.connect(g);
+  g.connect(c.destination);
+  osc.start(now);
+  osc.stop(now + 0.16);
+  note(c, 1600, now + 0.09, 0.05, 0.1);
+}
