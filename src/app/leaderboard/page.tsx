@@ -1,462 +1,332 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { useFirebase } from '@/firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { Loader2, Trophy, Medal, Flame, RefreshCw } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+import { useMemo, useCallback, useEffect, useRef, useState } from 'react';
+import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { collection, query, doc, setDoc, getDoc } from 'firebase/firestore';
+import { Loader2, Trophy } from 'lucide-react';
+import { AvatarDisplay } from '@/components/AvatarDisplay';
+import { LevelBadge } from '@/components/LevelBadge';
+import { computeLevel, LEVEL_CONFIG } from '@/lib/levels';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
-import Image from 'next/image';
+import Link from 'next/link';
+import type { AvatarConfig } from '@/lib/avatar-assets';
+import { SectionHeader } from '@/components/SectionHeader';
 
-interface LeaderboardEntry {
-  cybaName?: string;
-  cybaIg?: string;
-  tier?: string;
-  outwardEngagement?: number;
-  inwardEngagement?: number;
-  features?: number;
-  cybaCoin?: number;
-  [key: string]: any;
+type UserEntry = {
+  id: string;
+  username?: string;
+  avatarConfig?: AvatarConfig;
+  profilePictureUrl?: string;
+  postCount?: number;
+  supportGiven?: number;
+  weeklyPostCount?: number;
+  weeklySupportGiven?: number;
+  membershipTier?: string;
+  leaderboardOptOut?: boolean;
+};
+
+type WeeklyWinner = {
+  rank: number;
+  name: string;
+  profilePictureUrl?: string | null;
+  avatarConfig?: AvatarConfig | null;
+  posts: number;
+  support: number;
+};
+
+type WeeklyWinnersData = {
+  winners: WeeklyWinner[];
+  weekOf: number;
+  setAt: number;
+};
+
+const RANK_MEDAL: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
+
+
+function score(u: UserEntry) {
+  return (u.postCount ?? 0) + (u.supportGiven ?? 0);
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+function weeklyScore(u: UserEntry) {
+  return (u.weeklyPostCount ?? 0) + (u.weeklySupportGiven ?? 0);
+}
 
-const getNumber = (value: any): number => {
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') { const n = parseFloat(value); return isNaN(n) ? 0 : n; }
-  return 0;
-};
-const formatNumber = (value: any) => getNumber(value).toLocaleString();
-const getString = (value: any): string => (!value ? '' : String(value).trim());
-
-/** Timestamp of the most-recent Saturday at 12:01 AM (local time) */
-function lastSaturdayAt1201(): number {
+/** UTC timestamp of the most-recent Sunday at 12:00 AM EST, browser-timezone-independent */
+function lastSundayMidnightEst(): number {
   const now = new Date();
-  const day = now.getDay(); // 0=Sun … 6=Sat
-  const daysBack = day === 6 ? 0 : day + 1;
-  const sat = new Date(now);
-  sat.setDate(now.getDate() - daysBack);
-  sat.setHours(0, 1, 0, 0);
-  return sat.getTime();
+
+  // Get today's date string in ET (YYYY-MM-DD via en-CA locale)
+  const etDateStr = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+  }).format(now);
+
+  const etDow = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York', weekday: 'short',
+  }).format(now);
+
+  const DOW_MAP: Record<string, number> = {
+    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  };
+  const daysBack = DOW_MAP[etDow] ?? 0;
+
+  // Build last-Sunday date by subtracting daysBack from today in ET
+  const [y, m, d] = etDateStr.split('-').map(Number);
+  const lastSunday = new Date(Date.UTC(y, m - 1, d - daysBack));
+  const sy = lastSunday.getUTCFullYear();
+  const sm = String(lastSunday.getUTCMonth() + 1).padStart(2, '0');
+  const sd = String(lastSunday.getUTCDate()).padStart(2, '0');
+
+  // Parse midnight EST explicitly (EST = UTC-5) — consistent regardless of browser timezone
+  return new Date(`${sy}-${sm}-${sd}T00:00:00-05:00`).getTime();
 }
-
-function needsWeeklyReset(weekOf: number | undefined): boolean {
-  const threshold = lastSaturdayAt1201();
-  if (Date.now() < threshold) return false; // This Saturday's 12:01 AM hasn't hit yet
-  if (!weekOf) return true;
-  return weekOf < threshold;
-}
-
-// ── Rank icon (table) ──────────────────────────────────────────────────────
-
-const getRankIcon = (rank: number) => {
-  if (rank === 1) return <Medal className="h-5 w-5 text-yellow-400" />;
-  if (rank === 2) return <Medal className="h-5 w-5 text-slate-300" />;
-  if (rank === 3) return <Medal className="h-5 w-5 text-orange-500" />;
-  return <Flame className="h-5 w-5 text-orange-400/60" />;
-};
-
-// ── Podium card themes ────────────────────────────────────────────────────
-
-const PODIUM = [
-  {
-    rank: 2,
-    order: 'sm:order-1',
-    medal: '🥈',
-    label: '2ND PLACE',
-    cardCls:
-      'border-slate-400/50 bg-gradient-to-b from-slate-700/30 via-slate-800/20 to-slate-900/40',
-    glowCls: 'shadow-[0_0_20px_rgba(148,163,184,0.25),0_0_4px_rgba(148,163,184,0.15)]',
-    textCls: 'text-slate-300',
-    nameCls: 'text-slate-100',
-    heightCls: 'pt-6',
-  },
-  {
-    rank: 1,
-    order: 'sm:order-2',
-    medal: '🥇',
-    label: 'CHAMPION',
-    cardCls:
-      'border-yellow-400/70 bg-gradient-to-b from-yellow-700/40 via-yellow-900/25 to-yellow-950/50 gold-shimmer winner-glow',
-    glowCls: '',
-    textCls: 'text-yellow-400',
-    nameCls: 'text-yellow-100',
-    heightCls: 'pt-2',
-    isChamp: true,
-  },
-  {
-    rank: 3,
-    order: 'sm:order-3',
-    medal: '🥉',
-    label: '3RD PLACE',
-    cardCls:
-      'border-orange-600/50 bg-gradient-to-b from-orange-800/30 via-orange-950/20 to-orange-950/40',
-    glowCls: 'shadow-[0_0_18px_rgba(234,88,12,0.2),0_0_4px_rgba(234,88,12,0.1)]',
-    textCls: 'text-orange-400',
-    nameCls: 'text-orange-100',
-    heightCls: 'pt-8',
-  },
-] as const;
-
-function PodiumSection({ entries }: { entries: LeaderboardEntry[] }) {
-  if (entries.length < 3) return null;
-
-  return (
-    <div className="mb-10">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold tracking-widest text-yellow-400 uppercase drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]">
-          ✦ CYBA Weekly Winners ✦
-        </h2>
-        <p className="text-sm text-muted-foreground mt-1">Current top performers this week</p>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-        {PODIUM.map((theme) => {
-          const entry = entries[theme.rank - 1];
-          return (
-            <div key={theme.rank} className={`${theme.order} ${theme.heightCls}`}>
-              <div
-                className={`relative border-2 rounded-2xl p-6 text-center transition-transform hover:-translate-y-1 ${theme.cardCls} ${theme.glowCls}`}
-              >
-                {/* Crown / star for #1 */}
-                {theme.isChamp && (
-                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-3xl animate-bounce">
-                    👑
-                  </div>
-                )}
-
-                {/* Sparkle dots in corners for #1 */}
-                {theme.isChamp && (
-                  <>
-                    <span className="absolute top-2 left-3 text-yellow-400 opacity-60 text-xs animate-pulse">✦</span>
-                    <span className="absolute top-2 right-3 text-yellow-400 opacity-60 text-xs animate-pulse [animation-delay:0.4s]">✦</span>
-                    <span className="absolute bottom-2 left-3 text-yellow-400 opacity-40 text-xs animate-pulse [animation-delay:0.8s]">✦</span>
-                    <span className="absolute bottom-2 right-3 text-yellow-400 opacity-40 text-xs animate-pulse [animation-delay:1.2s]">✦</span>
-                  </>
-                )}
-
-                <div className="text-4xl mb-1">{theme.medal}</div>
-                <p className={`text-[10px] font-black tracking-[0.2em] uppercase mb-2 ${theme.textCls}`}>
-                  {theme.label}
-                </p>
-                <p className={`text-lg font-bold mb-1 truncate ${theme.nameCls}`}>
-                  {getString(entry.cybaName) || 'TBD'}
-                </p>
-                {entry.cybaIg && (
-                  <a
-                    href={`https://instagram.com/${entry.cybaIg}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`text-xs hover:underline block mb-2 ${theme.textCls}`}
-                  >
-                    @{entry.cybaIg}
-                  </a>
-                )}
-                <div className={`flex items-center justify-center gap-1.5 mt-2 ${theme.textCls}`}>
-                  <Image src="/CCoin.png?v=2" alt="" width={16} height={16} />
-                  <span className="text-sm font-bold tabular-nums">
-                    {formatNumber(entry.cybaCoin)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ── Main Page ─────────────────────────────────────────────────────────────
 
 export default function LeaderboardPage() {
-  const { user, firestore } = useFirebase();
-  const { toast } = useToast();
-  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const { firestore, user } = useFirebase();
+  const weeklyUpdateInFlight = useRef(false);
+  const [tab, setTab] = useState<'alltime' | 'weekly'>('alltime');
 
-  // Prevent double-writing within a session
-  const weeklyUpdateAttempted = useRef(false);
+  const usersQuery = useMemoFirebase(
+    () => query(collection(firestore, 'users')),
+    [firestore]
+  );
+  const { data: users, isLoading } = useCollection<UserEntry>(usersQuery);
 
-  // ── Weekly winners snapshot ──────────────────────────────────────────────
+  const weeklyRef = useMemoFirebase(
+    () => doc(firestore, 'settings', 'weeklyWinners'),
+    [firestore]
+  );
+  const { data: weeklyData } = useDoc<WeeklyWinnersData>(weeklyRef);
 
-  const saveWeeklyWinners = useCallback(async (entries: LeaderboardEntry[]) => {
-    try {
-      const top3 = entries.slice(0, 3).map((e, i) => ({
-        rank: i + 1,
-        name: getString(e.cybaName) || 'Unknown',
-        cybaIg: getString(e.cybaIg) || null,
-        cybaCoin: getNumber(e.cybaCoin),
-      }));
-      await setDoc(doc(firestore, 'settings', 'weeklyWinners'), {
-        winners: top3,
-        weekOf: lastSaturdayAt1201(),
-        setAt: Date.now(),
-      });
-    } catch (e) {
-      console.error('Failed to save weekly winners:', e);
-    }
-  }, [firestore]);
+  const ranked = useMemo(() => {
+    if (!users) return [];
+    return [...users]
+      .filter(u => u.username && !u.leaderboardOptOut)
+      .sort((a, b) => score(b) - score(a));
+  }, [users]);
 
-  const checkAndUpdateWeeklyWinners = useCallback(async (entries: LeaderboardEntry[]) => {
-    if (weeklyUpdateAttempted.current || entries.length < 3) return;
-    weeklyUpdateAttempted.current = true;
+  // Live current-week ranking — the settings/weeklyWinners doc below is a frozen
+  // once-per-week snapshot (used by the homepage ticker to announce last week's
+  // winners), not a live view, so the Weekly tab must compute its own ranking
+  // straight from each user's current weeklyPostCount/weeklySupportGiven.
+  const weeklyRankedLive = useMemo(() => {
+    if (!users) return [];
+    return [...users]
+      .filter(u => u.username && !u.leaderboardOptOut)
+      .sort((a, b) => weeklyScore(b) - weeklyScore(a));
+  }, [users]);
+
+  // Update weekly winners snapshot — this writes to settings/weeklyWinners, which Firestore
+  // rules only allow for signed-in users. Signed-out visitors used to trigger this on every
+  // leaderboard load and get a logged permission error for a write they were never going to
+  // be allowed to make.
+  const updateWeeklyWinners = useCallback(async () => {
+    if (!user || weeklyUpdateInFlight.current || ranked.length < 1) return;
+    weeklyUpdateInFlight.current = true;
     try {
       const snap = await getDoc(doc(firestore, 'settings', 'weeklyWinners'));
-      const weekOf: number | undefined = snap.exists() ? snap.data()?.weekOf : undefined;
-      if (needsWeeklyReset(weekOf)) {
-        await saveWeeklyWinners(entries);
+      const existing = snap.exists() ? snap.data() : null;
+      const weekOf: number | undefined = existing?.weekOf;
+      const threshold = lastSundayMidnightEst();
+      // Only snapshot when a new week has started (not on every load)
+      if (!weekOf || weekOf < threshold) {
+        const weeklyRankedLive = [...ranked]
+          .sort((a, b) => weeklyScore(b) - weeklyScore(a));
+        const top10 = weeklyRankedLive.slice(0, 10).map((u, i) => ({
+          rank: i + 1,
+          name: u.username ?? 'Unknown',
+          profilePictureUrl: u.profilePictureUrl ?? null,
+          avatarConfig: u.avatarConfig ?? null,
+          posts: u.weeklyPostCount ?? 0,
+          support: u.weeklySupportGiven ?? 0,
+        }));
+        await setDoc(doc(firestore, 'settings', 'weeklyWinners'), {
+          winners: top10,
+          weekOf: threshold,
+          setAt: Date.now(),
+        });
       }
     } catch (e) {
-      console.error('Weekly winners check failed:', e);
-    }
-  }, [firestore, saveWeeklyWinners]);
-
-  // ── Leaderboard sync ────────────────────────────────────────────────────
-
-  const triggerSync = useCallback(async () => {
-    setIsSyncing(true);
-    try {
-      const response = await fetch('/api/sync-leaderboard', { method: 'POST' });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Sync failed');
-      toast({ title: 'Sync Complete', description: `${result.updatedCount} user balances updated.` });
-    } catch (e) {
-      console.error('Sync error:', e);
+      console.error('Weekly winners update failed:', e);
     } finally {
-      setIsSyncing(false);
+      weeklyUpdateInFlight.current = false;
     }
-  }, [toast]);
-
-  const fetchLeaderboard = useCallback(async (isManualRefresh = false) => {
-    if (!isManualRefresh) setIsLoading(true);
-    try {
-      const response = await fetch('/api/sheets');
-      if (!response.ok) {
-        const errBody = await response.json().catch(() => ({}));
-        throw new Error(errBody.details || `Failed to fetch: ${response.statusText}`);
-      }
-      const data = await response.json();
-      if (data.error) throw new Error(data.details || data.error);
-      const entries: LeaderboardEntry[] = Array.isArray(data) ? data : [];
-      setLeaderboardData(entries);
-      setLastUpdated(new Date());
-      setError(null);
-
-      // Background operations — don't block render
-      checkAndUpdateWeeklyWinners(entries);
-      if (user) triggerSync();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      console.error('Leaderboard fetch error:', msg);
-      setError(msg);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user, triggerSync, checkAndUpdateWeeklyWinners]);
+  }, [firestore, ranked, user]);
 
   useEffect(() => {
-    fetchLeaderboard();
-    const interval = setInterval(() => fetchLeaderboard(), 60_000);
-    return () => clearInterval(interval);
-  }, [fetchLeaderboard]);
+    if (ranked.length > 0) updateWeeklyWinners();
+  }, [ranked, updateWeeklyWinners]);
 
-  // ── Loading state ───────────────────────────────────────────────────────
-
-  if (isLoading && leaderboardData.length === 0) {
+  if (isLoading) {
     return (
       <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-sm text-muted-foreground">Loading leaderboard...</p>
-        </div>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
-  const top3 = leaderboardData.slice(0, 3);
+  const activeRanked = tab === 'alltime' ? ranked : weeklyRankedLive;
+  const weekLabel = weeklyData?.weekOf
+    ? new Date(weeklyData.weekOf).toLocaleDateString('en-US', {
+        timeZone: 'America/New_York',
+        month: 'short', day: 'numeric',
+      })
+    : null;
+
+  // Next Sunday reset in ET
+  const now = new Date();
+  const etDow = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York', weekday: 'short',
+  }).format(now);
+  const DOW_TO_SUN: Record<string, number> = {
+    Sun: 7, Mon: 6, Tue: 5, Wed: 4, Thu: 3, Fri: 2, Sat: 1,
+  };
+  const daysUntilSun = DOW_TO_SUN[etDow] ?? 1;
+  const nextSun = new Date(now);
+  nextSun.setDate(now.getDate() + daysUntilSun);
+  const nextResetLabel = nextSun.toLocaleDateString('en-US', {
+    timeZone: 'America/New_York', month: 'short', day: 'numeric',
+  });
 
   return (
-    <div className="container mx-auto px-4 py-16">
-      <div className="text-center max-w-3xl mx-auto mb-12">
-        <h1 className="text-4xl md:text-6xl font-headline font-bold text-glow mb-4">
-          CYBAZONE Leaderboard
-        </h1>
-        <p className="text-lg text-foreground/80 mb-2">
-          See which CYBAS are making the biggest impact in the CYBAZONE.
-        </p>
-        <div className="flex items-center justify-center gap-4">
-          {lastUpdated && (
-            <p className="text-xs text-muted-foreground">
-              Last updated: {lastUpdated.toLocaleTimeString()}
-            </p>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => fetchLeaderboard(true)}
-            disabled={isLoading || isSyncing}
+    <div className="container mx-auto px-4 pt-3 pb-8 max-w-5xl">
+      <SectionHeader
+        title="CYBAZONE Leaderboard"
+        description="Live rankings based on posts and community support."
+        className="mb-4"
+      />
+
+      {/* Toggle */}
+      <div className="flex justify-center mb-4">
+        <div className="inline-flex rounded-xl border border-border/60 bg-card/60 p-1 gap-1">
+          <button
+            onClick={() => setTab('alltime')}
+            className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
+              tab === 'alltime'
+                ? 'bg-primary text-primary-foreground shadow-[0_0_16px_rgba(138,43,226,0.4)]'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
           >
-            <RefreshCw className={`h-4 w-4 ${isLoading || isSyncing ? 'animate-spin' : ''}`} />
-          </Button>
+            🏆 All-Time
+          </button>
+          <button
+            onClick={() => setTab('weekly')}
+            className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
+              tab === 'weekly'
+                ? 'bg-yellow-500/80 text-black shadow-[0_0_16px_rgba(234,179,8,0.35)]'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            ⚡ Weekly
+          </button>
         </div>
       </div>
 
-      {/* ── Golden top 3 podium ── */}
-      {top3.length >= 3 && <PodiumSection entries={leaderboardData} />}
+      {/* Weekly meta info */}
+      {tab === 'weekly' && (
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mb-4 text-xs text-muted-foreground">
+          {weekLabel && (
+            <span className="bg-yellow-950/40 border border-yellow-600/20 rounded-full px-3 py-1">
+              📅 Week of {weekLabel}
+            </span>
+          )}
+          <span className="bg-card/60 border border-border/40 rounded-full px-3 py-1">
+            🔄 Resets Sunday · Next: {nextResetLabel} EST
+          </span>
+        </div>
+      )}
 
-      {/* ── Full table ── */}
-      <Card className="border-primary/20 bg-card/50 shadow-lg">
+      {/* Table */}
+      <Card className="border-primary/20 bg-card/50">
         <CardContent className="p-0">
-          {error ? (
-            <div className="flex flex-col items-center justify-center h-64 text-center px-4">
-              <div className="bg-destructive/10 p-6 rounded-lg max-w-md">
-                <h3 className="text-xl font-semibold text-destructive mb-2">Error Loading Leaderboard</h3>
-                <p className="text-sm text-destructive/80 mb-4 break-words">{error}</p>
-                <Button onClick={() => fetchLeaderboard(true)} className="text-sm px-4 py-2">
-                  Try Again
-                </Button>
-              </div>
-            </div>
-          ) : leaderboardData.length > 0 ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-muted/50">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-12 text-center font-bold">Rank</TableHead>
-                    <TableHead className="font-bold">Name</TableHead>
-                    <TableHead className="font-bold">Instagram</TableHead>
-                    <TableHead className="font-bold">Tier</TableHead>
-                    <TableHead className="text-center font-bold">Outward</TableHead>
-                    <TableHead className="text-center font-bold">Inward</TableHead>
-                    <TableHead className="text-center font-bold">Features</TableHead>
-                    <TableHead className="text-right font-bold">
-                      <div className="flex justify-end items-center gap-1">
-                        <Image src="/CCoin.png?v=2" alt="CYBACOIN" width={22} height={22} />
-                        CYBACOIN
-                      </div>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {leaderboardData.map((entry, index) => {
-                    const rank = index + 1;
-                    const isTop3 = rank <= 3;
-
-                    // Gold / silver / bronze row styling
-                    const rowCls = isTop3
-                      ? rank === 1
-                        ? 'bg-yellow-950/30 hover:bg-yellow-950/50 border-l-4 border-yellow-400'
-                        : rank === 2
-                        ? 'bg-slate-900/30 hover:bg-slate-900/50 border-l-4 border-slate-400'
-                        : 'bg-orange-950/30 hover:bg-orange-950/50 border-l-4 border-orange-500'
-                      : 'hover:bg-muted/30';
-
-                    const nameCls = isTop3
-                      ? rank === 1 ? 'text-yellow-300' : rank === 2 ? 'text-slate-300' : 'text-orange-300'
-                      : '';
-
-                    return (
-                      <TableRow key={`${entry.cybaName || index}-${index}`} className={`transition-colors ${rowCls}`}>
-                        <TableCell className="text-center font-bold">
-                          <div className="flex items-center justify-center">{getRankIcon(rank)}</div>
-                        </TableCell>
-                        <TableCell className={`font-semibold ${nameCls}`}>
-                          {getString(entry.cybaName) || 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          {entry.cybaIg ? (
-                            <a
-                              href={`https://instagram.com/${entry.cybaIg}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline text-sm"
-                            >
-                              @{entry.cybaIg}
-                            </a>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {entry.tier ? (
-                            <Badge
-                              variant={entry.tier === 'Surge' ? 'default' : 'secondary'}
-                              className={entry.tier === 'Surge' ? 'bg-gradient-to-r from-primary to-primary/80' : 'bg-accent text-accent-foreground'}
-                            >
-                              {entry.tier}
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center font-medium">{formatNumber(entry.outwardEngagement)}</TableCell>
-                        <TableCell className="text-center font-medium">{formatNumber(entry.inwardEngagement)}</TableCell>
-                        <TableCell className="text-center font-medium">{formatNumber(entry.features)}</TableCell>
-                        <TableCell className="text-right font-bold text-primary text-lg">
-                          {formatNumber(entry.cybaCoin)}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
+          {activeRanked.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-center">
               <Trophy className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold mb-2">The Leaderboard is Empty</h3>
-              <p className="text-muted-foreground">Check back later to see who's climbing the ranks!</p>
+              <h3 className="text-xl font-semibold mb-2">
+                {tab === 'weekly' ? 'No weekly data yet' : 'No entries yet'}
+              </h3>
+              <p className="text-muted-foreground text-sm">
+                {tab === 'weekly'
+                  ? 'Weekly rankings update each Sunday EST.'
+                  : 'Start posting to appear on the leaderboard!'}
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm table-fixed">
+                <thead>
+                  <tr className="border-b border-border bg-muted/40 text-muted-foreground text-[10px] sm:text-xs font-bold uppercase tracking-wider">
+                    <th className="py-2 pl-2 pr-1 sm:px-3 text-center w-8 sm:w-14">Rank</th>
+                    <th className="py-2 pl-3 pr-1 sm:pl-5 sm:pr-3 text-left">User</th>
+                    <th className="py-2 px-1 sm:px-3 text-center hidden sm:table-cell w-20">Tier</th>
+                    <th className="py-2 px-1 sm:px-3 text-center w-12 sm:w-20">Posts</th>
+                    <th className="py-2 pl-1 pr-2 sm:px-3 text-center w-12 sm:w-20">Supp</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeRanked.map((user, i) => {
+                    const rank = i + 1;
+                    const level = computeLevel(user.postCount, user.supportGiven);
+                    const levelCfg = LEVEL_CONFIG[level] ?? Object.values(LEVEL_CONFIG)[0];
+                    const posts = tab === 'weekly' ? (user.weeklyPostCount ?? 0) : (user.postCount ?? 0);
+                    const supports = tab === 'weekly' ? (user.weeklySupportGiven ?? 0) : (user.supportGiven ?? 0);
+                    const rowCls =
+                      rank === 1 ? 'bg-yellow-950/20 border-l-2 border-yellow-400' :
+                      rank === 2 ? 'bg-slate-900/20 border-l-2 border-slate-400' :
+                      rank === 3 ? 'bg-orange-950/20 border-l-2 border-orange-500' :
+                      'hover:bg-muted/20';
+
+                    return (
+                      <tr key={user.id} className={`border-b border-border/30 transition-colors ${rowCls}`}>
+                        {/* Rank */}
+                        <td className="py-2 pl-2 pr-1 sm:px-3 text-center font-black">
+                          {rank <= 3
+                            ? <span className="text-base sm:text-xl">{RANK_MEDAL[rank]}</span>
+                            : <span className="text-muted-foreground tabular-nums text-xs sm:text-sm">{rank}</span>
+                          }
+                        </td>
+
+                        {/* User */}
+                        <td className="py-2 pl-3 pr-1 sm:pl-5 sm:pr-3 min-w-0">
+                          <Link href={`/u/${user.username}`} className="flex items-center gap-1.5 sm:gap-3 hover:opacity-80 transition-opacity">
+                            <AvatarDisplay
+                              profilePictureUrl={user.profilePictureUrl}
+                              avatarConfig={user.avatarConfig}
+                              size={28}
+                              level={level}
+                            />
+                            <div className="min-w-0">
+                              <p className={`font-bold text-xs sm:text-sm truncate ${rank === 1 ? 'text-yellow-300' : rank === 2 ? 'text-slate-300' : rank === 3 ? 'text-orange-300' : ''}`}>
+                                {user.username}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground hidden sm:block">{levelCfg.emoji} {levelCfg.name}</p>
+                            </div>
+                          </Link>
+                        </td>
+
+                        {/* Tier */}
+                        <td className="py-2 px-1 sm:px-3 text-center hidden sm:table-cell">
+                          <LevelBadge level={level} size="sm" />
+                        </td>
+
+                        {/* Posts */}
+                        <td className="py-2 px-1 sm:px-3 text-center font-semibold tabular-nums text-xs sm:text-sm">
+                          {posts.toLocaleString()}
+                        </td>
+
+                        {/* Support */}
+                        <td className="py-2 pl-1 pr-2 sm:px-3 text-center font-semibold tabular-nums text-xs sm:text-sm text-primary">
+                          {supports.toLocaleString()}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* ── Summary stats ── */}
-      {leaderboardData.length > 0 && (
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="bg-gradient-to-br from-yellow-500/10 to-transparent border-yellow-500/20">
-            <CardContent className="p-6 text-center">
-              <Medal className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground mb-1">Top Performer</p>
-              <p className="text-lg font-bold">{getString(leaderboardData[0]?.cybaName) || 'N/A'}</p>
-              <div className="flex items-center justify-center gap-1 mt-2">
-                <Image src="/CCoin.png?v=2" alt="" width={14} height={14} />
-                <p className="text-xs text-muted-foreground">{formatNumber(leaderboardData[0]?.cybaCoin)}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-blue-500/10 to-transparent border-blue-500/20">
-            <CardContent className="p-6 text-center">
-              <div className="text-xl font-bold mb-2">📊</div>
-              <p className="text-sm text-muted-foreground mb-1">Total Competitors</p>
-              <p className="text-lg font-bold">{leaderboardData.length}</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-green-500/10 to-transparent border-green-500/20">
-            <CardContent className="p-6 text-center">
-              <Image src="/CCoin.png?v=2" alt="CYBACOIN" width={40} height={40} className="mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground mb-1">Total CYBACOIN</p>
-              <p className="text-lg font-bold">
-                {formatNumber(leaderboardData.reduce((s, e) => s + getNumber(e.cybaCoin), 0))}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   );
 }

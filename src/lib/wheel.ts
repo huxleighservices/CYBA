@@ -10,19 +10,34 @@ export interface WheelPrize {
   value?: number;      // coin amount or multiplier rate
   color: string;       // segment fill color
   textColor: string;   // label text color
+  /** Relative selection weight — higher = more common. Used by weightedRandomPrizeIndex(). */
+  weight: number;
 }
 
-// 10 segments, alternating coins ↔ boosts for visual variety
+// 10 segments, weighted so small CC payouts are common and the big prizes (3x Multiplier,
+// 5,000 CC jackpot, Spotlight boosts) are rare.
 export const WHEEL_PRIZES: WheelPrize[] = [
   {
-    id: 'coins_5',
+    id: 'coins_10',
     type: 'coins',
-    label: '5',
-    description: '5 CYBACOIN',
+    label: '10',
+    description: '10 CYBACOIN',
     emoji: '🪙',
-    value: 5,
+    value: 10,
     color: '#78350f',
     textColor: '#fcd34d',
+    weight: 22,
+  },
+  {
+    id: 'coins_25',
+    type: 'coins',
+    label: '25',
+    description: '25 CYBACOIN',
+    emoji: '🪙',
+    value: 25,
+    color: '#92400e',
+    textColor: '#fde68a',
+    weight: 18,
   },
   {
     id: 'mult_2x',
@@ -33,35 +48,59 @@ export const WHEEL_PRIZES: WheelPrize[] = [
     value: 2,
     color: '#4c1d95',
     textColor: '#c4b5fd',
+    weight: 15,
   },
   {
-    id: 'coins_10',
+    id: 'coins_50',
     type: 'coins',
-    label: '10',
-    description: '10 CYBACOIN',
+    label: '50',
+    description: '50 CYBACOIN',
     emoji: '🪙',
-    value: 10,
-    color: '#92400e',
-    textColor: '#fde68a',
+    value: 50,
+    color: '#713f12',
+    textColor: '#fef08a',
+    weight: 14,
+  },
+  {
+    id: 'bonus_spin',
+    type: 'bonus_spin',
+    label: 'BONUS!',
+    description: 'Bonus Free Spin!',
+    emoji: '🎰',
+    color: '#14532d',
+    textColor: '#86efac',
+    weight: 12,
+  },
+  {
+    id: 'coins_100',
+    type: 'coins',
+    label: '100',
+    description: '100 CYBACOIN',
+    emoji: '🏆',
+    value: 100,
+    color: '#7c2d12',
+    textColor: '#fed7aa',
+    weight: 9,
   },
   {
     id: 'sponsored_post',
     type: 'sponsored_post',
     label: 'POST',
-    description: 'Sponsored Post on Global Feed',
+    description: 'Spotlight Post on Global Feed',
     emoji: '📢',
     color: '#1e3a8a',
     textColor: '#93c5fd',
+    weight: 5,
   },
   {
-    id: 'coins_15',
-    type: 'coins',
-    label: '15',
-    description: '15 CYBACOIN',
-    emoji: '🪙',
-    value: 15,
-    color: '#713f12',
-    textColor: '#fef08a',
+    id: 'sponsored_profile',
+    type: 'sponsored_profile',
+    label: 'PROFILE',
+    description: 'Spotlight Profile on Global Feed',
+    emoji: '🌟',
+    color: '#1e1b4b',
+    textColor: '#a5b4fc',
+    weight: 3,
   },
   {
     id: 'mult_3x',
@@ -72,44 +111,18 @@ export const WHEEL_PRIZES: WheelPrize[] = [
     value: 3,
     color: '#3b0764',
     textColor: '#e9d5ff',
+    weight: 2,
   },
   {
-    id: 'coins_20',
+    id: 'coins_5000',
     type: 'coins',
-    label: '20',
-    description: '20 CYBACOIN',
-    emoji: '🪙',
-    value: 20,
-    color: '#7c2d12',
-    textColor: '#fed7aa',
-  },
-  {
-    id: 'sponsored_profile',
-    type: 'sponsored_profile',
-    label: 'PROFILE',
-    description: 'Sponsored Profile on Global Feed',
-    emoji: '🌟',
-    color: '#1e1b4b',
-    textColor: '#a5b4fc',
-  },
-  {
-    id: 'coins_30',
-    type: 'coins',
-    label: '30',
-    description: '30 CYBACOIN',
-    emoji: '🏆',
-    value: 30,
+    label: '5,000',
+    description: '5,000 CYBACOIN — Jackpot!',
+    emoji: '💎',
+    value: 5000,
     color: '#7f1d1d',
     textColor: '#fca5a5',
-  },
-  {
-    id: 'bonus_spin',
-    type: 'bonus_spin',
-    label: 'BONUS!',
-    description: 'Bonus Free Spin!',
-    emoji: '🎰',
-    color: '#14532d',
-    textColor: '#86efac',
+    weight: 1,
   },
 ];
 
@@ -151,16 +164,16 @@ export const BOOST_INFO: Record<BoostType, {
     activateLabel: 'ACTIVATE 3x BOOST',
   },
   sponsored_post: {
-    label: 'Sponsored Post',
+    label: 'Spotlight Post',
     description: 'Pins your next post to the top of the Global Feed.',
     emoji: '📢',
-    activateLabel: 'ACTIVATE SPONSORED POST',
+    activateLabel: 'ACTIVATE SPOTLIGHT POST',
   },
   sponsored_profile: {
-    label: 'Sponsored Profile',
+    label: 'Spotlight Profile',
     description: 'Features your profile at the top of the Global Feed.',
     emoji: '🌟',
-    activateLabel: 'ACTIVATE SPONSORED PROFILE',
+    activateLabel: 'ACTIVATE SPOTLIGHT PROFILE',
   },
 };
 
@@ -175,6 +188,18 @@ export function nextSpinAt(lastSpinMs: number): number {
   return lastSpinMs + SPIN_COOLDOWN_MS;
 }
 
+/** Uniform-random selection — kept for compatibility, but the wheel uses the weighted
+ *  version below so rare prizes (jackpot, 3x multiplier, spotlight boosts) land less often. */
 export function randomPrizeIndex(): number {
   return Math.floor(Math.random() * WHEEL_PRIZES.length);
+}
+
+export function weightedRandomPrizeIndex(): number {
+  const totalWeight = WHEEL_PRIZES.reduce((sum, p) => sum + p.weight, 0);
+  let roll = Math.random() * totalWeight;
+  for (let i = 0; i < WHEEL_PRIZES.length; i++) {
+    roll -= WHEEL_PRIZES[i].weight;
+    if (roll <= 0) return i;
+  }
+  return WHEEL_PRIZES.length - 1;
 }

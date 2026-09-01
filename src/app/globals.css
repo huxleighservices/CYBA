@@ -64,9 +64,25 @@
 @layer base {
   * {
     @apply border-border;
+    /* Remove iOS tap highlight flash on every element — safe to apply globally */
+    -webkit-tap-highlight-color: transparent;
+  }
+  html, body {
+    overflow-x: hidden;
   }
   body {
     @apply bg-background text-foreground;
+  }
+  /*
+   * touch-action: manipulation — ONLY on interactive elements.
+   * Applying it to containers / scroll parents breaks iOS Safari's touch routing
+   * and makes buttons inside them unreliable. Scoping it here removes the 300ms
+   * double-tap delay without interfering with scroll detection.
+   */
+  a, button, [role="button"], label,
+  input[type="button"], input[type="submit"], input[type="reset"] {
+    touch-action: manipulation;
+    cursor: pointer;
   }
 }
 
@@ -95,6 +111,7 @@
     position: fixed;
     inset: 0;
     z-index: 0;
+    pointer-events: none;
     background-color: #000;
     background-image:
       linear-gradient(hsla(var(--primary) / 0.1) 1px, transparent 1px),
@@ -168,4 +185,39 @@
     background-size: 300% auto;
     animation: gold-shimmer 3s linear infinite;
   }
+}
+
+/* react-phone-number-input dark theme */
+.phone-input-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.phone-input-field .PhoneInputInput {
+  flex: 1;
+  height: 2.25rem;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--input));
+  border-radius: calc(var(--radius) - 2px);
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
+  color: hsl(var(--foreground));
+  outline: none;
+}
+.phone-input-field .PhoneInputInput:focus {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 1px hsl(var(--primary));
+}
+.phone-input-field .PhoneInputCountrySelect {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--input));
+  border-radius: calc(var(--radius) - 2px);
+  height: 2.25rem;
+  padding: 0 0.25rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.phone-input-field .PhoneInputCountrySelectArrow {
+  color: hsl(var(--muted-foreground));
 }

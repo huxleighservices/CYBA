@@ -1,15 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, increment } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
+import { useFirebase, useDoc, useMemoFirebase, useCollection } from '@/firebase';
+import { doc, updateDoc, increment, collection, query, where, orderBy, limit, Timestamp } from 'firebase/firestore';
 import {
   WHEEL_PRIZES,
   BOOST_INFO,
   DEFAULT_INVENTORY,
   canSpinDaily,
   nextSpinAt,
-  randomPrizeIndex,
   type WheelPrize,
   type BoostType,
   type UserInventory,
@@ -28,11 +28,10 @@ const CX = W / 2;
 const CY = W / 2;
 const R = W / 2 - 14;
 const LABEL_R = R * 0.63;
-const N = WHEEL_PRIZES.length;
 
-function segPath(i: number): string {
-  const a0 = (i / N) * 2 * Math.PI - Math.PI / 2;
-  const a1 = ((i + 1) / N) * 2 * Math.PI - Math.PI / 2;
+function segPath(i: number, n: number): string {
+  const a0 = (i / n) * 2 * Math.PI - Math.PI / 2;
+  const a1 = ((i + 1) / n) * 2 * Math.PI - Math.PI / 2;
   const x1 = (CX + R * Math.cos(a0)).toFixed(2);
   const y1 = (CY + R * Math.sin(a0)).toFixed(2);
   const x2 = (CX + R * Math.cos(a1)).toFixed(2);
@@ -40,23 +39,26 @@ function segPath(i: number): string {
   return `M ${CX} ${CY} L ${x1} ${y1} A ${R} ${R} 0 0 1 ${x2} ${y2} Z`;
 }
 
-function labelTransform(i: number): string {
-  const mid = ((i + 0.5) / N) * 2 * Math.PI - Math.PI / 2;
+function labelTransform(i: number, n: number): string {
+  const mid = ((i + 0.5) / n) * 2 * Math.PI - Math.PI / 2;
   const lx = (CX + LABEL_R * Math.cos(mid)).toFixed(2);
   const ly = (CY + LABEL_R * Math.sin(mid)).toFixed(2);
-  const deg = ((i + 0.5) / N) * 360;
+  const deg = ((i + 0.5) / n) * 360;
   return `translate(${lx},${ly}) rotate(${deg})`;
 }
 
 function SpinWheel({
+  prizes,
   angle,
   spinning,
   onTransitionEnd,
 }: {
+  prizes: WheelPrize[];
   angle: number;
   spinning: boolean;
   onTransitionEnd: () => void;
 }) {
+  const n = prizes.length;
   const studs = Array.from({ length: 24 }, (_, i) => {
     const a = (i / 24) * Math.PI * 2;
     const sr = W / 2 + 8;
@@ -117,14 +119,12 @@ function SpinWheel({
         }}
         onTransitionEnd={onTransitionEnd}
       >
-        {/* Segments */}
-        {WHEEL_PRIZES.map((prize, i) => (
-          <path key={prize.id} d={segPath(i)} fill={prize.color} stroke="#000" strokeWidth="1.5" />
+        {prizes.map((prize, i) => (
+          <path key={prize.id} d={segPath(i, n)} fill={prize.color} stroke="#000" strokeWidth="1.5" />
         ))}
 
-        {/* Segment dividers */}
-        {WHEEL_PRIZES.map((_, i) => {
-          const a = (i / N) * 2 * Math.PI - Math.PI / 2;
+        {prizes.map((_, i) => {
+          const a = (i / n) * 2 * Math.PI - Math.PI / 2;
           return (
             <line
               key={i}
@@ -138,9 +138,8 @@ function SpinWheel({
           );
         })}
 
-        {/* Labels */}
-        {WHEEL_PRIZES.map((prize, i) => (
-          <g key={`lbl-${prize.id}`} transform={labelTransform(i)}>
+        {prizes.map((prize, i) => (
+          <g key={`lbl-${prize.id}`} transform={labelTransform(i, n)}>
             <text textAnchor="middle" dominantBaseline="auto" fontSize="15" y="-5">
               {prize.emoji}
             </text>
@@ -157,7 +156,6 @@ function SpinWheel({
           </g>
         ))}
 
-        {/* Hub */}
         <circle cx={CX} cy={CY} r={22} fill="#0a0a0a" stroke="#fbbf24" strokeWidth="2" />
         <circle cx={CX} cy={CY} r={16} fill="#111" />
         <circle cx={CX} cy={CY} r={5} fill="#fbbf24" />
@@ -189,7 +187,7 @@ function Countdown({ until }: { until: number }) {
 
   return (
     <div className="pixel-font text-center">
-      <p className="text-[8px] text-zinc-500 mb-1 tracking-widest">NEXT FREE SPIN IN</p>
+      <p className="text-[8px] text-white mb-1 tracking-widest">NEXT FREE SPIN IN</p>
       <p className="text-2xl text-primary tabular-nums tracking-wider">{display}</p>
     </div>
   );
@@ -284,7 +282,7 @@ function InventoryCard({
         <span className="text-3xl shrink-0">{info.emoji}</span>
         <div className="flex-1 min-w-0">
           <p className="text-[9px] text-white leading-snug mb-1">{info.label}</p>
-          <p className="text-[7px] text-zinc-500 leading-relaxed">{info.description}</p>
+          <p className="text-[7px] text-white/80 leading-relaxed">{info.description}</p>
         </div>
         <span
           className={cn(
@@ -333,12 +331,12 @@ interface UserWheelData {
 
 export default function WinnersWheelPage() {
   const { firestore, user, isUserLoading } = useFirebase();
+  const router = useRouter();
   const [spinAngle, setSpinAngle] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [wonPrize, setWonPrize] = useState<WheelPrize | null>(null);
   const [initialized, setInitialized] = useState(false);
 
-  // Capture spin context so the transition callback is always fresh
   const pendingRef = useRef<{
     prize: WheelPrize;
     usedBonus: boolean;
@@ -352,6 +350,36 @@ export default function WinnersWheelPage() {
   );
   const { data: userData } = useDoc<UserWheelData>(userDocRef);
 
+  // Check if the user has posted at least once today (required to spin)
+  const todayStartMs = (() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  })();
+  const todayPostsQuery = useMemoFirebase(
+    () =>
+      user
+        ? query(
+            collection(firestore, 'cybazone_posts'),
+            where('authorId', '==', user.uid),
+            where('timestamp', '>=', Timestamp.fromMillis(todayStartMs)),
+            orderBy('timestamp', 'desc'),
+            limit(1),
+          )
+        : null,
+    [firestore, user?.uid, todayStartMs]
+  );
+  const { data: todayPosts } = useCollection<{ id: string }>(todayPostsQuery);
+  const hasPostedToday = (todayPosts?.length ?? 0) > 0;
+
+  // Load admin-configured prizes (falls back to hardcoded defaults)
+  const wheelConfigRef = useMemoFirebase(
+    () => doc(firestore, 'settings', 'wheelConfig'),
+    [firestore]
+  );
+  const { data: wheelConfig } = useDoc<{ prizes: WheelPrize[] }>(wheelConfigRef);
+  const prizes: WheelPrize[] = wheelConfig?.prizes ?? WHEEL_PRIZES;
+
   useEffect(() => { setInitialized(true); }, []);
 
   const inventory: UserInventory = {
@@ -362,25 +390,31 @@ export default function WinnersWheelPage() {
   const lastSpin = userData?.lastWheelSpin ?? null;
   const bonusSpins = userData?.bonusSpinsAvailable ?? 0;
   const dailyAvailable = canSpinDaily(lastSpin);
-  const canSpin = (dailyAvailable || bonusSpins > 0) && !spinning;
+  const canSpin = (dailyAvailable || bonusSpins > 0) && !spinning && hasPostedToday;
 
   // ── Spin ──
   const handleSpin = () => {
     if (!user || !canSpin) return;
 
-    const idx = randomPrizeIndex();
-    const prize = WHEEL_PRIZES[idx];
+    // Weighted pick — falls back to weight 1 per prize if the admin-configured list predates
+    // the weight field, which keeps old configs working as a uniform-random wheel.
+    const totalWeight = prizes.reduce((sum, p) => sum + (p.weight ?? 1), 0);
+    let roll = Math.random() * totalWeight;
+    let idx = prizes.length - 1;
+    for (let i = 0; i < prizes.length; i++) {
+      roll -= prizes[i].weight ?? 1;
+      if (roll <= 0) { idx = i; break; }
+    }
+    const prize = prizes[idx];
     const usedBonus = !dailyAvailable && bonusSpins > 0;
 
-    // Snapshot inventory at spin time for conflict resolution
     pendingRef.current = {
       prize,
       usedBonus,
       inventorySnapshot: { ...inventory },
     };
 
-    // Compute landing angle
-    const segDeg = 360 / N;
+    const segDeg = 360 / prizes.length;
     const targetNorm = ((360 - (idx + 0.5) * segDeg) % 360 + 360) % 360;
     const currentNorm = ((spinAngle % 360) + 360) % 360;
     let delta = targetNorm - currentNorm;
@@ -398,7 +432,7 @@ export default function WinnersWheelPage() {
     pendingRef.current = null;
 
     const { prize, usedBonus, inventorySnapshot } = ctx;
-    const updates: Record<string, unknown> = {};
+    const updates: Record<string, any> = {};
 
     // Deduct spin token
     if (usedBonus) {
@@ -464,7 +498,7 @@ export default function WinnersWheelPage() {
   const handleActivate = async (boostType: BoostType) => {
     if (!user) return;
     sfxBoostActivate();
-    const updates: Record<string, unknown> = {
+    const updates: Record<string, any> = {
       [`inventory.${boostType}.quantity`]: 0,
     };
     if (boostType === 'multiplier_2x' || boostType === 'multiplier_3x') {
@@ -473,14 +507,16 @@ export default function WinnersWheelPage() {
       updates[`inventory.${boostType}.expiresAt`] = expiresAt;
       updates['activeMultiplier'] = { rate, expiresAt };
     } else if (boostType === 'sponsored_post') {
-      updates['sponsoredPost'] = true;
+      // Navigate to sponsor page — it handles deducting inventory + creating sponsored_items
+      router.push('/sponsor?type=post');
+      return;
     } else if (boostType === 'sponsored_profile') {
-      updates['sponsoredProfile'] = true;
+      router.push('/sponsor?type=profile');
+      return;
     }
     await updateDoc(doc(firestore, 'users', user.uid), updates);
   };
 
-  const hasAnyInventory = Object.values(inventory).some(s => s.quantity > 0);
 
   return (
     <>
@@ -497,20 +533,20 @@ export default function WinnersWheelPage() {
       <div className="container mx-auto py-6 px-4 max-w-5xl">
         {/* Header */}
         <div className="pixel-font mb-6">
-          <h1 className="text-base sm:text-lg text-primary mb-1">WINNER&apos;S WHEEL</h1>
-          <p className="text-[8px] text-zinc-500">SPIN ONCE DAILY · WIN PRIZES · BUILD YOUR ARSENAL</p>
+          <h1 className="text-base sm:text-lg text-primary mb-1">CYBAWHEEL</h1>
+          <p className="text-[8px] text-white">SPIN ONCE DAILY · WIN PRIZES · BUILD YOUR ARSENAL</p>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-8 items-start">
 
           {/* ── LEFT: Wheel ── */}
           <div className="flex flex-col items-center gap-5 mx-auto lg:mx-0 shrink-0">
-            <SpinWheel angle={spinAngle} spinning={spinning} onTransitionEnd={handleTransitionEnd} />
+            <SpinWheel prizes={prizes} angle={spinAngle} spinning={spinning} onTransitionEnd={handleTransitionEnd} />
 
             {/* Controls */}
             {!user && initialized && !isUserLoading && (
               <div className="pixel-font text-center">
-                <p className="text-[8px] text-zinc-500 mb-3">SIGN IN TO SPIN</p>
+                <p className="text-[8px] text-white mb-3">SIGN IN TO SPIN</p>
                 <div className="flex gap-3">
                   <Link href="/login">
                     <Button size="sm" className="pixel-font text-[8px]">SIGN IN</Button>
@@ -522,7 +558,21 @@ export default function WinnersWheelPage() {
               </div>
             )}
 
-            {user && canSpin && (
+            {user && !hasPostedToday && !spinning && (
+              <div className="pixel-font text-center border border-zinc-700 rounded-xl p-4 bg-black/40 max-w-[280px]">
+                <p className="text-[9px] text-yellow-400 mb-2">🔒 POST TO UNLOCK</p>
+                <p className="text-[7px] text-white leading-loose mb-3">
+                  Make your first post of the day to unlock the wheel.
+                </p>
+                <Link href="/create">
+                  <button className="pixel-font bg-primary hover:bg-primary/90 text-white text-[8px] px-5 py-2.5 rounded-lg border border-primary/60 transition-all">
+                    ► CREATE A POST
+                  </button>
+                </Link>
+              </div>
+            )}
+
+            {user && hasPostedToday && canSpin && (
               <div className="text-center space-y-2">
                 <button
                   onClick={handleSpin}
@@ -544,21 +594,21 @@ export default function WinnersWheelPage() {
             )}
 
             {user && spinning && (
-              <p className="pixel-font text-[8px] text-zinc-400 animate-pulse">SPINNING...</p>
+              <p className="pixel-font text-[8px] text-white animate-pulse">SPINNING...</p>
             )}
 
-            {user && !canSpin && !spinning && lastSpin && (
+            {user && hasPostedToday && !canSpin && !spinning && lastSpin && (
               <Countdown until={nextSpinAt(lastSpin)} />
             )}
 
             {/* Prize legend */}
             <div className="w-full max-w-[300px] pixel-font">
-              <p className="text-[7px] text-zinc-600 mb-2 text-center tracking-widest">PRIZE TABLE</p>
+              <p className="text-[7px] text-white mb-2 text-center tracking-widest">PRIZE TABLE</p>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                {WHEEL_PRIZES.map(p => (
+                {prizes.map(p => (
                   <div key={p.id} className="flex items-center gap-1.5 text-[7px]">
                     <span className="text-sm">{p.emoji}</span>
-                    <span style={{ color: p.textColor }}>{p.description.split('\n')[0]}</span>
+                    <span className="text-white">{p.description.split('\n')[0]}</span>
                   </div>
                 ))}
               </div>
@@ -569,7 +619,7 @@ export default function WinnersWheelPage() {
           <div className="flex-1 w-full min-w-0">
             <div className="pixel-font flex items-baseline justify-between mb-4">
               <h2 className="text-[10px] text-primary">YOUR INVENTORY</h2>
-              <span className="text-[7px] text-zinc-600">MAX 1 PER SLOT</span>
+              <span className="text-[7px] text-white">MAX 1 PER SLOT</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
@@ -585,8 +635,9 @@ export default function WinnersWheelPage() {
 
             {/* Rules */}
             <div className="pixel-font p-4 border border-zinc-800 rounded-xl bg-black/40 mb-4">
-              <p className="text-[8px] text-zinc-500 mb-3 tracking-widest">RULES</p>
-              <ul className="space-y-2 text-[7px] text-zinc-600 leading-loose">
+              <p className="text-[8px] text-white mb-3 tracking-widest">RULES</p>
+              <ul className="space-y-2 text-[7px] text-white leading-loose">
+                <li>► Post at least once today to unlock the wheel.</li>
                 <li>► Free spin resets every 24 hours.</li>
                 <li>► Each inventory slot holds a maximum of 1 boost.</li>
                 <li>► Winning a boost you already own awards 10 CYBACOIN instead.</li>
@@ -601,14 +652,14 @@ export default function WinnersWheelPage() {
               <div className="pixel-font flex items-center gap-3 p-4 border border-zinc-800 rounded-xl bg-black/40">
                 <Image src="/CCoin.png?v=2" alt="CYBACOIN" width={24} height={24} />
                 <div>
-                  <p className="text-[7px] text-zinc-500 mb-0.5">CYBACOIN BALANCE</p>
+                  <p className="text-[7px] text-white mb-0.5">CYBACOIN BALANCE</p>
                   <p className="text-base text-yellow-400 font-bold tabular-nums">
                     {(userData?.cybaCoinBalance ?? 0).toLocaleString()}
                   </p>
                 </div>
                 {bonusSpins > 0 && (
                   <div className="ml-auto text-center">
-                    <p className="text-[7px] text-zinc-500 mb-0.5">BONUS SPINS</p>
+                    <p className="text-[7px] text-white mb-0.5">BONUS SPINS</p>
                     <p className="text-base text-green-400 font-bold">{bonusSpins}</p>
                   </div>
                 )}
