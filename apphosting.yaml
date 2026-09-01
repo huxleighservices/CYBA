@@ -19,3 +19,23 @@ env:
     secret: GOOGLE_SHEETS_CREDENTIALS
     availability:
       - RUNTIME
+  - variable: STRIPE_SECRET_KEY
+    secret: STRIPE_SECRET_KEY
+    availability:
+      - RUNTIME
+  - variable: STRIPE_WEBHOOK_SECRET
+    secret: STRIPE_WEBHOOK_SECRET
+    availability:
+      - RUNTIME
+  - variable: CRON_SECRET
+    secret: CRON_SECRET
+    availability:
+      - RUNTIME
+  - variable: GMAIL_USER
+    secret: GMAIL_USER
+    availability:
+      - RUNTIME
+  - variable: GMAIL_APP_PASSWORD
+    secret: GMAIL_APP_PASSWORD
+    availability:
+      - RUNTIME

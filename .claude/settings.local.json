@@ -8,7 +8,24 @@
       "Bash(firebase apphosting:backends:get cybaweb)",
       "Bash(find '/c/Users/david/Downloads/download \\(8\\)' -name \"non-blocking*\" -type f)",
       "Bash(netstat -ano)",
-      "Bash(findstr :9002)"
+      "Bash(findstr :9002)",
+      "Bash(npx tsc:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:9002/)",
+      "Bash(npm run:*)",
+      "Bash(npx next:*)",
+      "Bash(curl -s http://localhost:9002/)",
+      "Bash(findstr \":9002\")",
+      "Bash(taskkill /PID 14972 /F)",
+      "Bash(cmd /c \"taskkill /PID 14972 /F\")",
+      "Bash(cmd /c \"taskkill /PID 14972 /F && echo done\")",
+      "Bash(powershell -Command \"Stop-Process -Id 14972 -Force -ErrorAction SilentlyContinue; Start-Sleep 2; Write-Host 'done'\")",
+      "Bash(powershell -Command 'Get-Process -Name '\\\\''node'\\\\'' -ErrorAction SilentlyContinue | ForEach-Object { $conn = Get-NetTCPConnection -OwningProcess $_.Id -LocalPort 9002 -ErrorAction SilentlyContinue; if \\($conn\\) { Stop-Process -Id $_.Id -Force; Write-Host \"Killed PID $\\($_.Id\\)\" } }')",
+      "Bash(npm install:*)",
+      "Bash(node -e \"const Stripe = require\\('stripe'\\); const s = new Stripe\\('sk_test_x', { apiVersion: '2026-03-25.dahlia' }\\); console.log\\('ok'\\)\")",
+      "Bash(gcloud secrets:*)",
+      "Bash(npx firebase:*)",
+      "Bash(node -e \"require\\('nodemailer'\\); console.log\\('ok'\\)\")",
+      "PowerShell($env:Path += \";$env:ProgramFiles\\\\nodejs\"; cd \"c:\\\\Users\\\\david\\\\Downloads\\\\download \\(8\\)\"; npx tsc --noEmit -p tsconfig.json 2>&1 | Select-Object -First 200)"
     ]
   }
 }

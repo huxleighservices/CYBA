@@ -1,8 +1,182 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ── Helpers ─────────────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ── Users ────────────────────────────────────────────────────────────────
+    // Public profiles — anyone can view, only owner can write
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if isOwner(userId);
+
+      match /coinTransactions/{txId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId);
+      }
+
+      match /cashTransactions/{txId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId);
+      }
+
+      // Referrals subcollection — private, owner-only
+      match /referrals/{refId} {
+        allow read: if isOwner(userId);
+      }
+    }
+
+    // ── Notifications ────────────────────────────────────────────────────────
+    match /notifications/{userId}/items/{notifId} {
+      allow read, update: if isOwner(userId);
+      allow create: if isSignedIn();
+    }
+
+    // ── Posts & Comments ─────────────────────────────────────────────────────
+    // Public feed — anyone can read
+    match /cybazone_posts/{postId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn();
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if isSignedIn();
+        allow update, delete: if isSignedIn();
+      }
+    }
+
+    // ── Quest Submissions ────────────────────────────────────────────────────
+    match /quest_submissions/{subId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+    }
+
+    // ── Custom Quests ────────────────────────────────────────────────────────
+    match /custom_quests/{questId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // ── Shoutouts ────────────────────────────────────────────────────────────
+    match /shoutouts/{shoutoutId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+    }
+
+    // ── Reviews ──────────────────────────────────────────────────────────────
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+    }
+
+    // ── Presence (live user count) ───────────────────────────────────────────
+    match /presence/{sessionId} {
+      allow read: if isSignedIn();
+      allow write: if true;
+    }
+
+    // ── Ads ──────────────────────────────────────────────────────────────────
+    match /ads/{adId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // ── Cash-out Requests ────────────────────────────────────────────────────
+    match /cashout_requests/{reqId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+    }
+
+    // ── Weekly Payout History ────────────────────────────────────────────────
+    match /weekly_payout_history/{docId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // ── Sponsored Items ──────────────────────────────────────────────────────
+    match /sponsored_items/{itemId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // ── Conversations & Messages ─────────────────────────────────────────────
+    match /conversations/{convId} {
+      allow read: if isSignedIn() &&
+        resource.data.participants.hasAny([request.auth.uid]);
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() &&
+        resource.data.participants.hasAny([request.auth.uid]);
+
+      match /messages/{msgId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn();
+        allow update: if isSignedIn();
+      }
+    }
+
+    // ── Settings ─────────────────────────────────────────────────────────────
+    // Public read so guests can see boosts, radio config, etc.
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // ── Shop / Extras / Memberships / Merchandise ────────────────────────────
+    match /extras/{docId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /memberships/{docId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /merchandise/{docId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // ── Radio Boost Submissions ───────────────────────────────────────────────
+    match /radio_submissions/{subId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    // ── Market Boost Listings ────────────────────────────────────────────────
+    match /market_listings/{listingId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // ── Market Orders ────────────────────────────────────────────────────────
+    match /merch_orders/{orderId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn();
+    }
+
+    // ── Kitchen Tickets ──────────────────────────────────────────────────────
+    // Written by server (Admin SDK). Read by kitchen display — no auth required.
+    match /kitchen_tickets/{ticketId} {
+      allow read: if true;
+      allow write: if false;  // server-only via Admin SDK
+    }
+
+    // ── Fallback ──────────────────────────────────────────────────────────────
     match /{document=**} {
-      allow read, write;
+      allow read, write: if isSignedIn();
     }
   }
 }

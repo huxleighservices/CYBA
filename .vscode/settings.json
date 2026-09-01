@@ -1,3 +1,4 @@
 {
-  "workbench.startupEditor": "readme"
+  "workbench.startupEditor": "readme",
+  "cmake.sourceDirectory": "C:/Users/david/Downloads/download (8)/scripts/kitchenbot-idf"
 }

@@ -45,3 +45,6 @@ firebase-debug.log
 firestore-debug.log
 
 service-account.json
+
+# ESP-IDF build output (kitchenbot firmware) — compiled artifacts, not source
+scripts/kitchenbot-idf/build/

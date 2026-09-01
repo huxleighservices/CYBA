@@ -10,7 +10,12 @@
       "functions"
     ]
   },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
   "storage": {
-    "rules": "storage.rules"
+    "rules": "storage.rules",
+    "bucket": "studio-9029052952-9df3f.firebasestorage.app"
   }
 }
