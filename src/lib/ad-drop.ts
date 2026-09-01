@@ -1,0 +1,103 @@
+export type AdStatus = 'pending_payment' | 'active' | 'expired';
+
+export type AdMediaType = 'image' | 'video';
+
+export type AdTierKey = 'day7' | 'day14' | 'day30';
+
+export interface AdDoc {
+  userId: string;
+  username: string;
+  mediaUrl: string;
+  mediaType: AdMediaType;
+  buttonText: string;
+  buttonLink: string;
+  status: AdStatus;
+  tier: AdTierKey;
+  durationDays: number;
+  videoDurationSeconds?: number;
+  unskippable?: boolean;
+  wantsMediaQuest?: boolean;
+  wantsCybashirt?: boolean;
+  viewCount?: number;
+  clickCount?: number;
+  totalWatchSeconds?: number;
+  /** Set once the 3-day-before-expiry notification has been sent, so the cron doesn't resend it daily. */
+  expiryWarningSent?: boolean;
+}
+
+export interface AdTierConfig {
+  priceLabel: string;
+  buttonLink: string;
+  days: number;
+}
+
+export interface AdUpsellConfig {
+  priceLabel: string;
+  buttonLink: string;
+}
+
+/** Parses a "$4.99" price label into a numeric USD amount, for wallet-cash balance payments. */
+export function parsePriceLabel(label: string): number {
+  const n = parseFloat(label.replace(/[^0-9.]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
+export interface AdDropConfig {
+  tiers: Record<AdTierKey, AdTierConfig>;
+  unskippable: AdUpsellConfig;
+  mediaQuest: AdUpsellConfig;
+  cybashirt: AdUpsellConfig;
+  skipCostCC: number;
+  /** CYBACOIN granted for watching an ad to completion. PLACEHOLDER — confirm before launch. */
+  watchRewardCC: number;
+  /** USD -> CYBACOIN rate used for the early-renewal bonus (15% of price, converted). PLACEHOLDER — confirm before launch. */
+  usdToCcRate: number;
+}
+
+export type AdUpsellKey = 'unskippable' | 'mediaQuest' | 'cybashirt';
+
+/** Add-ons bundled FREE with each tier — Premium (day30) includes all 3, Standard (day14)
+ *  includes CYBASHIRT, Value (day7) includes none. Any add-on not in this list for a tier is
+ *  still offered, but as a paid extra. */
+export const AD_TIER_INCLUDED_UPSELLS: Record<AdTierKey, AdUpsellKey[]> = {
+  day7: [],
+  day14: ['cybashirt'],
+  day30: ['unskippable', 'mediaQuest', 'cybashirt'],
+};
+
+const ALL_UPSELL_KEYS: AdUpsellKey[] = ['unskippable', 'mediaQuest', 'cybashirt'];
+
+/** Add-ons offered as paid extras for a tier — everything not already bundled free. */
+export function getSelectableUpsells(tier: AdTierKey): AdUpsellKey[] {
+  const included = new Set(AD_TIER_INCLUDED_UPSELLS[tier]);
+  return ALL_UPSELL_KEYS.filter(k => !included.has(k));
+}
+
+export const AD_TIER_ORDER: AdTierKey[] = ['day7', 'day14', 'day30'];
+
+export const AD_TIER_LABELS: Record<AdTierKey, string> = {
+  day7: '7 Days',
+  day14: '14 Days',
+  day30: '30 Days',
+};
+
+/** Max promo video length per tier, in seconds. Longer uploads are auto-capped, not rejected. */
+export const AD_TIER_MAX_VIDEO_SECONDS: Record<AdTierKey, number> = {
+  day7: 15,
+  day14: 15,
+  day30: 30,
+};
+
+export const DEFAULT_AD_DROP_CONFIG: AdDropConfig = {
+  tiers: {
+    day7: { priceLabel: '$4.99', buttonLink: '', days: 7 },
+    day14: { priceLabel: '$8.99', buttonLink: '', days: 14 },
+    day30: { priceLabel: '$14.99', buttonLink: '', days: 30 },
+  },
+  unskippable: { priceLabel: '$2.99', buttonLink: '' },
+  mediaQuest: { priceLabel: '$9.99', buttonLink: '' },
+  cybashirt: { priceLabel: '$19.99', buttonLink: '' },
+  skipCostCC: 1000,
+  watchRewardCC: 5, // PLACEHOLDER — confirm before launch
+  usdToCcRate: 100, // PLACEHOLDER — confirm before launch (100 CC per $1)
+};

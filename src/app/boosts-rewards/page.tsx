@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { Separator } from '@/components/ui/separator';
+import { SectionHeader } from '@/components/SectionHeader';
 
 function ItemCard({ item }: { item: any }) {
   const isBoost = item.type === 'boost';
@@ -79,15 +80,11 @@ export default function BoostsRewardsPage() {
   const isLoading = isLoadingBoosts || isLoadingRewards;
 
   return (
-    <div className="container mx-auto px-4 py-16">
-      <div className="text-center max-w-3xl mx-auto">
-        <h1 className="text-4xl md:text-6xl font-headline font-bold text-glow mb-4">
-          BOOSTS & REWARDS
-        </h1>
-        <p className="text-lg text-foreground/80 mb-12">
-          Amplify your presence with BOOSTS or redeem your CYBACOIN for exclusive Rewards
-        </p>
-      </div>
+    <div className="container mx-auto px-4 pt-4 pb-16">
+      <SectionHeader
+        title="BOOSTS & REWARDS"
+        description="Amplify your presence with BOOSTS or redeem your CYBACOIN for exclusive Rewards"
+      />
 
       {isLoading ? (
         <div className="flex justify-center">
