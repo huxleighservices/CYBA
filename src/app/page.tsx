@@ -17,6 +17,7 @@ import type { Shoutout } from '@/lib/shoutouts';
 import { Shuffle, SkipForward } from 'lucide-react';
 import { mergeWithDefaults, type CCRates } from '@/lib/cc-rewards';
 import { PulsesRow } from '@/components/cybazone/PulsesRow';
+import { SubnetsTab } from '@/components/cybazone/SubnetsTab';
 import type { AvatarConfig } from '@/lib/avatar-assets';
 
 type UserProfile = {
@@ -27,6 +28,7 @@ type UserProfile = {
   avatarConfig?: AvatarConfig;
   postCount?: number;
   supportGiven?: number;
+  levelOverride?: string;
   adFreeBoost?: boolean;
 };
 
@@ -175,6 +177,7 @@ function CybaRadioPlayer({
   const [isReady, setIsReady] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isLarge, setIsLarge] = useState(false);
+  const [showPlaylist, setShowPlaylist] = useState(false);
   const [queueIndex, setQueueIndex] = useState(0);
 
   const useQueue = (queueItems?.length ?? 0) > 0;
@@ -297,7 +300,7 @@ function CybaRadioPlayer({
   };
 
   return (
-    <div className="fixed bottom-20 md:bottom-4 right-4 z-50">
+    <div className={isLarge && !isMinimized ? 'fixed inset-0 z-[60] bg-black/95 flex items-center justify-center p-4' : 'fixed bottom-20 md:bottom-4 right-4 z-50'}>
       <style>{`
         @keyframes radio-pulse{0%,100%{box-shadow:0 0 8px rgba(168,85,247,.35),0 0 18px rgba(168,85,247,.1)}50%{box-shadow:0 0 14px rgba(168,85,247,.6),0 0 32px rgba(168,85,247,.2)}}
         @keyframes radio-bar{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
@@ -326,7 +329,7 @@ function CybaRadioPlayer({
         /* Expanded floating player */
         <div className={cn(
           'radio-glow rounded-xl border border-purple-500/40 bg-gradient-to-r from-purple-950/90 via-black/90 to-indigo-950/80 backdrop-blur-md overflow-hidden shadow-2xl',
-          isLarge ? 'w-[280px] sm:w-[320px]' : 'w-[290px] sm:w-[330px]',
+          isLarge ? 'w-full max-w-2xl max-h-full flex flex-col' : 'w-[290px] sm:w-[330px]',
         )}>
           <div className={cn(isLarge ? 'flex flex-col' : 'flex items-stretch', isLarge ? '' : 'h-[82px]')}>
             {/* Video panel — YT iframe for youtube tracks/fallback playlist, <video> for uploads */}
@@ -334,7 +337,7 @@ function CybaRadioPlayer({
               <video
                 ref={videoElRef}
                 src={currentItem.mediaUrl}
-                className={cn('shrink-0 bg-black object-contain', isLarge ? 'w-full h-[200px]' : 'w-[130px] sm:w-[150px] h-full')}
+                className={cn('shrink-0 bg-black object-contain', isLarge ? 'w-full aspect-video max-h-[60vh]' : 'w-[130px] sm:w-[150px] h-full')}
                 muted
                 playsInline
                 onEnded={advanceQueue}
@@ -342,7 +345,7 @@ function CybaRadioPlayer({
                 onPause={() => setIsPlaying(false)}
               />
             ) : (
-              <div ref={containerRef} className={cn('shrink-0 bg-black', isLarge ? 'w-full h-[200px]' : 'w-[130px] sm:w-[150px] h-full')} />
+              <div ref={containerRef} className={cn('shrink-0 bg-black', isLarge ? 'w-full aspect-video max-h-[60vh]' : 'w-[130px] sm:w-[150px] h-full')} />
             )}
 
             {!isLarge && <div className="w-px bg-purple-500/20 shrink-0" />}
@@ -351,10 +354,19 @@ function CybaRadioPlayer({
             <div className={cn('flex flex-col justify-center min-w-0 gap-1 relative', isLarge ? 'px-3 py-2.5' : 'flex-1 px-2.5')}>
               {/* Minimize + expand buttons */}
               <div className="absolute top-1.5 right-1.5 flex items-center gap-1">
+                {isLarge && useQueue && (
+                  <button
+                    onClick={() => setShowPlaylist(v => !v)}
+                    className="h-4 w-4 rounded-full flex items-center justify-center text-purple-400/60 hover:text-purple-200 hover:bg-purple-800/40 transition-colors text-[9px] leading-none"
+                    title="Browse Playlist"
+                  >
+                    ☰
+                  </button>
+                )}
                 <button
-                  onClick={() => setIsLarge(v => !v)}
+                  onClick={() => { setIsLarge(v => !v); setShowPlaylist(false); }}
                   className="h-4 w-4 rounded-full flex items-center justify-center text-purple-400/60 hover:text-purple-200 hover:bg-purple-800/40 transition-colors text-[9px] leading-none"
-                  title={isLarge ? 'Shrink' : 'Expand'}
+                  title={isLarge ? 'Exit Fullscreen' : 'Fullscreen'}
                 >
                   {isLarge ? '⤡' : '⤢'}
                 </button>
@@ -418,6 +430,31 @@ function CybaRadioPlayer({
               </div>
             </div>
           </div>
+
+          {/* Playlist browser — fullscreen only, lists the full submission queue */}
+          {isLarge && showPlaylist && useQueue && (
+            <div className="border-t border-purple-500/20 overflow-y-auto max-h-[30vh]">
+              {shuffledQueue.map((item, i) => (
+                <button
+                  key={`${item.type}-${i}`}
+                  onClick={() => { setQueueIndex(i); setShowPlaylist(false); }}
+                  className={cn(
+                    'w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-purple-800/30 transition-colors',
+                    i === queueIndex ? 'bg-purple-800/40 text-purple-200' : 'text-white/70',
+                  )}
+                >
+                  <span className="shrink-0">{item.type === 'upload' ? '📤' : '▶️'}</span>
+                  <span className="truncate">
+                    {item.username ? <span className="font-semibold">{item.username}</span> : 'Unknown'}
+                    {item.title ? ` — ${item.title}` : ''}
+                  </span>
+                </button>
+              ))}
+              {shuffledQueue.length === 0 && (
+                <p className="px-3 py-4 text-xs text-white/40 text-center">No submissions in the queue yet.</p>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -434,6 +471,12 @@ export default function CentralPage() {
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 60_000);
     return () => clearInterval(id);
+  }, []);
+
+  // Handle ?tab=<tab> from deep links (e.g. profile's "My Subnet" link)
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab === 'all' || tab === 'following' || tab === 'zaps' || tab === 'subnets') setActiveTab(tab);
   }, []);
 
   // Handle ?post=<id> from notification links — scroll to and highlight the post
@@ -467,6 +510,20 @@ export default function CentralPage() {
   const ccRatesRef = useMemoFirebase(() => doc(firestore, 'settings', 'ccRates'), [firestore]);
   const { data: ccRatesRaw } = useDoc<Partial<CCRates>>(ccRatesRef);
   const ccRates = useMemo(() => (ccRatesRaw ? mergeWithDefaults(ccRatesRaw) : null), [ccRatesRaw]);
+
+  // Subnets the viewer currently has active (paid) access to — used to unlock subnetOnly posts.
+  const mySubnetMembershipsQuery = useMemoFirebase(
+    () =>
+      currentUser?.uid
+        ? query(collection(firestore, 'subnet_memberships'), where('memberId', '==', currentUser.uid), where('status', '==', 'active'))
+        : null,
+    [firestore, currentUser?.uid]
+  );
+  const { data: mySubnetMemberships } = useCollection<{ ownerId: string }>(mySubnetMembershipsQuery);
+  const subnetAccessOwnerIds = useMemo(
+    () => new Set((mySubnetMemberships ?? []).map(m => m.ownerId)),
+    [mySubnetMemberships]
+  );
 
   const followingList = currentUserProfile?.following || [];
   const safeFollowingListStr = JSON.stringify(followingList.slice(0, 30));
@@ -567,7 +624,7 @@ export default function CentralPage() {
     });
   }, [adsData]);
 
-  // In-feed injection is skipped entirely for Ad-Free members — they can still opt in via /ad-drop.
+  // In-feed injection is skipped entirely for Ad-Free members — they can still opt in via /promo-blast.
   const inFeedAds = isAdFree ? [] : activeAds;
 
   const allFeedItems = useMemo(
@@ -663,7 +720,7 @@ export default function CentralPage() {
           highlightedPostId === item.data.id && 'ring-2 ring-primary/60 shadow-[0_0_20px_rgba(139,92,246,0.3)]'
         )}
       >
-        <PostCard post={item.data} viewerProfile={currentUserProfile} ccRates={ccRates} />
+        <PostCard post={item.data} viewerProfile={currentUserProfile} ccRates={ccRates} subnetAccessOwnerIds={subnetAccessOwnerIds} />
       </div>
     );
   };
@@ -705,8 +762,23 @@ export default function CentralPage() {
         currentUsername={currentUserProfile?.username}
         currentUserProfilePictureUrl={currentUserProfile?.profilePictureUrl}
         currentUserAvatarConfig={currentUserProfile?.avatarConfig}
+        currentUserPostCount={currentUserProfile?.postCount}
+        currentUserSupportGiven={currentUserProfile?.supportGiven}
+        currentUserLevelOverride={currentUserProfile?.levelOverride}
+        ccRates={ccRates}
         followingList={followingList}
       />
+
+      {currentUser && currentUserProfile?.username && (
+        <div className="max-w-3xl mx-auto mb-6 flex justify-end">
+          <Link
+            href={`/live/${currentUserProfile.username}`}
+            className="inline-flex items-center gap-1.5 rounded-full border border-red-500/40 text-red-400 hover:bg-red-500/10 px-3 py-1.5 text-xs font-bold transition-colors"
+          >
+            <Radio className="h-3.5 w-3.5" /> Go Live
+          </Link>
+        </div>
+      )}
 
       <div className="mb-8 -mx-4">
         <WeeklyWinnersTicker />
@@ -782,11 +854,7 @@ export default function CentralPage() {
             )}
             {activeTab === 'zaps' && renderFeed(zapsFeedItems, isLoadingAll, 'No Zaps yet — post a video to be the first!')}
             {activeTab === 'subnets' && (
-              <div className="text-center text-foreground/60 p-12 border-dashed border-2 border-primary/20 bg-card/20 rounded-xl max-w-2xl mx-auto">
-                <Boxes className="h-10 w-10 mx-auto mb-3 text-primary/50" />
-                <h3 className="text-xl font-bold font-headline mb-2">Subnets — Coming Soon</h3>
-                <p>Paid CYBA communities are on the way. Stay tuned.</p>
-              </div>
+              <SubnetsTab currentUserId={currentUser?.uid} currentUsername={currentUserProfile?.username} ccRates={ccRates} />
             )}
           </div>
         </div>
@@ -824,7 +892,7 @@ export default function CentralPage() {
 
       {/* ── PROMO BLAST — floating bubble, stacked above the radio bubble ── */}
       <Link
-        href="/ad-drop"
+        href="/promo-blast"
         className="fixed bottom-40 md:bottom-24 right-4 z-50 h-14 w-14 rounded-full flex items-center justify-center transition-transform hover:scale-110"
         style={{ background: 'radial-gradient(circle at 40% 35%,#f59e0b,#7c2d12)', border: '1px solid rgba(245,158,11,.6)', boxShadow: '0 0 14px rgba(245,158,11,.4)' }}
         title="PROMO BLAST"

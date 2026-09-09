@@ -75,6 +75,7 @@ type HeaderUserProfile = {
   avatarConfig?: AvatarConfig;
   profilePictureUrl?: string;
   postCount?: number;
+  levelOverride?: string;
   supportGiven?: number;
   username?: string;
   cybaCoinBalance?: number;
@@ -194,7 +195,7 @@ function AuthButton({ userProfile }: { userProfile?: HeaderUserProfile | null })
             avatarConfig={userProfile?.avatarConfig}
             profilePictureUrl={userProfile?.profilePictureUrl}
             size={36}
-            level={computeLevel(userProfile?.postCount, userProfile?.supportGiven)}
+            level={computeLevel(userProfile?.postCount, userProfile?.supportGiven, undefined, userProfile?.levelOverride)}
           />
         </Link>
         <SearchBar />
@@ -517,7 +518,7 @@ function MobileBottomNav({ userProfile }: { userProfile?: HeaderUserProfile | nu
             avatarConfig={userProfile?.avatarConfig}
             profilePictureUrl={userProfile?.profilePictureUrl}
             size={26}
-            level={computeLevel(userProfile?.postCount, userProfile?.supportGiven)}
+            level={computeLevel(userProfile?.postCount, userProfile?.supportGiven, undefined, userProfile?.levelOverride)}
           />
         ) : (
           <UserCircle className="h-6 w-6" />
@@ -561,8 +562,8 @@ export function Header() {
 
           {/* Right side */}
           <div className="hidden md:flex items-center justify-end gap-3">
-            {/* Wordmark — sits between the icon logo (far left) and the wallet, small but noticeable */}
-            <Link href="/" className="text-sm font-black tracking-widest text-primary text-glow shrink-0">
+            {/* Wordmark — sits between the icon logo (far left) and the wallet, sized to be noticeable */}
+            <Link href="/" className="text-xl font-black tracking-widest text-primary text-glow shrink-0">
               CYBAZONE
             </Link>
             <AuthButton userProfile={userProfile} />
