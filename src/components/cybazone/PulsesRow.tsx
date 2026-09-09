@@ -4,18 +4,18 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import {
-  collection, query, where, addDoc, updateDoc, doc, arrayUnion, serverTimestamp,
+  collection, query, where, updateDoc, doc, arrayUnion,
 } from 'firebase/firestore';
-import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { v4 as uuidv4 } from 'uuid';
 import { AvatarDisplay } from '@/components/AvatarDisplay';
 import { ShareToDMDialog } from '@/components/cybazone/ShareToDMDialog';
 import { Loader2, Plus, X, Send, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { AvatarConfig } from '@/lib/avatar-assets';
+import { computeLevel } from '@/lib/levels';
+import { createPulse, PULSE_LIFETIME_MS } from '@/lib/pulses';
+import type { CCRates } from '@/lib/cc-rewards';
 
-const PULSE_LIFETIME_MS = 24 * 60 * 60 * 1000;
 const IMAGE_DISPLAY_MS = 5000;
 
 export type Pulse = {
@@ -41,12 +41,20 @@ export function PulsesRow({
   currentUsername,
   currentUserProfilePictureUrl,
   currentUserAvatarConfig,
+  currentUserPostCount,
+  currentUserSupportGiven,
+  currentUserLevelOverride,
+  ccRates,
   followingList,
 }: {
   currentUserId?: string;
   currentUsername?: string;
   currentUserProfilePictureUrl?: string | null;
   currentUserAvatarConfig?: AvatarConfig | null;
+  currentUserPostCount?: number;
+  currentUserSupportGiven?: number;
+  currentUserLevelOverride?: string;
+  ccRates?: CCRates | null;
   followingList: string[];
 }) {
   const { firestore, storage } = useFirebase();
@@ -85,43 +93,30 @@ export function PulsesRow({
   const orderedAuthorIds = useMemo(() => {
     const ids = Array.from(groups.keys()).filter(id => id !== currentUserId);
     const followed = ids.filter(id => followingSet.has(id));
-    return followed;
+    // Most-recent-pulse-first among followed CYBAs (own circle is always rendered separately, first).
+    const latestOf = (id: string) => Math.max(...groups.get(id)!.map(p => millisOf(p.createdAt)));
+    return followed.sort((a, b) => latestOf(b) - latestOf(a));
   }, [groups, followingSet, currentUserId]);
 
   const myPulses = currentUserId ? (groups.get(currentUserId) ?? []) : [];
 
   const handleUploadFile = async (file: File) => {
     if (!currentUserId || !currentUsername) return;
-    const isImage = file.type.startsWith('image/');
-    const isVideo = file.type.startsWith('video/');
-    if (!isImage && !isVideo) {
-      toast({ variant: 'destructive', title: 'Unsupported file', description: 'Upload an image or a video.' });
-      return;
-    }
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop() ?? (isImage ? 'jpg' : 'mp4');
-      const path = `pulses/${uuidv4()}.${ext}`;
-      const fileRef = storageRef(storage, path);
-      const task = uploadBytesResumable(fileRef, file, { contentType: file.type });
-      const mediaUrl = await new Promise<string>((resolve, reject) => {
-        task.on('state_changed', () => {}, reject, async () => resolve(await getDownloadURL(task.snapshot.ref)));
+      const level = computeLevel(currentUserPostCount, currentUserSupportGiven, undefined, currentUserLevelOverride);
+      const { cc } = await createPulse(firestore, storage, {
+        userId: currentUserId,
+        username: currentUsername,
+        profilePictureUrl: currentUserProfilePictureUrl,
+        avatarConfig: currentUserAvatarConfig,
+        file,
+        level,
+        ccRates,
       });
-      const nowDate = new Date();
-      await addDoc(collection(firestore, 'pulses'), {
-        authorId: currentUserId,
-        authorUsername: currentUsername,
-        authorProfilePictureUrl: currentUserProfilePictureUrl ?? null,
-        authorAvatarConfig: currentUserAvatarConfig ?? null,
-        mediaUrl,
-        mediaType: isImage ? 'image' : 'video',
-        createdAt: serverTimestamp(),
-        expiresAt: new Date(nowDate.getTime() + PULSE_LIFETIME_MS),
-        viewedBy: [],
-      });
-      toast({ title: '✨ Pulse posted!', description: 'Visible to your followers for 24 hours.' });
-    } catch {
-      toast({ variant: 'destructive', title: 'Failed to post Pulse' });
+      toast({ title: '✨ Pulse posted!', description: `Visible to your followers for 24 hours. +${cc.toLocaleString()} CC` });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Failed to post Pulse', description: err?.message !== 'Upload an image or a video.' ? undefined : err.message });
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

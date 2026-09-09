@@ -22,6 +22,7 @@ type SponsoredUser = {
   avatarConfig?: AvatarConfig;
   profilePictureUrl?: string;
   postCount?: number;
+  levelOverride?: string;
   supportGiven?: number;
   followers?: string[];
   following?: string[];
@@ -82,7 +83,7 @@ export function SponsoredProfileCard({ userId, sponsoredItemId }: { userId: stri
 
   if (!profile) return null;
 
-  const level = computeLevel(profile.postCount, profile.supportGiven);
+  const level = computeLevel(profile.postCount, profile.supportGiven, undefined, profile.levelOverride);
   const followerCount = profile.followers?.length ?? 0;
   const isFollowing = currentUser && profile.followers?.includes(currentUser.uid);
   const isSelf = currentUser?.uid === profile.id;

@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { AvatarDisplay } from '@/components/AvatarDisplay';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageCircle, Trash2, Repeat, Loader2, Megaphone, Eye, UserPlus, Pencil, Send } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, Repeat, Loader2, Megaphone, Eye, UserPlus, Pencil, Send, Sparkles } from 'lucide-react';
 import { PromoteDialog } from '@/components/PromoteDialog';
 import { ShareToDMDialog } from '@/components/cybazone/ShareToDMDialog';
 import { MentionTextarea } from '@/components/MentionTextarea';
@@ -34,6 +34,9 @@ import { createNotification } from '@/lib/notifications';
 import { CommentSheet } from './CommentSheet';
 import { LevelBadge } from '@/components/LevelBadge';
 import { type Level, computeLevel } from '@/lib/levels';
+import { sharePulseFromMedia } from '@/lib/pulses';
+import { requestSubnetAccess } from '@/lib/subnets';
+import { applyGearMultiplier } from '@/lib/avatar-gear';
 import { getCCForEngagement, mergeWithDefaults, type CCRates } from '@/lib/cc-rewards';
 import { logTransaction } from '@/lib/transactions';
 import { logEngagement } from '@/lib/engagement-log';
@@ -76,14 +79,16 @@ export type CybazonePost = {
   trimStart?: number;
   trimEnd?: number;
   thumbnailUrl?: string;
+  subnetOnly?: boolean;
 };
 
-type ViewerProfile = { username?: string; profilePictureUrl?: string; postCount?: number; supportGiven?: number; following?: string[] };
+type ViewerProfile = { username?: string; profilePictureUrl?: string; postCount?: number; supportGiven?: number; following?: string[]; levelOverride?: string; equippedGear?: string[] };
 
 export function PostCard({
   post,
   viewerProfile: viewerProfileProp,
   ccRates: ccRatesProp,
+  subnetAccessOwnerIds,
 }: {
   post: CybazonePost;
   /** Pass this from the parent feed when rendering many cards at once (e.g. the main feed)
@@ -93,6 +98,10 @@ export function PostCard({
   viewerProfile?: ViewerProfile | null;
   /** Same dedup story as viewerProfile, for the global ccRates settings doc. */
   ccRates?: CCRates | null;
+  /** Owner IDs of Subnets the viewer currently has active (paid) access to — omit this prop
+   *  entirely on surfaces that never render subnetOnly posts (e.g. a single already-unlocked
+   *  post view) to skip the gating check. */
+  subnetAccessOwnerIds?: Set<string>;
 }) {
   const { user, firestore } = useFirebase();
 
@@ -123,6 +132,9 @@ export function PostCard({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPromoteOpen, setIsPromoteOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isSharingPulse, setIsSharingPulse] = useState(false);
+  const [isRequestingSubnet, setIsRequestingSubnet] = useState(false);
+  const [subnetRequested, setSubnetRequested] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -249,8 +261,8 @@ export function PostCard({
         toast({ variant: 'destructive', title: 'Error', description: 'Could not update like status.' });
       });
       if (isOthersPost) {
-        const level = computeLevel(actorProfile?.postCount, actorProfile?.supportGiven);
-        const cc = getCCForEngagement('like', level, ccRates);
+        const level = computeLevel(actorProfile?.postCount, actorProfile?.supportGiven, undefined, actorProfile?.levelOverride);
+        const cc = applyGearMultiplier(getCCForEngagement('like', level, ccRates), actorProfile?.equippedGear, 'like');
         updateDoc(userRef, { supportGiven: increment(1), cybaCoinBalance: increment(cc) }).catch(() => {});
         logTransaction(firestore, user.uid, { type: 'engagement_reward', amount: cc, description: '❤️ Like' });
         createNotification(firestore, post.authorId, {
@@ -302,8 +314,8 @@ export function PostCard({
         toast({ variant: 'destructive', title: 'Error', description: 'Could not update repost status.' });
       });
       if (isOthersPost) {
-        const level = computeLevel(actorProfile?.postCount, actorProfile?.supportGiven);
-        const cc = getCCForEngagement('share', level, ccRates);
+        const level = computeLevel(actorProfile?.postCount, actorProfile?.supportGiven, undefined, actorProfile?.levelOverride);
+        const cc = applyGearMultiplier(getCCForEngagement('share', level, ccRates), actorProfile?.equippedGear, 'share');
         updateDoc(userRef, { supportGiven: increment(1), cybaCoinBalance: increment(cc) }).catch(() => {});
         logTransaction(firestore, user.uid, { type: 'engagement_reward', amount: cc, description: '🔁 Share' });
         createNotification(firestore, post.authorId, {
@@ -316,6 +328,29 @@ export function PostCard({
         });
         logEngagement(user.uid, post.authorId, 'repost', post.id);
       }
+    }
+  };
+
+  const handleShareToPulse = async () => {
+    if (!user || !actorUsername || !post.imageUrl || !post.mediaType || isSharingPulse) return;
+    setIsSharingPulse(true);
+    try {
+      const level = computeLevel(actorProfile?.postCount, actorProfile?.supportGiven, undefined, actorProfile?.levelOverride);
+      const { cc } = await sharePulseFromMedia(firestore, {
+        userId: user.uid,
+        username: actorUsername,
+        profilePictureUrl: actorProfilePictureUrl,
+        avatarConfig: null,
+        mediaUrl: post.imageUrl,
+        mediaType: post.mediaType,
+        level,
+        ccRates,
+      });
+      toast({ title: '✨ Shared to your Pulse!', description: `Visible to your followers for 24 hours. +${cc.toLocaleString()} CC` });
+    } catch {
+      toast({ variant: 'destructive', title: 'Failed to share to Pulse' });
+    } finally {
+      setIsSharingPulse(false);
     }
   };
 
@@ -373,6 +408,29 @@ export function PostCard({
   const formattedDate = post.timestamp?.toDate
     ? formatDistanceToNow(post.timestamp.toDate(), { addSuffix: true })
     : 'just now';
+
+  // Fails closed: any subnetOnly post is treated as locked for a non-owner unless the caller
+  // explicitly proved access via subnetAccessOwnerIds.
+  const isLocked = !!post.subnetOnly && user?.uid !== post.authorId && !subnetAccessOwnerIds?.has(post.authorId);
+
+  const handleRequestSubnetAccess = async () => {
+    if (!user || !actorUsername || isRequestingSubnet) return;
+    setIsRequestingSubnet(true);
+    try {
+      await requestSubnetAccess(firestore, {
+        ownerId: post.authorId,
+        ownerUsername: post.authorUsername,
+        memberId: user.uid,
+        memberUsername: actorUsername,
+      });
+      setSubnetRequested(true);
+      toast({ title: 'Request sent!', description: `${post.authorUsername} will be notified.` });
+    } catch {
+      toast({ variant: 'destructive', title: 'Could not send request' });
+    } finally {
+      setIsRequestingSubnet(false);
+    }
+  };
 
   return (
     <>
@@ -506,6 +564,27 @@ export function PostCard({
             </div>
           )}
         </CardHeader>
+        {isLocked ? (
+          <CardContent className="p-4 pt-0 flex-grow">
+            <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-primary/30 bg-card/30 py-10 px-4 text-center opacity-90">
+              <span className="text-3xl">🔒</span>
+              <p className="text-sm font-semibold">Subnet Only</p>
+              <p className="text-xs text-muted-foreground max-w-xs">
+                This post is exclusive to @{post.authorUsername}'s Subnet members.
+              </p>
+              {user && (
+                <Button
+                  size="sm"
+                  disabled={isRequestingSubnet || subnetRequested}
+                  onClick={handleRequestSubnetAccess}
+                >
+                  {isRequestingSubnet ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : null}
+                  {subnetRequested ? 'Request Sent' : 'Request Access'}
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        ) : (
         <CardContent className="p-4 pt-0 space-y-4 flex-grow">
           <p className="text-base text-foreground/90 whitespace-pre-wrap">
             {post.content.split(/(https?:\/\/[^\s]+|#[\w]+|@[\w]+)/g).map((part, i) => {
@@ -568,6 +647,8 @@ export function PostCard({
             )
           )}
         </CardContent>
+        )}
+        {!isLocked && (
         <CardFooter className="flex justify-between items-center px-4 py-1 border-t border-border">
           <div className="flex items-center gap-1 text-foreground/80">
             <button
@@ -617,6 +698,18 @@ export function PostCard({
                 <Send className="text-foreground/60 h-5 w-5" />
               </button>
             )}
+
+            {user && post.imageUrl && post.mediaType && (
+              <button
+                type="button"
+                onClick={handleShareToPulse}
+                disabled={isSharingPulse}
+                title="Share to Pulse"
+                className="flex items-center gap-2 rounded-lg px-3 min-h-[48px] hover:bg-primary/10 active:bg-primary/20 transition-colors touch-manipulation select-none disabled:opacity-50"
+              >
+                {isSharingPulse ? <Loader2 className="h-5 w-5 animate-spin text-foreground/60" /> : <Sparkles className="text-foreground/60 h-5 w-5" />}
+              </button>
+            )}
           </div>
 
           {/* Promote — bottom-right, labeled like IG's "Boost Post" so it reads as a distinct action */}
@@ -632,8 +725,9 @@ export function PostCard({
             </button>
           )}
         </CardFooter>
+        )}
 
-        {post.imageUrl && post.mediaType && (
+        {!isLocked && post.imageUrl && post.mediaType && (
           <PromoteDialog
             open={isPromoteOpen}
             onOpenChange={setIsPromoteOpen}

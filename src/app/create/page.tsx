@@ -33,12 +33,16 @@ import { createNotification } from '@/lib/notifications';
 import { createAutoShoutout } from '@/lib/shoutouts';
 import { getDocs as _getDocs, query as _query, collection as _collection, where as _where, limit as _limit } from 'firebase/firestore';
 import { getVideoDuration } from '@/lib/promo-blast-checkout';
+import { createPulse } from '@/lib/pulses';
+import { applyGearMultiplier } from '@/lib/avatar-gear';
 
 type UserProfile = {
   username: string;
   avatarConfig?: AvatarConfig;
   profilePictureUrl?: string;
   postCount?: number;
+  levelOverride?: string;
+  equippedGear?: string[];
   supportGiven?: number;
   payoutEnrolled?: boolean;
   spotlightBoost?: boolean;
@@ -301,6 +305,11 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
   );
   const { data: ccRatesRaw } = useDoc<Partial<CCRates>>(ccRatesRef);
   const ccRates = ccRatesRaw ? mergeWithDefaults(ccRatesRaw) : null;
+
+  // Whether this user has set a Subnet rate yet — the "Subnet Only" toggle is only usable once they have.
+  const mySubnetRef = useMemoFirebase(() => doc(firestore, 'subnets', user.uid), [firestore, user.uid]);
+  const { data: mySubnet } = useDoc<{ weeklyRate?: number }>(mySubnetRef);
+  const hasSubnet = !!mySubnet?.weeklyRate;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoPreviewUrl = useRef<string | null>(null);
 
@@ -313,6 +322,7 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduledAt, setScheduledAt] = useState('');
+  const [subnetOnly, setSubnetOnly] = useState(false);
 
   // Video trim (playback-only, never re-encoded) + custom thumbnail. Defaults to full-duration
   // + an auto-captured first frame so this never blocks posting if the member skips it.
@@ -329,6 +339,36 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
   const [multiItems, setMultiItems] = useState<{ file: File; previewUrl: string; type: 'image' | 'video' }[]>([]);
   const multiFileInputRef = useRef<HTMLInputElement>(null);
   const MAX_MULTI_ITEMS = 6;
+
+  // Publish mode — Post (default, full form below) / Zap (same form, video required) /
+  // Pulse (a completely separate, minimal upload flow — see the early-return branch below).
+  const [publishMode, setPublishMode] = useState<'post' | 'pulse' | 'zap'>('post');
+  const [pulseUploading, setPulseUploading] = useState(false);
+  const pulseFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePulseFile = async (file: File) => {
+    if (!user || !userProfile) return;
+    setPulseUploading(true);
+    try {
+      const level = computeLevel(userProfile.postCount, userProfile.supportGiven, undefined, userProfile.levelOverride);
+      const { cc } = await createPulse(firestore, storage, {
+        userId: user.uid,
+        username: userProfile.username,
+        profilePictureUrl: userProfile.profilePictureUrl,
+        avatarConfig: userProfile.avatarConfig,
+        file,
+        level,
+        ccRates,
+      });
+      toast({ title: '✨ Pulse posted!', description: `Visible to your followers for 24 hours. +${cc.toLocaleString()} CC` });
+      router.push('/');
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Failed to post Pulse', description: err?.message });
+    } finally {
+      setPulseUploading(false);
+      if (pulseFileInputRef.current) pulseFileInputRef.current.value = '';
+    }
+  };
 
   const handleMultiFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -460,6 +500,16 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
   const onSubmit = async (values: PostFormValues) => {
     if (!user || !userProfile) return;
 
+    if (publishMode === 'zap') {
+      const allVideo = multiMode
+        ? multiItems.length > 0 && multiItems.every(i => i.type === 'video')
+        : !!videoFile;
+      if (!allVideo) {
+        toast({ variant: 'destructive', title: 'Zaps require a video', description: 'Select a video file to publish a Zap.' });
+        return;
+      }
+    }
+
     setIsUploading(true);
     setUploadProgress(0);
 
@@ -479,7 +529,7 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
         const extractedHashtags = Array.from(
           new Set(values.content.match(/#[\w]+/g)?.map(t => t.toLowerCase()) || [])
         );
-        const authorLevel = computeLevel(userProfile.postCount, userProfile.supportGiven);
+        const authorLevel = computeLevel(userProfile.postCount, userProfile.supportGiven, undefined, userProfile.levelOverride);
         const newPostRef = await addDoc(collection(firestore, 'cybazone_posts'), {
           authorId: user.uid,
           authorUsername: userProfile.username,
@@ -501,9 +551,10 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
           repostedBy: [],
           hashtags: extractedHashtags,
           viewCount: 0,
+          subnetOnly: hasSubnet && subnetOnly,
         });
 
-        const cc = getCCForPost(mediaItems[0].type, authorLevel, ccRates);
+        const cc = applyGearMultiplier(getCCForPost(mediaItems[0].type, authorLevel, ccRates), userProfile.equippedGear, 'post');
         const isFirstPost = (userProfile.postCount ?? 0) === 0;
         updateDoc(doc(firestore, 'users', user.uid), {
           postCount: increment(1),
@@ -607,7 +658,7 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
       const extractedHashtags = Array.from(
         new Set(values.content.match(/#[\w]+/g)?.map(t => t.toLowerCase()) || [])
       );
-      const authorLevel = computeLevel(userProfile.postCount, userProfile.supportGiven);
+      const authorLevel = computeLevel(userProfile.postCount, userProfile.supportGiven, undefined, userProfile.levelOverride);
 
       const isScheduled = scheduleEnabled && scheduledAt;
       const postData: Record<string, any> = {
@@ -630,6 +681,7 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
         repostedBy: [],
         hashtags: extractedHashtags,
         viewCount: 0,
+        subnetOnly: hasSubnet && subnetOnly,
         ...(mediaType === 'video' && videoDurationSeconds ? {
           videoDurationSeconds,
           trimStart,
@@ -649,7 +701,7 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
       const postType: 'text' | 'image' | 'video' = mediaType ?? 'text';
       if (!isScheduled) {
         notifyFollowersOfNewPost(firestore, user.uid, userProfile.username, userProfile.profilePictureUrl, newPostRef.id, userProfile.followers).catch(() => {});
-        const cc = getCCForPost(postType, authorLevel, ccRates);
+        const cc = applyGearMultiplier(getCCForPost(postType, authorLevel, ccRates), userProfile.equippedGear, 'post');
         const isFirstPost = (userProfile.postCount ?? 0) === 0;
         updateDoc(doc(firestore, 'users', user.uid), {
           postCount: increment(1),
@@ -709,6 +761,60 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
 
   const hasMedia = !!(croppedDataUrl || videoPreview);
 
+  const ModeSelector = (
+    <div className="inline-flex rounded-xl border border-border/60 bg-card/60 p-1 gap-1 mb-4">
+      {(['post', 'pulse', 'zap'] as const).map((m) => (
+        <button
+          key={m}
+          type="button"
+          onClick={() => setPublishMode(m)}
+          className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all capitalize ${
+            publishMode === m
+              ? 'bg-primary text-primary-foreground shadow-[0_0_16px_rgba(138,43,226,0.4)]'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          {m === 'post' ? 'Post' : m === 'pulse' ? '✨ Pulse' : '⚡ Zap'}
+        </button>
+      ))}
+    </div>
+  );
+
+  // Pulse mode is a completely separate, minimal flow — publishes immediately on file select,
+  // no caption/schedule/crop editor, reusing the same shared helper as the Pulses row's own-circle upload.
+  if (publishMode === 'pulse') {
+    return (
+      <>
+        {ModeSelector}
+        <Card className="w-full max-w-lg border-primary/20 bg-card/50">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold tracking-widest">✨ Post a Pulse</CardTitle>
+            <CardDescription>Visible to your followers for 24 hours. Earns CYBACOIN.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <input
+              ref={pulseFileInputRef}
+              type="file"
+              accept="image/*,video/*"
+              className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) handlePulseFile(f); }}
+            />
+            <Button
+              type="button"
+              className="w-full"
+              size="lg"
+              disabled={pulseUploading}
+              onClick={() => pulseFileInputRef.current?.click()}
+            >
+              {pulseUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImagePlus className="mr-2 h-4 w-4" />}
+              {pulseUploading ? 'Posting…' : 'Choose Photo or Video'}
+            </Button>
+          </CardContent>
+        </Card>
+      </>
+    );
+  }
+
   return (
     <>
       {/* Crop editor overlay */}
@@ -726,10 +832,16 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
         />
       )}
 
+      {ModeSelector}
+
       <Card className="w-full max-w-lg border-primary/20 bg-card/50">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold tracking-widest">Create Post</CardTitle>
-          <CardDescription>Share something with the Zone.</CardDescription>
+          <CardTitle className="text-2xl font-bold tracking-widest">
+            {publishMode === 'zap' ? '⚡ Create Zap' : 'Create Post'}
+          </CardTitle>
+          <CardDescription>
+            {publishMode === 'zap' ? 'Short-form video for the Zaps feed.' : 'Share something with the Zone.'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -993,6 +1105,20 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
                   )}
                 </div>
               )}
+
+              {/* Subnet-only toggle — requires the member to have set a Subnet rate first */}
+              <div className="flex items-center justify-between rounded-lg border border-border/50 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🔒</span>
+                  <div>
+                    <p className="text-sm font-medium">Subnet Only</p>
+                    <p className="text-xs text-muted-foreground">
+                      {hasSubnet ? 'Visible only to your Subnet members' : 'Set a Subnet rate on your profile first'}
+                    </p>
+                  </div>
+                </div>
+                <Switch checked={subnetOnly} onCheckedChange={setSubnetOnly} disabled={isUploading || !hasSubnet} />
+              </div>
 
               <Button type="submit" disabled={isUploading || (!multiMode && scheduleEnabled && !scheduledAt) || (multiMode && multiItems.length === 0)} className="w-full">
                 {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

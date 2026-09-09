@@ -39,6 +39,7 @@ import { useToast } from '@/hooks/use-toast';
 import { createNotification } from '@/lib/notifications';
 import { computeLevel } from '@/lib/levels';
 import { getCCForEngagement, mergeWithDefaults, type CCRates } from '@/lib/cc-rewards';
+import { applyGearMultiplier } from '@/lib/avatar-gear';
 import { logTransaction } from '@/lib/transactions';
 import { logEngagement } from '@/lib/engagement-log';
 import { MentionTextarea, extractMentions } from '@/components/MentionTextarea';
@@ -65,6 +66,8 @@ type UserProfile = {
     avatarConfig?: AvatarConfig;
     profilePictureUrl?: string;
     postCount?: number;
+    levelOverride?: string;
+    equippedGear?: string[];
     supportGiven?: number;
 };
 
@@ -132,8 +135,8 @@ function CommentForm({
 
       // Track outward support + award CC (only when commenting on others' posts)
       if (user.uid !== postAuthorId) {
-        const level = computeLevel(userProfile?.postCount, userProfile?.supportGiven);
-        const cc = getCCForEngagement('comment', level, ccRates);
+        const level = computeLevel(userProfile?.postCount, userProfile?.supportGiven, undefined, userProfile?.levelOverride);
+        const cc = applyGearMultiplier(getCCForEngagement('comment', level, ccRates), userProfile?.equippedGear, 'comment');
         updateDoc(doc(firestore, 'users', user.uid), { supportGiven: increment(1), cybaCoinBalance: increment(cc) }).catch(() => {});
         logTransaction(firestore, user.uid, { type: 'engagement_reward', amount: cc, description: '💬 Comment' });
         createNotification(firestore, postAuthorId, {
