@@ -17,6 +17,8 @@ import {
   Shield, PlusCircle, Trash2, Edit, Loader2, Ban, CheckCircle, AlertTriangle, Download,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { v4 as uuidv4 } from 'uuid';
 import {
   useFirebase, useCollection, useDoc, useMemoFirebase,
   setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking,
@@ -48,6 +50,9 @@ import { WHEEL_PRIZES } from '@/lib/wheel';
 import { QUESTS, type CustomQuest, type QuestSubmission } from '@/lib/quests';
 import { DEFAULT_CC_RATES, mergeWithDefaults, type CCRates, type CCRatesByLevel } from '@/lib/cc-rewards';
 import { DEFAULT_LEVEL_THRESHOLDS, type LevelThresholds } from '@/lib/levels';
+import { sendSystemDM } from '@/lib/system-dm';
+import { CC_BUNDLE_ORDER, DEFAULT_CC_BUNDLES, type CcBundlesConfig } from '@/lib/cybacoin-bundles';
+import type { KeywordResponder } from '@/lib/keyword-responders';
 import {
   DEFAULT_BOOST_SUBSCRIPTION_RATES, BOOST_SUBSCRIPTION_TYPES,
   type BoostSubscriptionRates, type BoostSubscriptionType, type BoostSubscriptionDescriptions,
@@ -197,7 +202,7 @@ function UserManagement() {
   const [search, setSearch] = useState('');
   const usersRef = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
   const { data: users, isLoading } = useCollection<{
-    username: string; email: string; membershipTier?: string; banned?: boolean; cybaCoinBalance?: number; payoutBalance?: number; payoutEnrolled?: boolean; cashApp?: string; venmo?: string; spotlightBoost?: boolean; marketBoost?: boolean; radioBoost?: boolean; isCurator?: boolean; adminAccess?: { tabs: string[] };
+    username: string; email: string; membershipTier?: string; levelOverride?: string; instagramHandle?: string; banned?: boolean; cybaCoinBalance?: number; payoutBalance?: number; payoutEnrolled?: boolean; cashApp?: string; venmo?: string; spotlightBoost?: boolean; marketBoost?: boolean; radioBoost?: boolean; isCurator?: boolean; adminAccess?: { tabs: string[] };
   }>(usersRef);
 
   const filteredUsers = useMemo(() => {
@@ -214,6 +219,12 @@ function UserManagement() {
 
   const handleTierChange = (userId: string, tierName: string) => {
     setDocumentNonBlocking(doc(firestore, 'users', userId), { membershipTier: tierName }, { merge: true });
+  };
+
+  // Level override is a separate concept from membershipTier ("Tier" — Zone Pass, from Stripe).
+  // This manually forces a user's computed Level (Spark/Charge/Surge/Storm) for CC-rate purposes.
+  const handleLevelOverrideChange = (userId: string, level: string) => {
+    setDocumentNonBlocking(doc(firestore, 'users', userId), { levelOverride: level }, { merge: true });
   };
 
   const handlePayoutToggle = async (userId: string, currentlyEnrolled: boolean) => {
@@ -283,12 +294,14 @@ function UserManagement() {
           <TableHeader>
             <TableRow>
               <TableHead>Username</TableHead>
+              <TableHead>Instagram</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>CC Balance</TableHead>
               <TableHead>Cash Balance</TableHead>
               <TableHead>Cash App</TableHead>
               <TableHead>Venmo</TableHead>
               <TableHead>Tier</TableHead>
+              <TableHead>Level Override</TableHead>
               <TableHead>Payout</TableHead>
               <TableHead>Spotlight</TableHead>
               <TableHead>Market</TableHead>
@@ -306,6 +319,9 @@ function UserManagement() {
                   <Link href={`/u/${user.username}`} className="hover:underline text-primary">
                     {user.username}
                   </Link>
+                </TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {user.instagramHandle ? `@${user.instagramHandle}` : '—'}
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm">{user.email}</TableCell>
                 <TableCell>
@@ -330,6 +346,20 @@ function UserManagement() {
                       {memberships?.map((t) => (
                         <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+                <TableCell>
+                  <Select value={user.levelOverride || ''} onValueChange={(v) => handleLevelOverrideChange(user.id, v)}>
+                    <SelectTrigger className="w-28">
+                      <SelectValue placeholder="Auto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value=" ">Auto</SelectItem>
+                      <SelectItem value="spark">⚡ Spark</SelectItem>
+                      <SelectItem value="charge">🔋 Charge</SelectItem>
+                      <SelectItem value="surge">🌊 Surge</SelectItem>
+                      <SelectItem value="storm">⛈️ Storm</SelectItem>
                     </SelectContent>
                   </Select>
                 </TableCell>
@@ -517,6 +547,11 @@ function PostAudit() {
       commentsSnap.forEach(d => batch.delete(d.ref));
       batch.delete(doc(firestore, 'cybazone_posts', postId));
       await batch.commit();
+      sendSystemDM(
+        firestore,
+        authorId,
+        'We have removed your post because it goes against our community guidelines. If you feel this was done in error, please message us.',
+      ).catch(() => {});
       toast({ title: 'Post deleted' });
     } catch (e) {
       toast({ variant: 'destructive', title: 'Delete failed' });
@@ -1515,14 +1550,35 @@ function ShopManagement() {
 
 function ShopForm({ item }: { item?: any }) {
   const [open, setOpen] = useState(false);
-  const { firestore } = useFirebase();
+  const { firestore, storage } = useFirebase();
   const { toast } = useToast();
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const defaults = item
     ? { ...item, imageUrl: item.imageUrl || '', buyNowUrl: item.buyNowUrl || '', cybaCoinPrice: item.cybaCoinPrice ?? undefined }
     : { name: '', description: '', price: 0, cybaCoinPrice: undefined, imageUrl: '', buyNowUrl: '', stockQuantity: 0 };
   const form = useForm<z.infer<typeof shopItemSchema>>({ resolver: zodResolver(shopItemSchema), defaultValues: defaults });
 
   useEffect(() => { if (open) form.reset(defaults); }, [item, open]);
+
+  const handleImageFile = async (file: File) => {
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop() ?? 'jpg';
+      const path = `merchandise/${uuidv4()}.${ext}`;
+      const fileRef = storageRef(storage, path);
+      const task = uploadBytesResumable(fileRef, file, { contentType: file.type });
+      const url = await new Promise<string>((resolve, reject) => {
+        task.on('state_changed', () => {}, reject, async () => resolve(await getDownloadURL(task.snapshot.ref)));
+      });
+      form.setValue('imageUrl', url, { shouldValidate: true });
+    } catch {
+      toast({ variant: 'destructive', title: 'Image upload failed' });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const onSubmit = (values: z.infer<typeof shopItemSchema>) => {
     const data = { ...values, cybaCoinPrice: values.cybaCoinPrice || null };
@@ -1540,7 +1596,7 @@ function ShopForm({ item }: { item?: any }) {
         <DialogHeader><DialogTitle>{item ? 'Edit' : 'Create'} Merch Item</DialogTitle></DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
-            {([['name', 'text'], ['description', 'textarea'], ['price', 'number'], ['cybaCoinPrice', 'number'], ['stockQuantity', 'number'], ['imageUrl', 'text'], ['buyNowUrl', 'text']] as [string, string][]).map(([f, t]) => (
+            {([['name', 'text'], ['description', 'textarea'], ['price', 'number'], ['cybaCoinPrice', 'number'], ['stockQuantity', 'number'], ['buyNowUrl', 'text']] as [string, string][]).map(([f, t]) => (
               <FormField key={f} control={form.control} name={f as any} render={({ field }) => (
                 <FormItem>
                   <FormLabel className="capitalize">{f.replace(/([A-Z])/g, ' $1')}</FormLabel>
@@ -1551,9 +1607,32 @@ function ShopForm({ item }: { item?: any }) {
                 </FormItem>
               )} />
             ))}
+            <FormField control={form.control} name="imageUrl" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Product Image</FormLabel>
+                <FormControl>
+                  <div className="space-y-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); }}
+                      className="block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary file:text-primary-foreground file:px-3 file:py-1.5 file:text-sm"
+                      disabled={uploading}
+                    />
+                    {uploading && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {field.value && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={field.value} alt="Preview" className="h-24 w-24 object-cover rounded-lg border border-border" />
+                    )}
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
             <DialogFooter>
               <DialogClose asChild><Button type="button" variant="secondary">Cancel</Button></DialogClose>
-              <Button type="submit">Save</Button>
+              <Button type="submit" disabled={uploading}>Save</Button>
             </DialogFooter>
           </form>
         </Form>
@@ -2157,7 +2236,6 @@ function AdDropManagement() {
       tiers: { ...DEFAULT_AD_DROP_CONFIG.tiers, ...rawConfig.tiers },
       unskippable: { ...DEFAULT_AD_DROP_CONFIG.unskippable, ...rawConfig.unskippable },
       mediaQuest: { ...DEFAULT_AD_DROP_CONFIG.mediaQuest, ...rawConfig.mediaQuest },
-      cybashirt: { ...DEFAULT_AD_DROP_CONFIG.cybashirt, ...rawConfig.cybashirt },
     } : DEFAULT_AD_DROP_CONFIG);
   }, [rawConfig]);
 
@@ -2245,7 +2323,7 @@ function AdDropManagement() {
                 />
               </div>
               <div className="grid sm:grid-cols-[110px_100px_1fr] gap-2 items-center">
-                <span className="text-xs text-muted-foreground">Media CYBAQUEST</span>
+                <span className="text-xs text-muted-foreground">CYBAQUEST</span>
                 <Input
                   value={config.mediaQuest.priceLabel}
                   onChange={e => setConfig(prev => ({ ...prev, mediaQuest: { ...prev.mediaQuest, priceLabel: e.target.value } }))}
@@ -2257,21 +2335,8 @@ function AdDropManagement() {
                   placeholder="https://buy.stripe.com/..."
                 />
               </div>
-              <div className="grid sm:grid-cols-[110px_100px_1fr] gap-2 items-center">
-                <span className="text-xs text-muted-foreground">CYBASHIRT</span>
-                <Input
-                  value={config.cybashirt.priceLabel}
-                  onChange={e => setConfig(prev => ({ ...prev, cybashirt: { ...prev.cybashirt, priceLabel: e.target.value } }))}
-                  placeholder="$19.99"
-                />
-                <Input
-                  value={config.cybashirt.buttonLink}
-                  onChange={e => setConfig(prev => ({ ...prev, cybashirt: { ...prev.cybashirt, buttonLink: e.target.value } }))}
-                  placeholder="https://buy.stripe.com/..."
-                />
-              </div>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2">30-Day slots include all 3 add-ons free. 14-Day slots include CYBASHIRT free, with Unskippable + Media CYBAQUEST offered as paid extras. 7-Day slots include nothing free — all 3 are offered as paid extras.</p>
+            <p className="text-[11px] text-muted-foreground mt-2">30-Day (Premium) slots include both add-ons free. 14-Day (Standard) slots include CYBAQUEST free, with Unskippable offered as a paid extra. 7-Day (Value) slots include nothing free — both are offered as paid extras.</p>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
@@ -2295,7 +2360,7 @@ function AdDropManagement() {
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">
-                USD → CC rate for early-renewal bonus — <span className="text-amber-400 font-semibold">PLACEHOLDER, confirm before launch</span>
+                USD → CC rate — <span className="text-amber-400 font-semibold">PLACEHOLDER, confirm before launch</span>
               </label>
               <Input
                 type="number" min={0}
@@ -2303,7 +2368,7 @@ function AdDropManagement() {
                 onChange={e => setConfig(prev => ({ ...prev, usdToCcRate: parseInt(e.target.value, 10) || 0 }))}
               />
               <p className="text-[11px] text-muted-foreground mt-1">
-                Renewing early (buying a new slot before an old one expires) credits 15% of the new price × this rate, as CYBACOIN.
+                Used for CC-conversion reward calculations elsewhere. The overlap cash-back (buying a new slot before an old one expires) now pays 25% of the new base price as real wallet cash, unrelated to this rate.
               </p>
             </div>
           </div>
@@ -2318,6 +2383,49 @@ function AdDropManagement() {
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Settings
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Promo Slot Performance</CardTitle>
+          <CardDescription>Aggregate stats across all promos, any status.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {(() => {
+            const all = ads ?? [];
+            const totalViews = all.reduce((s, a) => s + (a.viewCount ?? 0), 0);
+            const totalClicks = all.reduce((s, a) => s + (a.clickCount ?? 0), 0);
+            const totalWatch = all.reduce((s, a) => s + (a.totalWatchSeconds ?? 0), 0);
+            const overallCtr = totalViews > 0 ? ((totalClicks / totalViews) * 100).toFixed(1) : '—';
+            const avgWatch = totalViews > 0 ? (totalWatch / totalViews).toFixed(1) : '—';
+            const activeCount = all.filter(a => a.status === 'active').length;
+            const tierCounts = { day7: 0, day14: 0, day30: 0 } as Record<AdTierKey, number>;
+            all.forEach(a => { if (a.tier && tierCounts[a.tier as AdTierKey] !== undefined) tierCounts[a.tier as AdTierKey]++; });
+            return (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                <div className="rounded-lg border border-border/40 p-3">
+                  <p className="text-2xl font-bold">{all.length}</p>
+                  <p className="text-xs text-muted-foreground">Total Slots ({activeCount} active)</p>
+                </div>
+                <div className="rounded-lg border border-border/40 p-3">
+                  <p className="text-2xl font-bold">{totalViews.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">Total Views</p>
+                </div>
+                <div className="rounded-lg border border-border/40 p-3">
+                  <p className="text-2xl font-bold">{overallCtr}%</p>
+                  <p className="text-xs text-muted-foreground">Click-Through Rate</p>
+                </div>
+                <div className="rounded-lg border border-border/40 p-3">
+                  <p className="text-2xl font-bold">{avgWatch}s</p>
+                  <p className="text-xs text-muted-foreground">Avg. View Duration</p>
+                </div>
+                <div className="col-span-2 sm:col-span-4 text-xs text-muted-foreground">
+                  By tier — Value (7d): {tierCounts.day7} · Standard (14d): {tierCounts.day14} · Premium (30d): {tierCounts.day30}
+                </div>
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
 
@@ -2352,11 +2460,14 @@ function AdDropManagement() {
                         <p className="text-[10px] text-muted-foreground/80">
                           {views} views · {clicks} clicks · {ctr}% CTR · avg {avgWatch}s watched
                         </p>
+                        {ad.questInstructions && (
+                          <p className="text-[10px] text-amber-400/90 truncate">🎯 &quot;{ad.questInstructions}&quot;</p>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {ad.unskippable && <Badge className="text-[10px] bg-orange-950/40 border border-orange-500/30 text-orange-400">Unskippable</Badge>}
-                      {ad.wantsMediaQuest && <Badge className="text-[10px] bg-amber-950/40 border border-amber-500/30 text-amber-400">Needs Media CYBAQUEST</Badge>}
+                      {ad.wantsMediaQuest && <Badge className="text-[10px] bg-amber-950/40 border border-amber-500/30 text-amber-400">CYBAQUEST</Badge>}
                       <Badge className={cn('text-[10px]', AD_STATUS_BADGE[ad.status])}>{ad.status}</Badge>
                       <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleRemoveAd(ad.id)}>
                         <Trash2 className="h-4 w-4" />
@@ -2370,6 +2481,103 @@ function AdDropManagement() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+//  CYBACOIN Bundle Management
+// ─────────────────────────────────────────────
+function CcBundleManagement() {
+  const { firestore } = useFirebase();
+  const { toast } = useToast();
+
+  const configRef = useMemoFirebase(() => doc(firestore, 'settings', 'cybaCoinBundles'), [firestore]);
+  const { data: rawConfig } = useDoc<Partial<CcBundlesConfig>>(configRef);
+  const [config, setConfig] = useState<CcBundlesConfig>(DEFAULT_CC_BUNDLES);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setConfig(rawConfig ? { ...DEFAULT_CC_BUNDLES, ...rawConfig } : DEFAULT_CC_BUNDLES);
+  }, [rawConfig]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await setDoc(doc(firestore, 'settings', 'cybaCoinBundles'), config);
+      toast({ title: 'CYBACOIN Bundle settings saved' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Save failed' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>CYBACOIN Bundles</CardTitle>
+        <CardDescription>Fiat purchase tiers for CYBACOIN, sold from the Wallet page.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {CC_BUNDLE_ORDER.map(key => (
+          <div key={key} className="grid sm:grid-cols-[100px_90px_90px_1fr] gap-2 items-center">
+            <span className="text-xs text-muted-foreground">{config[key].name}</span>
+            <Input
+              value={config[key].amount}
+              type="number" min={0}
+              onChange={e => setConfig(prev => ({ ...prev, [key]: { ...prev[key], amount: parseInt(e.target.value, 10) || 0 } }))}
+              placeholder="10000"
+            />
+            <Input
+              value={config[key].priceLabel}
+              onChange={e => setConfig(prev => ({ ...prev, [key]: { ...prev[key], priceLabel: e.target.value } }))}
+              placeholder="$4.99"
+            />
+            <Input
+              value={config[key].buttonLink}
+              onChange={e => setConfig(prev => ({ ...prev, [key]: { ...prev[key], buttonLink: e.target.value } }))}
+              placeholder="https://buy.stripe.com/..."
+            />
+          </div>
+        ))}
+        <p className="text-[11px] text-muted-foreground">
+          Each Stripe product name must contain &quot;cybacoin bundle&quot; plus its tier keyword (&quot;small&quot;, &quot;medium&quot;, or &quot;large&quot;), and collect one custom field: CYBAZONE username.
+        </p>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Save Settings
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Live streaming is template-only so far (see src/app/live/[username]/page.tsx) — this is just
+// the stats section's placeholder shell, ready to wire up once real streaming exists.
+function LiveStreamingStatsStub() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Live Streaming Analytics</CardTitle>
+        <CardDescription>Placeholder — real data once Live Broadcasting is built out.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-3 gap-3 text-center opacity-50">
+          <div className="rounded-lg border border-dashed border-border/40 p-3">
+            <p className="text-2xl font-bold">—</p>
+            <p className="text-xs text-muted-foreground">Streams Hosted</p>
+          </div>
+          <div className="rounded-lg border border-dashed border-border/40 p-3">
+            <p className="text-2xl font-bold">—</p>
+            <p className="text-xs text-muted-foreground">Most Viewed Creator</p>
+          </div>
+          <div className="rounded-lg border border-dashed border-border/40 p-3">
+            <p className="text-2xl font-bold">—</p>
+            <p className="text-xs text-muted-foreground">CC Volume Transacted</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -2950,6 +3158,16 @@ function QuestSubmissions() {
   );
   const submissions = filter === 'all' ? allSubmissions : allSubmissions.filter(s => s.status === filter);
 
+  // Media instructions live on the quest definition, not the submission doc — look them up by
+  // questId so reviewers see "what did we ask them to do?" inline next to each submission.
+  const customQuestsQuery = useMemoFirebase(() => collection(firestore, 'custom_quests'), [firestore]);
+  const { data: customQuests } = useCollection<CustomQuest>(customQuestsQuery);
+  const mediaInstructionsByQuestId = useMemo(() => {
+    const map = new Map<string, string>();
+    (customQuests ?? []).forEach(q => { if (q.mediaInstructions) map.set(q.id, q.mediaInstructions); });
+    return map;
+  }, [customQuests]);
+
   const handleApprove = async (sub: QuestSubmission & { payout?: { type: string; amount: number } }) => {
     setActing(sub.id);
     try {
@@ -3091,6 +3309,11 @@ function QuestSubmissions() {
                       {' · '}
                       {sub.submittedAt?.toDate ? formatDistanceToNow(sub.submittedAt.toDate(), { addSuffix: true }) : '—'}
                     </p>
+                    {sub.questId && mediaInstructionsByQuestId.get(sub.questId) && (
+                      <p className="text-xs text-amber-400/90 mt-1">
+                        🎯 Asked: &quot;{mediaInstructionsByQuestId.get(sub.questId)}&quot;
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {sub.payout && sub.payout.amount > 0 && (
@@ -3463,7 +3686,7 @@ function LaunchResetPanel() {
 function WeeklyPayouts() {
   const { firestore, user: currentUser } = useFirebase();
   const { toast } = useToast();
-  const [triggering, setTriggering] = useState<'payout' | 'reset' | 'boost-billing' | 'cleanup-ads' | 'promo-expiry' | 'cleanup-pulses' | null>(null);
+  const [triggering, setTriggering] = useState<'payout' | 'reset' | 'boost-billing' | 'subnet-billing' | 'cleanup-ads' | 'promo-expiry' | 'cleanup-pulses' | null>(null);
 
   const historyQuery = useMemoFirebase(
     () => query(
@@ -3526,11 +3749,12 @@ function WeeklyPayouts() {
     }
   };
 
-  const triggerCron = async (endpoint: 'weekly-payout' | 'weekly-reset' | 'weekly-boost-billing' | 'cleanup-ads' | 'promo-expiry-warning' | 'cleanup-pulses') => {
+  const triggerCron = async (endpoint: 'weekly-payout' | 'weekly-reset' | 'weekly-boost-billing' | 'weekly-subnet-billing' | 'cleanup-ads' | 'promo-expiry-warning' | 'cleanup-pulses') => {
     setTriggering(
       endpoint === 'weekly-payout' ? 'payout'
       : endpoint === 'weekly-reset' ? 'reset'
       : endpoint === 'weekly-boost-billing' ? 'boost-billing'
+      : endpoint === 'weekly-subnet-billing' ? 'subnet-billing'
       : endpoint === 'promo-expiry-warning' ? 'promo-expiry'
       : endpoint === 'cleanup-pulses' ? 'cleanup-pulses'
       : 'cleanup-ads'
@@ -3563,6 +3787,7 @@ function WeeklyPayouts() {
         'weekly-payout': 'Payout run complete!',
         'weekly-reset': 'Leaderboard reset!',
         'weekly-boost-billing': 'Boost billing run complete!',
+        'weekly-subnet-billing': 'Subnet billing run complete!',
         'cleanup-ads': 'Ad cleanup complete!',
         'promo-expiry-warning': 'Promo expiry warnings sent!',
         'cleanup-pulses': 'Pulse cleanup complete!',
@@ -3571,6 +3796,7 @@ function WeeklyPayouts() {
         'weekly-payout': `Paid out ${data.paidCount ?? 0} enrolled user(s).`,
         'weekly-reset': `Reset ${data.usersReset ?? 0} users.`,
         'weekly-boost-billing': `Charged/paused subscriptions across Radio, Market, and Spotlight.`,
+        'weekly-subnet-billing': `Charged ${data.results?.charged ?? 0}, revoked ${data.results?.revoked ?? 0} Subnet membership(s).`,
         'cleanup-ads': `Expired and promoted ads processed.`,
         'promo-expiry-warning': `Warned ${data.warned ?? 0} promoter(s) whose slot expires within 3 days.`,
         'cleanup-pulses': `Deleted ${data.deleted ?? 0} expired Pulse(s).`,
@@ -3618,6 +3844,14 @@ function WeeklyPayouts() {
           >
             {triggering === 'boost-billing' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '📅 '}
             Run Boost Billing Now
+          </Button>
+          <Button
+            variant="outline"
+            disabled={!!triggering}
+            onClick={() => triggerCron('weekly-subnet-billing')}
+          >
+            {triggering === 'subnet-billing' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '🔒 '}
+            Run Subnet Billing Now
           </Button>
           <Button
             variant="outline"
@@ -4507,6 +4741,75 @@ function MassMessaging() {
 }
 
 // ─────────────────────────────────────────────
+//  Keyword Auto-Responders (DMs to the CYBAZONE system account)
+// ─────────────────────────────────────────────
+function KeywordResponderManagement() {
+  const { firestore } = useFirebase();
+  const { toast } = useToast();
+
+  const configRef = useMemoFirebase(() => doc(firestore, 'settings', 'keywordResponders'), [firestore]);
+  const { data: rawConfig } = useDoc<{ responders?: KeywordResponder[] }>(configRef);
+  const [responders, setResponders] = useState<KeywordResponder[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { setResponders(rawConfig?.responders ?? []); }, [rawConfig]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await setDoc(doc(firestore, 'settings', 'keywordResponders'), {
+        responders: responders.filter(r => r.keyword.trim() && r.reply.trim()),
+      });
+      toast({ title: 'Auto-responders saved' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Save failed' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Keyword Auto-Responders</CardTitle>
+        <CardDescription>
+          When a member DMs the CYBAZONE account with a message containing one of these keywords, CYBAZONE auto-replies with the matching script. Checked top to bottom — put more specific keywords first.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {responders.map((r, i) => (
+          <div key={i} className="grid sm:grid-cols-[140px_1fr_auto] gap-2 items-start">
+            <Input
+              value={r.keyword}
+              onChange={e => setResponders(prev => prev.map((p, idx) => idx === i ? { ...p, keyword: e.target.value } : p))}
+              placeholder="PROMO"
+            />
+            <Textarea
+              value={r.reply}
+              onChange={e => setResponders(prev => prev.map((p, idx) => idx === i ? { ...p, reply: e.target.value } : p))}
+              placeholder="Reply script…"
+              rows={2}
+            />
+            <Button variant="ghost" size="icon" onClick={() => setResponders(prev => prev.filter((_, idx) => idx !== i))}>
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        ))}
+        <Button variant="outline" size="sm" onClick={() => setResponders(prev => [...prev, { keyword: '', reply: '' }])}>
+          <PlusCircle className="mr-2 h-4 w-4" /> Add Responder
+        </Button>
+        <div>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save Responders
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─────────────────────────────────────────────
 //  Curator Content Management
 // ─────────────────────────────────────────────
 function CuratorManagement() {
@@ -4864,9 +5167,9 @@ function AdminPanel({ email, allowedTabs }: { email: string; allowedTabs?: strin
         {hasTab('levels') && <TabsContent value="levels"><LevelManagement /></TabsContent>}
         {hasTab('ccrates') && <TabsContent value="ccrates"><CCRatesManagement /></TabsContent>}
         {hasTab('ccsubs') && <TabsContent value="ccsubs"><CCSubsManagement /></TabsContent>}
-        {hasTab('addrop') && <TabsContent value="addrop"><AdDropManagement /></TabsContent>}
+        {hasTab('addrop') && <TabsContent value="addrop" className="space-y-6"><AdDropManagement /><CcBundleManagement /><LiveStreamingStatsStub /></TabsContent>}
         {hasTab('faq') && <TabsContent value="faq"><FAQManagement /></TabsContent>}
-        {hasTab('messaging') && <TabsContent value="messaging"><MassMessaging /></TabsContent>}
+        {hasTab('messaging') && <TabsContent value="messaging" className="space-y-6"><MassMessaging /><KeywordResponderManagement /></TabsContent>}
       </Tabs>
     </div>
   );

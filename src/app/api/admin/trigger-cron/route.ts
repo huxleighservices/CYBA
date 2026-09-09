@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const ADMIN_EMAILS = ['contactcyba@gmail.com', 'z1mmerman@yahoo.com'];
-const ALLOWED_ENDPOINTS = ['weekly-payout', 'weekly-reset', 'weekly-boost-billing', 'cleanup-ads', 'promo-expiry-warning', 'cleanup-pulses', 'launch-reset'] as const;
+const ALLOWED_ENDPOINTS = ['weekly-payout', 'weekly-reset', 'weekly-boost-billing', 'weekly-subnet-billing', 'cleanup-ads', 'promo-expiry-warning', 'cleanup-pulses', 'launch-reset'] as const;
 type AllowedEndpoint = typeof ALLOWED_ENDPOINTS[number];
 
 export async function POST(request: NextRequest) {

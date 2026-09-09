@@ -5,8 +5,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import {
   collection, query, orderBy, limit, addDoc, serverTimestamp, where,
-  doc, updateDoc, deleteDoc, getDocs, writeBatch, arrayRemove, arrayUnion, deleteField,
+  doc, updateDoc, deleteDoc, getDoc, getDocs, writeBatch, arrayRemove, arrayUnion, deleteField,
 } from 'firebase/firestore';
+import { matchKeywordResponder } from '@/lib/keyword-responders';
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { v4 as uuidv4 } from 'uuid';
 import { AvatarDisplay } from '@/components/AvatarDisplay';
@@ -397,6 +398,37 @@ export default function ChatPage() {
         }
       });
       await updateDoc(doc(firestore, 'conversations', id), update);
+
+      // Keyword auto-responder — only fires in a DM with the CYBAZONE system account, and only
+      // when the sender isn't CYBAZONE itself (avoids replying to its own auto-replies).
+      if (trimmed) {
+        const cybazoneId = conv.participants.find(pid => conv.participantInfo?.[pid]?.username?.toLowerCase() === 'cybazone');
+        if (cybazoneId && cybazoneId !== user.uid) {
+          try {
+            const respSnap = await getDoc(doc(firestore, 'settings', 'keywordResponders'));
+            const matched = matchKeywordResponder(trimmed, respSnap.data()?.responders);
+            if (matched) {
+              const cyba = conv.participantInfo[cybazoneId];
+              await addDoc(collection(firestore, 'conversations', id, 'messages'), {
+                senderId: cybazoneId,
+                senderUsername: cyba?.username ?? 'CYBAZONE',
+                senderProfilePictureUrl: cyba?.profilePictureUrl ?? null,
+                senderAvatarConfig: cyba?.avatarConfig ?? null,
+                text: matched.reply,
+                createdAt: serverTimestamp(),
+              });
+              await updateDoc(doc(firestore, 'conversations', id), {
+                lastMessage: matched.reply.length > 80 ? matched.reply.slice(0, 80) + '…' : matched.reply,
+                lastMessageAt: serverTimestamp(),
+                lastMessageSenderId: cybazoneId,
+                [`unreadCounts.${user.uid}`]: (conv.unreadCounts?.[user.uid] ?? 0) + 1,
+              });
+            }
+          } catch {
+            // Non-critical — never block the user's own message on auto-responder bookkeeping
+          }
+        }
+      }
     } catch (e) {
       console.error('Send failed:', e);
       if (!capturedFile) setText(trimmed); // restore text only if no media upload
