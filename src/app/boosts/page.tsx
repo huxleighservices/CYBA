@@ -25,9 +25,11 @@ import { logTransaction } from '@/lib/transactions';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   DEFAULT_BOOST_SUBSCRIPTION_RATES, BOOST_SUBSCRIPTION_TYPES, BOOST_FLAG_FIELD,
-  type BoostSubscriptionRates, type BoostSubscriptionType, type BoostSubscriptionDescriptions,
+  MARKET_TIER_ITEM_CAP, MARKET_TIER_EXTRA_RATE,
+  type BoostSubscriptionRates, type BoostSubscriptionType, type BoostSubscriptionDescriptions, type MarketBoostTier,
 } from '@/lib/boost-subscriptions';
 import { Radio, ShoppingBag, Sparkles, Pause, Banknote as BanknoteIcon, ShieldOff } from 'lucide-react';
 import { SectionHeader } from '@/components/SectionHeader';
@@ -41,7 +43,9 @@ type UserProfile = {
   spotlightBoost?: boolean;
   adFreeBoost?: boolean;
   membershipTier?: string;
-  boostSubscriptions?: Partial<Record<BoostSubscriptionType, { subscribed: boolean }>>;
+  boostSubscriptions?: Partial<Record<BoostSubscriptionType, { subscribed: boolean; priority?: number }>>;
+  radioExtraSlots?: number;
+  marketBoostTier?: 'base' | 'mid' | 'top';
   inventory?: {
     sponsored_post?: { quantity: number };
     sponsored_profile?: { quantity: number };
@@ -366,22 +370,26 @@ function SubscriptionBoostCard({
   description,
   isGranted,
   isSubscribed,
+  priority,
   balance,
   isLoggedIn,
   busy,
   onSubscribe,
   onCancel,
+  onPriorityChange,
 }: {
   type: BoostSubscriptionType;
   price: number;
   description: string;
   isGranted: boolean;
   isSubscribed: boolean;
+  priority: number;
   balance: number;
   isLoggedIn: boolean;
   busy: boolean;
   onSubscribe: (type: BoostSubscriptionType) => void;
   onCancel: (type: BoostSubscriptionType) => void;
+  onPriorityChange: (type: BoostSubscriptionType, priority: number) => void;
 }) {
   const meta = SUBSCRIPTION_META[type];
   const Icon = meta.icon;
@@ -414,6 +422,21 @@ function SubscriptionBoostCard({
             <div className={cn('w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold', meta.badge)}>
               {isGranted ? `✅ Active` : `⏸️ Paused`}
             </div>
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <span className="text-muted-foreground">Priority</span>
+              <Select value={String(priority)} onValueChange={v => onPriorityChange(type, parseInt(v, 10))}>
+                <SelectTrigger className="h-7 w-24 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 (Highest)</SelectItem>
+                  <SelectItem value="2">2</SelectItem>
+                  <SelectItem value="3">3</SelectItem>
+                  <SelectItem value="4">4</SelectItem>
+                  <SelectItem value="5">5 (Lowest)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Button
               variant="outline"
               size="sm"
@@ -443,6 +466,56 @@ function SubscriptionBoostCard({
   );
 }
 
+function MarketBoostTierSelector({ userId, currentTier, balance }: { userId: string; currentTier: MarketBoostTier; balance: number }) {
+  const { firestore } = useFirebase();
+  const { toast } = useToast();
+  const [switching, setSwitching] = useState<MarketBoostTier | null>(null);
+
+  const handleSwitch = async (tier: MarketBoostTier) => {
+    if (tier === currentTier) return;
+    const price = MARKET_TIER_EXTRA_RATE[tier];
+    if (price > 0 && balance < price) {
+      toast({ variant: 'destructive', title: 'Not enough CYBACOIN' });
+      return;
+    }
+    setSwitching(tier);
+    try {
+      await updateDoc(doc(firestore, 'users', userId), { marketBoostTier: tier });
+      toast({ title: `Market Boost set to ${tier === 'base' ? 'Base' : tier === 'mid' ? 'Mid' : 'Top'}`, description: `Takes effect on your next weekly billing cycle.` });
+    } catch {
+      toast({ variant: 'destructive', title: 'Could not switch tier' });
+    } finally {
+      setSwitching(null);
+    }
+  };
+
+  const TIER_LABEL: Record<MarketBoostTier, string> = { base: 'Base (1-3 items)', mid: 'Mid (4-7 items)', top: 'Top (unlimited)' };
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs font-semibold text-blue-400 uppercase tracking-widest">🛒 Market Listing Tier</p>
+      <div className="grid grid-cols-3 gap-1.5">
+        {(['base', 'mid', 'top'] as MarketBoostTier[]).map(tier => (
+          <button
+            key={tier}
+            type="button"
+            onClick={() => handleSwitch(tier)}
+            disabled={switching !== null}
+            className={cn(
+              'rounded-md border px-2 py-1.5 text-[11px] text-center transition-colors',
+              currentTier === tier ? 'border-blue-500 bg-blue-500/10 text-blue-300' : 'border-border/50 text-muted-foreground hover:border-blue-500/40',
+            )}
+          >
+            {switching === tier ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : TIER_LABEL[tier]}
+            {MARKET_TIER_EXTRA_RATE[tier] > 0 && <span className="block text-[10px] opacity-70">+{MARKET_TIER_EXTRA_RATE[tier].toLocaleString()} CC/wk</span>}
+          </button>
+        ))}
+      </div>
+      <p className="text-[10px] text-muted-foreground">Current cap: {MARKET_TIER_ITEM_CAP[currentTier] === Infinity ? 'Unlimited' : MARKET_TIER_ITEM_CAP[currentTier]} listings.</p>
+    </div>
+  );
+}
+
 function extractYtVideoId(url: string): string | null {
   try {
     const u = new URL(url.trim());
@@ -451,7 +524,9 @@ function extractYtVideoId(url: string): string | null {
   } catch { return null; }
 }
 
-function RadioBoostSubmission({ userId, username }: { userId: string; username: string }) {
+const RADIO_EXTRA_SLOT_COST_CC = 2500;
+
+function RadioBoostSubmission({ userId, username, extraSlots = 0, balance = 0 }: { userId: string; username: string; extraSlots?: number; balance?: number }) {
   const { firestore, storage } = useFirebase();
   const { toast } = useToast();
   const [mode, setMode] = useState<'youtube' | 'upload'>('youtube');
@@ -460,21 +535,48 @@ function RadioBoostSubmission({ userId, username }: { userId: string; username: 
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [buyingSlot, setBuyingSlot] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const monthKey = new Date().toISOString().slice(0, 7);
+  const slotLimit = 1 + extraSlots;
 
   const subQuery = useMemoFirebase(
     () => query(
       collection(firestore, 'radio_submissions'),
       where('userId', '==', userId),
       where('monthKey', '==', monthKey),
-      limit(1),
+      limit(10),
     ),
     [firestore, userId, monthKey]
   );
   const { data: existingSubs } = useCollection<{ id: string; videoId?: string; mediaUrl?: string; sourceType?: 'youtube' | 'upload'; youtubeUrl?: string; submittedAt: any }>(subQuery);
-  const existing = existingSubs?.[0] ?? null;
+  const submissions = existingSubs ?? [];
+  const atLimit = submissions.length >= slotLimit;
+
+  const handleBuyExtraSlot = async () => {
+    if (balance < RADIO_EXTRA_SLOT_COST_CC) {
+      toast({ variant: 'destructive', title: 'Not enough CYBACOIN' });
+      return;
+    }
+    setBuyingSlot(true);
+    try {
+      await updateDoc(doc(firestore, 'users', userId), {
+        cybaCoinBalance: increment(-RADIO_EXTRA_SLOT_COST_CC),
+        radioExtraSlots: increment(1),
+      });
+      await logTransaction(firestore, userId, {
+        type: 'boost_purchase',
+        amount: -RADIO_EXTRA_SLOT_COST_CC,
+        description: 'Radio Boost — extra video slot',
+      });
+      toast({ title: 'Extra Radio slot purchased!' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Purchase failed' });
+    } finally {
+      setBuyingSlot(false);
+    }
+  };
 
   const handleSubmitYouTube = async () => {
     const videoId = extractYtVideoId(url);
@@ -529,20 +631,27 @@ function RadioBoostSubmission({ userId, username }: { userId: string; username: 
     }
   };
 
-  if (existing) {
+  if (atLimit) {
     return (
       <div className="mt-3 border-t border-amber-500/20 pt-3 space-y-2">
-        <p className="text-xs font-semibold text-amber-400 uppercase tracking-widest">🎵 Radio Submission — {monthKey}</p>
-        <div className="text-xs bg-amber-950/30 border border-amber-500/20 rounded-lg px-3 py-2 text-amber-300">
-          <span className="font-semibold">Submitted:</span>{' '}
-          {existing.sourceType === 'upload' ? (
-            <a href={existing.mediaUrl} target="_blank" rel="noopener noreferrer" className="underline">Uploaded video</a>
-          ) : (
-            <a href={`https://www.youtube.com/watch?v=${existing.videoId}`} target="_blank" rel="noopener noreferrer"
-              className="underline font-mono">{existing.videoId}</a>
-          )}
-          <p className="text-amber-500/60 mt-1">Your track is in the queue. You can submit a new one on the 1st.</p>
+        <p className="text-xs font-semibold text-amber-400 uppercase tracking-widest">🎵 Radio Submissions — {monthKey} ({submissions.length}/{slotLimit})</p>
+        <div className="space-y-1.5">
+          {submissions.map(sub => (
+            <div key={sub.id} className="text-xs bg-amber-950/30 border border-amber-500/20 rounded-lg px-3 py-2 text-amber-300">
+              {sub.sourceType === 'upload' ? (
+                <a href={sub.mediaUrl} target="_blank" rel="noopener noreferrer" className="underline">Uploaded video</a>
+              ) : (
+                <a href={`https://www.youtube.com/watch?v=${sub.videoId}`} target="_blank" rel="noopener noreferrer"
+                  className="underline font-mono">{sub.videoId}</a>
+              )}
+            </div>
+          ))}
         </div>
+        <p className="text-amber-500/60 text-[11px]">All slots used for this month — new slots open on the 1st.</p>
+        <Button size="sm" variant="outline" className="h-7 text-xs border-amber-500/40 text-amber-400" onClick={handleBuyExtraSlot} disabled={buyingSlot || balance < RADIO_EXTRA_SLOT_COST_CC}>
+          {buyingSlot ? <Loader2 className="w-3 h-3 animate-spin mr-1.5" /> : null}
+          Buy Extra Slot — {RADIO_EXTRA_SLOT_COST_CC.toLocaleString()} CC
+        </Button>
       </div>
     );
   }
@@ -646,7 +755,7 @@ export default function BoostsPage() {
     try {
       await updateDoc(doc(firestore, 'users', user.uid), {
         cybaCoinBalance: increment(-price),
-        [`boostSubscriptions.${type}`]: { subscribed: true, subscribedAt: serverTimestamp() },
+        [`boostSubscriptions.${type}`]: { subscribed: true, subscribedAt: serverTimestamp(), priority: 3 },
         [BOOST_FLAG_FIELD[type]]: true,
       });
       await logTransaction(firestore, user.uid, {
@@ -675,6 +784,17 @@ export default function BoostsPage() {
       toast({ variant: 'destructive', title: 'Cancel failed', description: 'Please try again.' });
     } finally {
       setSubBusyType(null);
+    }
+  };
+
+  const handlePriorityChange = async (type: BoostSubscriptionType, priority: number) => {
+    if (!user) return;
+    try {
+      await updateDoc(doc(firestore, 'users', user.uid), {
+        [`boostSubscriptions.${type}.priority`]: priority,
+      });
+    } catch {
+      toast({ variant: 'destructive', title: 'Could not update priority' });
     }
   };
 
@@ -751,8 +871,8 @@ export default function BoostsPage() {
         <div className="h-px flex-1 bg-border/50" />
       </div>
       <p className="text-sm text-muted-foreground text-center mb-8 max-w-xl mx-auto">
-        Subscribe with CYBACOIN — charged automatically every week. Run low on CC and a boost auto-pauses;
-        top up and it resumes on its own.
+        Subscribe with CYBACOIN - charged automatically every week. Run low on CC and your boost(s) pause
+        automatically based on your priority settings. Earn more CC and they resume on their own.
       </p>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
         {BOOST_SUBSCRIPTION_TYPES.map(type => (
@@ -763,15 +883,22 @@ export default function BoostsPage() {
               description={subDescriptions[type] ?? SUBSCRIPTION_META[type].description}
               isGranted={!!(userProfile as any)?.[BOOST_FLAG_FIELD[type]]}
               isSubscribed={!!userProfile?.boostSubscriptions?.[type]?.subscribed}
+              priority={userProfile?.boostSubscriptions?.[type]?.priority ?? 3}
               balance={balance}
               isLoggedIn={!!user}
               busy={subBusyType === type}
               onSubscribe={handleSubscribeBoost}
               onCancel={handleCancelBoost}
+              onPriorityChange={handlePriorityChange}
             />
             {type === 'radio' && userProfile?.radioBoost && user && userProfile.username && (
               <div className="mt-2 rounded-xl border border-amber-500/20 bg-amber-950/10 px-4 py-3">
-                <RadioBoostSubmission userId={user.uid} username={userProfile.username} />
+                <RadioBoostSubmission userId={user.uid} username={userProfile.username} extraSlots={userProfile.radioExtraSlots ?? 0} balance={balance} />
+              </div>
+            )}
+            {type === 'market' && userProfile?.marketBoost && user && (
+              <div className="mt-2 rounded-xl border border-blue-500/20 bg-blue-950/10 px-4 py-3">
+                <MarketBoostTierSelector userId={user.uid} currentTier={userProfile.marketBoostTier ?? 'base'} balance={balance} />
               </div>
             )}
           </div>

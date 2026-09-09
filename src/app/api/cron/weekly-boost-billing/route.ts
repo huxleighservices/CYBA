@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '../../firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { BOOST_SUBSCRIPTION_TYPES, BOOST_FLAG_FIELD, DEFAULT_BOOST_SUBSCRIPTION_RATES, type BoostSubscriptionType } from '@/lib/boost-subscriptions';
+import { BOOST_SUBSCRIPTION_TYPES, BOOST_FLAG_FIELD, DEFAULT_BOOST_SUBSCRIPTION_RATES, MARKET_TIER_EXTRA_RATE, type BoostSubscriptionType, type MarketBoostTier } from '@/lib/boost-subscriptions';
 
 export async function POST(request: NextRequest) {
   const secret = request.headers.get('x-cron-secret');
@@ -19,26 +19,45 @@ export async function POST(request: NextRequest) {
       BOOST_SUBSCRIPTION_TYPES.map(t => [t, { charged: 0, paused: 0 }])
     ) as Record<BoostSubscriptionType, { charged: number; paused: number }>;
 
-    const batch = db.batch();
-
+    // Gather every user subscribed to at least one boost type, deduplicated, since a user
+    // subscribed to multiple boosts must be billed once per user (not once per type) against
+    // a single running balance — the old per-type loop could over-charge past their real balance.
+    const userIds = new Set<string>();
     for (const type of BOOST_SUBSCRIPTION_TYPES) {
-      const price = rates[type] ?? DEFAULT_BOOST_SUBSCRIPTION_RATES[type];
-      const flagField = BOOST_FLAG_FIELD[type];
-
       const snap = await db.collection('users')
         .where(`boostSubscriptions.${type}.subscribed`, '==', true)
         .get();
+      snap.docs.forEach(d => userIds.add(d.id));
+    }
 
-      for (const userDoc of snap.docs) {
-        const data = userDoc.data();
-        const balance = data.cybaCoinBalance ?? 0;
+    const batch = db.batch();
+
+    for (const userId of userIds) {
+      const userRef = db.collection('users').doc(userId);
+      const userSnap = await userRef.get();
+      if (!userSnap.exists) continue;
+      const data = userSnap.data() ?? {};
+      let balance = data.cybaCoinBalance ?? 0;
+
+      // This user's subscribed types, sorted by priority ascending (1 = highest, billed first).
+      const subscribedTypes = BOOST_SUBSCRIPTION_TYPES
+        .filter(type => data.boostSubscriptions?.[type]?.subscribed === true)
+        .sort((a, b) => (data.boostSubscriptions?.[a]?.priority ?? 3) - (data.boostSubscriptions?.[b]?.priority ?? 3));
+
+      let totalDeduction = 0;
+      for (const type of subscribedTypes) {
+        // Market Boost's Mid/Top tiers add a surcharge on top of the base weekly rate.
+        const marketSurcharge = type === 'market'
+          ? MARKET_TIER_EXTRA_RATE[(data.marketBoostTier as MarketBoostTier) ?? 'base']
+          : 0;
+        const price = (rates[type] ?? DEFAULT_BOOST_SUBSCRIPTION_RATES[type]) + marketSurcharge;
+        const flagField = BOOST_FLAG_FIELD[type];
 
         if (balance >= price) {
-          batch.update(userDoc.ref, {
-            cybaCoinBalance: FieldValue.increment(-price),
-            [flagField]: true,
-          });
-          const txRef = userDoc.ref.collection('coinTransactions').doc();
+          balance -= price;
+          totalDeduction += price;
+          batch.update(userRef, { [flagField]: true });
+          const txRef = userRef.collection('coinTransactions').doc();
           batch.set(txRef, {
             type: 'boost_subscription',
             amount: -price,
@@ -47,9 +66,15 @@ export async function POST(request: NextRequest) {
           });
           results[type].charged++;
         } else {
-          batch.update(userDoc.ref, { [flagField]: false });
+          // Pauses (flag off, stays subscribed) rather than unsubscribing — auto-resumes next
+          // run once balance allows, in the same priority order.
+          batch.update(userRef, { [flagField]: false });
           results[type].paused++;
         }
+      }
+
+      if (totalDeduction > 0) {
+        batch.update(userRef, { cybaCoinBalance: FieldValue.increment(-totalDeduction) });
       }
     }
 

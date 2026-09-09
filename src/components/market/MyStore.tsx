@@ -2,10 +2,11 @@
 
 import { useState, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import {
   collection, query, where, doc, addDoc, setDoc, deleteDoc, serverTimestamp,
 } from 'firebase/firestore';
+import { MARKET_TIER_ITEM_CAP, type MarketBoostTier } from '@/lib/boost-subscriptions';
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { v4 as uuidv4 } from 'uuid';
 import { Loader2, Edit, Trash2, ShoppingBag, Package, PlusCircle } from 'lucide-react';
@@ -161,6 +162,11 @@ export function MyStore({ userId, username }: { userId: string; username: string
     [listingsRaw]
   );
 
+  const userDocRef = useMemoFirebase(() => doc(firestore, 'users', userId), [firestore, userId]);
+  const { data: userDoc } = useDoc<{ marketBoostTier?: MarketBoostTier }>(userDocRef);
+  const itemCap = MARKET_TIER_ITEM_CAP[userDoc?.marketBoostTier ?? 'base'];
+  const atCap = listings.length >= itemCap;
+
   const handleToggleActive = async (item: MarketListing) => {
     await setDoc(doc(firestore, 'market_listings', item.id), { active: !item.active }, { merge: true });
     toast({ title: item.active ? 'Listing hidden' : 'Listing activated' });
@@ -197,9 +203,11 @@ export function MyStore({ userId, username }: { userId: string; username: string
           <h2 className="text-2xl font-bold font-headline flex items-center gap-2">
             <ShoppingBag className="w-6 h-6 text-blue-400" /> My Store
           </h2>
-          <p className="text-sm text-muted-foreground">Manage your Market Boost listings</p>
+          <p className="text-sm text-muted-foreground">
+            Manage your Market Boost listings — {listings.length}/{itemCap === Infinity ? '∞' : itemCap} used
+          </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
+        <Button onClick={() => setCreateOpen(true)} disabled={atCap} title={atCap ? 'Upgrade your Market Boost tier for more listings' : undefined}>
           <PlusCircle className="w-4 h-4 mr-2" /> New Listing
         </Button>
       </div>
