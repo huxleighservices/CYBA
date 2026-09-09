@@ -31,6 +31,15 @@
         { "fieldPath": "status",   "order": "ASCENDING" },
         { "fieldPath": "queuedAt", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "cybazone_posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "subnetOnly", "order": "ASCENDING" },
+        { "fieldPath": "authorId",   "order": "ASCENDING" },
+        { "fieldPath": "timestamp",  "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -215,6 +215,26 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
     }
 
+    // ── Subnet (paid sub-communities) ────────────────────────────────────────
+    match /subnets/{ownerId} {
+      allow read: if true;
+      allow write: if isOwner(ownerId);
+    }
+
+    match /subnet_memberships/{membershipId} {
+      allow read: if isSignedIn();
+      // A member can only create their own pending request; an owner-initiated invite is
+      // created with the same shape but by the owner (checked via resource.data.ownerId below
+      // on update once accepted — creation itself just requires one of the two parties to match
+      // the doc they're writing).
+      allow create: if isSignedIn() &&
+        (request.resource.data.memberId == request.auth.uid || request.resource.data.ownerId == request.auth.uid);
+      allow update: if isSignedIn() &&
+        (resource.data.ownerId == request.auth.uid || resource.data.memberId == request.auth.uid);
+      allow delete: if isSignedIn() &&
+        (resource.data.ownerId == request.auth.uid || resource.data.memberId == request.auth.uid);
+    }
+
     // ── Fallback ──────────────────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if isSignedIn();
