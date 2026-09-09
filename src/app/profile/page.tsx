@@ -38,6 +38,7 @@ import { AvatarDisplay } from '@/components/AvatarDisplay';
 import { avatarOptions, type AvatarConfig, type AvatarLayer, defaultAvatarConfig } from '@/lib/avatar-assets';
 import { cn } from '@/lib/utils';
 import { PostCard, type CybazonePost } from '@/components/cybazone/PostCard';
+import { MyStore } from '@/components/market/MyStore';
 import Link from 'next/link';
 import {
   PROFILE_BACKGROUNDS,
@@ -84,6 +85,8 @@ type UserProfile = {
   referralCount?: number;
   referralApplied?: boolean;
   referredBy?: string;
+  marketBoost?: boolean;
+  levelOverride?: string;
 };
 
 async function batchUpdatePostsLevel(firestore: any, userId: string, level: Level) {
@@ -1468,7 +1471,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user || !userProfile || hasSyncedLevel.current) return;
     hasSyncedLevel.current = true;
-    const level = computeLevel(userProfile.postCount, userProfile.supportGiven, levelThresholds);
+    const level = computeLevel(userProfile.postCount, userProfile.supportGiven, levelThresholds, userProfile.levelOverride);
     batchUpdatePostsLevel(firestore, user.uid, level).catch(() => {});
   }, [user, userProfile, firestore]);
 
@@ -1480,7 +1483,7 @@ export default function ProfilePage() {
     );
   }
 
-  const level = computeLevel(userProfile?.postCount, userProfile?.supportGiven, levelThresholds);
+  const level = computeLevel(userProfile?.postCount, userProfile?.supportGiven, levelThresholds, userProfile?.levelOverride);
   const levelConfig = LEVEL_CONFIG[level];
   const nextLevel = getNextLevel(level);
   const nextMinPosts = nextLevel ? (levelThresholds as Record<string, number>)[`${nextLevel}_posts`] : undefined;
@@ -1517,10 +1520,20 @@ export default function ProfilePage() {
                             </Link>
                         </Button>
                     )}
+                    <Button asChild variant="outline">
+                        <Link href="/?tab=subnets&subnetView=mine">
+                            🔒 My Subnet
+                        </Link>
+                    </Button>
                 </div>
             </div>
 
             <TabsContent value="posts">
+                {userProfile?.marketBoost && (
+                    <div className="mb-8">
+                        <MyStore userId={user.uid} username={userProfile.username} />
+                    </div>
+                )}
                 <MyPosts userId={user.uid} />
             </TabsContent>
 

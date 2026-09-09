@@ -8,6 +8,7 @@ import { BanGate } from '@/components/BanGate';
 import { IGHandlePrompt } from '@/components/IGHandlePrompt';
 import { TikTokHandlePrompt } from '@/components/TikTokHandlePrompt';
 import { JustLandedQuestPrompt } from '@/components/JustLandedQuestPrompt';
+import { OnboardingExplainerPopup } from '@/components/OnboardingExplainerPopup';
 import { AdDropPopup } from '@/components/AdDropPopup';
 import { SplashScreen } from '@/components/layout/SplashScreen';
 
@@ -54,6 +55,7 @@ export default function RootLayout({
               <IGHandlePrompt />
               <TikTokHandlePrompt />
               <JustLandedQuestPrompt />
+              <OnboardingExplainerPopup />
               <AdDropPopup />
             </div>
           </BanGate>

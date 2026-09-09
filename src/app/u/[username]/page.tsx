@@ -40,6 +40,7 @@ type UserProfile = {
   cybaCoinBalance?: number;
   leaderboardCybaName?: string;
   postCount?: number;
+  levelOverride?: string;
   supportGiven?: number;
   anthemUrl?: string;
   profileBackground?: string;
@@ -550,7 +551,7 @@ export default function UserPublicProfilePage() {
   const isFollowing = currentUser && userProfile.followers?.includes(currentUser.uid);
   const isSelf = currentUser?.uid === userProfile.id;
 
-  const level = computeLevel(userProfile.postCount, userProfile.supportGiven, levelThresholds);
+  const level = computeLevel(userProfile.postCount, userProfile.supportGiven, levelThresholds, userProfile.levelOverride);
   const levelConfig = LEVEL_CONFIG[level];
   const nextLevel = getNextLevel(level);
   const nextMinPosts = nextLevel ? (levelThresholds as Record<string, number>)[`${nextLevel}_posts`] : undefined;

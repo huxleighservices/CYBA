@@ -715,6 +715,7 @@ function RegularCustomQuestCard({
 interface UserQuestData {
   postCount?: number;
   supportGiven?: number;
+  levelOverride?: string;
   cybaCoinBalance?: number;
   completedQuests?: string[];
   completedCustomQuests?: string[];
@@ -739,6 +740,12 @@ export default function CYBAQuestsPage() {
     [firestore, user]
   );
   const { data: userData } = useDoc<UserQuestData>(userDocRef);
+
+  const mySubnetRef = useMemoFirebase(
+    () => (user ? doc(firestore, 'subnets', user.uid) : null),
+    [firestore, user]
+  );
+  const { data: mySubnet } = useDoc<{ memberCount?: number }>(mySubnetRef);
 
   // Load admin-configured overrides for standard quests
   const questConfigRef = useMemoFirebase(
@@ -853,11 +860,12 @@ export default function CYBAQuestsPage() {
     supportGiven: userData?.supportGiven ?? 0,
     profilePictureSet: userData?.profilePictureUrl ? 1 : 0,
     bioSet: userData?.bio ? 1 : 0,
+    subnetMembers: mySubnet?.memberCount ?? 0,
   };
   const completedQuestIds = userData?.completedQuests ?? [];
   const completedCustomQuestIds = userData?.completedCustomQuests ?? [];
   const unlockedQuestIds = userData?.unlockedQuests ?? [];
-  const userLevel = computeLevel(userData?.postCount, userData?.supportGiven);
+  const userLevel = computeLevel(userData?.postCount, userData?.supportGiven, undefined, userData?.levelOverride);
 
   // Show all active custom quests — level/unlock state handled per-card
   const mediaCustomQuests = customQuests.filter(q => q.isMediaQuest !== false);
@@ -910,6 +918,8 @@ export default function CYBAQuestsPage() {
       await updateDoc(doc(firestore, 'users', user.uid), {
         completedQuests: arrayUnion(quest.id),
         cybaCoinBalance: increment(quest.reward.coins),
+        // "Just Landed" completion grants a free 7-day promo voucher on top of the CC reward.
+        ...(quest.id === 'just_landed' ? { 'freePromoVouchers.day7': increment(1) } : {}),
       });
       await logTransaction(firestore, user.uid, {
         type: 'quest_reward',

@@ -26,6 +26,7 @@ import { SectionHeader } from '@/components/SectionHeader';
 import { cn } from '@/lib/utils';
 import type { CustomQuest } from '@/lib/quests';
 import type { Level } from '@/lib/levels';
+import { GEAR_CATALOG } from '@/lib/avatar-gear';
 
 const DIFF_TO_LEVEL: Record<CustomQuest['difficulty'], Level> = {
   easy: 'spark',
@@ -38,10 +39,13 @@ type UserProfile = {
   username?: string;
   cybaCoinBalance?: number;
   postCount?: number;
+  levelOverride?: string;
   supportGiven?: number;
   unlockedBackgrounds?: string[];
   purchasedRewards?: string[];
   unlockedQuests?: string[];
+  purchasedGear?: string[];
+  equippedGear?: string[];
   inventory?: {
     sponsored_post?: { quantity: number };
     sponsored_profile?: { quantity: number };
@@ -381,7 +385,7 @@ export default function RewardsPage() {
     : PURCHASABLE_BACKGROUNDS;
 
   const balance = userProfile?.cybaCoinBalance ?? 0;
-  const level = computeLevel(userProfile?.postCount, userProfile?.supportGiven);
+  const level = computeLevel(userProfile?.postCount, userProfile?.supportGiven, undefined, userProfile?.levelOverride);
   const ownedIds = userProfile?.unlockedBackgrounds ?? [];
   const unlockedQuestIds = userProfile?.unlockedQuests ?? [];
 
@@ -464,6 +468,52 @@ export default function RewardsPage() {
     }
   };
 
+  const purchasedGear = userProfile?.purchasedGear ?? [];
+  const equippedGear = userProfile?.equippedGear ?? [];
+
+  const handleBuyGear = async (gearId: string) => {
+    if (!user || !userProfile) return;
+    const item = GEAR_CATALOG.find(g => g.id === gearId);
+    if (!item) return;
+    if (balance < item.price) {
+      toast({ variant: 'destructive', title: 'Not enough CYBACOIN' });
+      return;
+    }
+    setBuyingId(`gear_${gearId}`);
+    try {
+      await updateDoc(doc(firestore, 'users', user.uid), {
+        cybaCoinBalance: increment(-item.price),
+        purchasedGear: arrayUnion(gearId),
+      });
+      await logTransaction(firestore, user.uid, {
+        type: 'reward_purchase',
+        amount: -item.price,
+        description: `Avatar Gear: ${item.emoji} ${item.name}`,
+      });
+      toast({ title: `${item.emoji} ${item.name} unlocked!`, description: `${item.price.toLocaleString()} CYBACOIN spent.` });
+    } catch {
+      toast({ variant: 'destructive', title: 'Purchase failed', description: 'Please try again.' });
+    } finally {
+      setBuyingId(null);
+    }
+  };
+
+  const handleToggleEquipGear = async (gearId: string) => {
+    if (!user) return;
+    const item = GEAR_CATALOG.find(g => g.id === gearId);
+    if (!item) return;
+    const isEquipped = equippedGear.includes(gearId);
+    // Only one item per slot can be equipped at a time.
+    const nextEquipped = isEquipped
+      ? equippedGear.filter(id => id !== gearId)
+      : [...equippedGear.filter(id => GEAR_CATALOG.find(g => g.id === id)?.slot !== item.slot), gearId];
+    try {
+      await updateDoc(doc(firestore, 'users', user.uid), { equippedGear: nextEquipped });
+    } catch {
+      toast({ variant: 'destructive', title: 'Could not update gear' });
+    }
+  };
+
   const handleUnlockQuest = async (quest: CustomQuest) => {
     if (!user || !userProfile || !quest.unlockPrice) return;
     const { currency, amount } = quest.unlockPrice;
@@ -532,6 +582,9 @@ export default function RewardsPage() {
           </button>
           <button onClick={() => scrollToSection('rewards-backgrounds')} className="px-3 py-1.5 rounded-full text-xs font-semibold bg-card/60 border border-border/50 hover:border-primary/40 transition-colors">
             🎨 Backgrounds
+          </button>
+          <button onClick={() => scrollToSection('rewards-avatar')} className="px-3 py-1.5 rounded-full text-xs font-semibold bg-card/60 border border-border/50 hover:border-primary/40 transition-colors">
+            🎽 Avatar Upgrades
           </button>
         </div>
       </div>
@@ -847,6 +900,54 @@ export default function RewardsPage() {
                 onBuy={handleBuy}
                 buying={buyingId === bg.id}
               />
+            );
+          })}
+        </div>
+      </section>
+
+      <section id="rewards-avatar" className="mt-14 scroll-mt-20">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="h-px flex-1 bg-border/50" />
+          <h2 className="text-xs font-bold tracking-widest uppercase text-muted-foreground px-2">
+            Avatar Upgrades
+          </h2>
+          <div className="h-px flex-1 bg-border/50" />
+        </div>
+        <p className="text-center text-xs text-muted-foreground mb-6 max-w-lg mx-auto">
+          Equip gear for a passive CC bonus — earn extra CYBACOIN every time you post, like, comment, or share.
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {GEAR_CATALOG.map(item => {
+            const owned = purchasedGear.includes(item.id);
+            const equipped = equippedGear.includes(item.id);
+            const canAfford = balance >= item.price;
+            const bonusLabel = Object.entries(item.bonus).map(([k, v]) => `+${Math.round((v ?? 0) * 100)}% ${k}`).join(' · ');
+            return (
+              <div key={item.id} className={cn(
+                'rounded-2xl border p-4 flex flex-col items-center text-center gap-2 transition-all',
+                equipped ? 'border-primary/60 shadow-[0_0_16px_rgba(138,43,226,0.3)] bg-card/80' : 'border-border/50 bg-card/50',
+              )}>
+                <span className="text-3xl">{item.emoji}</span>
+                <p className="text-sm font-semibold">{item.name}</p>
+                <p className="text-[10px] text-yellow-400 font-bold">{bonusLabel}</p>
+                {owned ? (
+                  <Button size="sm" variant={equipped ? 'outline' : 'default'} className="w-full" onClick={() => handleToggleEquipGear(item.id)}>
+                    {equipped ? 'Unequip' : 'Equip'}
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    disabled={!user || !canAfford || buyingId === `gear_${item.id}`}
+                    onClick={() => handleBuyGear(item.id)}
+                  >
+                    {buyingId === `gear_${item.id}`
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : `${item.price.toLocaleString()} CC`
+                    }
+                  </Button>
+                )}
+              </div>
             );
           })}
         </div>

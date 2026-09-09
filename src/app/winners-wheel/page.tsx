@@ -8,7 +8,7 @@ import {
   WHEEL_PRIZES,
   BOOST_INFO,
   DEFAULT_INVENTORY,
-  canSpinDaily,
+  canSpinToday,
   nextSpinAt,
   type WheelPrize,
   type BoostType,
@@ -389,7 +389,7 @@ export default function WinnersWheelPage() {
 
   const lastSpin = userData?.lastWheelSpin ?? null;
   const bonusSpins = userData?.bonusSpinsAvailable ?? 0;
-  const dailyAvailable = canSpinDaily(lastSpin);
+  const dailyAvailable = canSpinToday(lastSpin);
   const canSpin = (dailyAvailable || bonusSpins > 0) && !spinning && hasPostedToday;
 
   // ── Spin ──
@@ -469,6 +469,16 @@ export default function WinnersWheelPage() {
       } else {
         updates['inventory.sponsored_profile.quantity'] = 1;
       }
+    } else if (prize.type === 'spotlight_boost_24h') {
+      const alreadyHas = (inventorySnapshot.spotlight_boost_24h?.quantity ?? 0) > 0;
+      if (alreadyHas) {
+        updates.cybaCoinBalance = increment(10);
+      } else {
+        updates['inventory.spotlight_boost_24h.quantity'] = 1;
+      }
+    } else if (prize.type === 'free_quest_entry') {
+      // Stackable — no one-at-a-time cap like the other inventory items.
+      updates['inventory.free_quest_entry.quantity'] = increment(1);
     }
 
     try {
@@ -513,6 +523,11 @@ export default function WinnersWheelPage() {
     } else if (boostType === 'sponsored_profile') {
       router.push('/sponsor?type=profile');
       return;
+    } else if (boostType === 'spotlight_boost_24h') {
+      // Reuses the same spotlightBoost flag the weekly subscription grants (post glow), just
+      // temporary — a cron would be needed to clear it after 24h; PLACEHOLDER until that exists.
+      updates.spotlightBoost = true;
+      updates.spotlightBoost24hExpiresAt = Date.now() + 24 * 60 * 60 * 1000;
     }
     await updateDoc(doc(firestore, 'users', user.uid), updates);
   };

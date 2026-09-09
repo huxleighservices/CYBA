@@ -5,7 +5,6 @@ import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase'
 import { collection, query, doc, setDoc, getDoc } from 'firebase/firestore';
 import { Loader2, Trophy } from 'lucide-react';
 import { AvatarDisplay } from '@/components/AvatarDisplay';
-import { LevelBadge } from '@/components/LevelBadge';
 import { computeLevel, LEVEL_CONFIG } from '@/lib/levels';
 import { Card, CardContent } from '@/components/ui/card';
 import Link from 'next/link';
@@ -19,6 +18,7 @@ type UserEntry = {
   profilePictureUrl?: string;
   postCount?: number;
   supportGiven?: number;
+  levelOverride?: string;
   weeklyPostCount?: number;
   weeklySupportGiven?: number;
   membershipTier?: string;
@@ -190,7 +190,7 @@ export default function LeaderboardPage() {
   return (
     <div className="container mx-auto px-4 pt-3 pb-8 max-w-5xl">
       <SectionHeader
-        title="CYBAZONE Leaderboard"
+        title="Leaderboard"
         description="Live rankings based on posts and community support."
         className="mb-4"
       />
@@ -257,7 +257,6 @@ export default function LeaderboardPage() {
                   <tr className="border-b border-border bg-muted/40 text-muted-foreground text-[10px] sm:text-xs font-bold uppercase tracking-wider">
                     <th className="py-2 pl-2 pr-1 sm:px-3 text-center w-8 sm:w-14">Rank</th>
                     <th className="py-2 pl-3 pr-1 sm:pl-5 sm:pr-3 text-left">User</th>
-                    <th className="py-2 px-1 sm:px-3 text-center hidden sm:table-cell w-20">Tier</th>
                     <th className="py-2 px-1 sm:px-3 text-center w-12 sm:w-20">Posts</th>
                     <th className="py-2 pl-1 pr-2 sm:px-3 text-center w-12 sm:w-20">Supp</th>
                   </tr>
@@ -265,7 +264,7 @@ export default function LeaderboardPage() {
                 <tbody>
                   {activeRanked.map((user, i) => {
                     const rank = i + 1;
-                    const level = computeLevel(user.postCount, user.supportGiven);
+                    const level = computeLevel(user.postCount, user.supportGiven, undefined, user.levelOverride);
                     const levelCfg = LEVEL_CONFIG[level] ?? Object.values(LEVEL_CONFIG)[0];
                     const posts = tab === 'weekly' ? (user.weeklyPostCount ?? 0) : (user.postCount ?? 0);
                     const supports = tab === 'weekly' ? (user.weeklySupportGiven ?? 0) : (user.supportGiven ?? 0);
@@ -298,14 +297,9 @@ export default function LeaderboardPage() {
                               <p className={`font-bold text-xs sm:text-sm truncate ${rank === 1 ? 'text-yellow-300' : rank === 2 ? 'text-slate-300' : rank === 3 ? 'text-orange-300' : ''}`}>
                                 {user.username}
                               </p>
-                              <p className="text-[10px] text-muted-foreground hidden sm:block">{levelCfg.emoji} {levelCfg.name}</p>
+                              <p className="text-[10px] text-muted-foreground">{levelCfg.emoji} {levelCfg.name}</p>
                             </div>
                           </Link>
-                        </td>
-
-                        {/* Tier */}
-                        <td className="py-2 px-1 sm:px-3 text-center hidden sm:table-cell">
-                          <LevelBadge level={level} size="sm" />
                         </td>
 
                         {/* Posts */}

@@ -129,7 +129,8 @@ export default function SignupPage() {
             username,
             username_lowercase: username.toLowerCase(),
             email,
-            cybaCoinBalance: 0,
+            cybaCoinBalance: 50000,
+            freePromoVouchers: { day7: 1, day14: 0, day30: 0 },
           };
           if (payoutUsername.trim()) {
             userData.payoutPlatform = payoutPlatform;

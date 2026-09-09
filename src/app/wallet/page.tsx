@@ -13,6 +13,7 @@ import type { TransactionType, CashTransactionType } from '@/lib/transactions';
 import { logCashTransaction } from '@/lib/transactions';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { CC_BUNDLE_ORDER, DEFAULT_CC_BUNDLES, type CcBundlesConfig } from '@/lib/cybacoin-bundles';
 
 type UserProfile = {
   cybaCoinBalance?: number;
@@ -54,6 +55,7 @@ const TX_META: Record<TransactionType, { icon: string; color: string }> = {
   ad_skip:            { icon: '📢', color: 'text-red-400' },
   ad_watch_reward:    { icon: '📢', color: 'text-green-400' },
   promo_renewal_bonus: { icon: '🎁', color: 'text-green-400' },
+  pulse_reward:       { icon: '✨', color: 'text-purple-400' },
 };
 
 const CASH_TX_META: Record<CashTransactionType, { icon: string; color: string }> = {
@@ -106,6 +108,10 @@ export default function WalletPage() {
     [firestore, user]
   );
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
+
+  const bundlesConfigRef = useMemoFirebase(() => doc(firestore, 'settings', 'cybaCoinBundles'), [firestore]);
+  const { data: bundlesConfigRaw } = useDoc<Partial<CcBundlesConfig>>(bundlesConfigRef);
+  const bundlesConfig: CcBundlesConfig = { ...DEFAULT_CC_BUNDLES, ...bundlesConfigRaw };
 
   const txQuery = useMemoFirebase(
     () =>
@@ -222,6 +228,32 @@ export default function WalletPage() {
           >
             <RotateCw className="h-4 w-4" /> Spin the CYBAWHEEL
           </Link>
+        </div>
+      </div>
+
+      {/* CYBACOIN Bundle Packs — fiat purchase tiers */}
+      <div className="rounded-2xl border border-yellow-500/20 bg-card/50 p-6 mb-10">
+        <p className="text-xs text-muted-foreground mb-3 uppercase tracking-widest">Buy CYBACOIN</p>
+        <div className="grid sm:grid-cols-3 gap-3">
+          {CC_BUNDLE_ORDER.map(key => {
+            const bundle = bundlesConfig[key];
+            const stripeUrl = bundle.buttonLink && userProfile?.username
+              ? `${bundle.buttonLink}?prefilled_custom_field[0][value]=${encodeURIComponent(userProfile.username)}`
+              : bundle.buttonLink;
+            return (
+              <a
+                key={key}
+                href={stripeUrl || undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`rounded-xl border border-yellow-500/30 bg-yellow-950/10 px-4 py-3 text-center hover:border-yellow-400/60 transition-colors ${!stripeUrl ? 'pointer-events-none opacity-50' : ''}`}
+              >
+                <p className="text-sm font-bold">{bundle.name}</p>
+                <p className="text-xs text-yellow-400 font-semibold">{bundle.amount.toLocaleString()} CC</p>
+                <p className="text-xs text-muted-foreground mt-1">{bundle.priceLabel}</p>
+              </a>
+            );
+          })}
         </div>
       </div>
 
