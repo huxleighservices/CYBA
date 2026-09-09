@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '../../firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 
-// Prize amounts by rank (USD)
+// Prize amounts by rank (USD) — cash payout, gated on payoutEnrolled, untouched by the CC+voucher addition below.
 const PRIZES: Record<number, number> = {
   1: 20,
   2: 10,
@@ -10,6 +10,10 @@ const PRIZES: Record<number, number> = {
   4: 3,
   5: 2,
 };
+
+// Top-3-only, added ON TOP of the cash payout above, NOT gated on payoutEnrolled.
+const TOP3_CC_BONUS: Record<number, number> = { 1: 50000, 2: 25000, 3: 10000 };
+const TOP3_VOUCHER_TIER: Record<number, 'day30' | 'day14' | 'day7'> = { 1: 'day30', 2: 'day14', 3: 'day7' };
 
 function score(user: { postCount?: number; supportGiven?: number }) {
   return (user.postCount ?? 0) + (user.supportGiven ?? 0);
@@ -84,6 +88,28 @@ export async function POST(request: NextRequest) {
         type: 'quest_payout',
         amount: prize,
         description: `Weekly Leaderboard Payout — Rank #${rank} ($${prize.toFixed(2)})`,
+        timestamp: FieldValue.serverTimestamp(),
+      });
+    }
+
+    // Top 3 CC + free-promo-voucher bonus — added on top of the cash payout above, independent
+    // of payoutEnrolled (every top-3 finisher gets this, not just cash-enrolled members).
+    for (let i = 0; i < Math.min(3, top5.length); i++) {
+      const user = top5[i];
+      const rank = i + 1;
+      const ccBonus = TOP3_CC_BONUS[rank];
+      const voucherTier = TOP3_VOUCHER_TIER[rank];
+      const userRef = db.collection('users').doc(user.id);
+
+      batch.update(userRef, {
+        cybaCoinBalance: FieldValue.increment(ccBonus),
+        [`freePromoVouchers.${voucherTier}`]: FieldValue.increment(1),
+      });
+      const ccTxRef = db.collection('users').doc(user.id).collection('coinTransactions').doc();
+      batch.set(ccTxRef, {
+        type: 'quest_reward',
+        amount: ccBonus,
+        description: `Top CYBA of the Week — Rank #${rank} (+${ccBonus.toLocaleString()} CC, +1 ${voucherTier} free promo)`,
         timestamp: FieldValue.serverTimestamp(),
       });
     }

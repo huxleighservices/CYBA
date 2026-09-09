@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '../../firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { AD_TIER_INCLUDED_UPSELLS, type AdTierKey } from '@/lib/ad-drop';
+import { AD_TIER_INCLUDED_UPSELLS, OVERLAP_CASHBACK_PCT, type AdTierKey } from '@/lib/ad-drop';
 import { createNotificationAdmin } from '@/lib/notifications-admin';
-
-const USD_TO_CC_RATE_FALLBACK = 100; // PLACEHOLDER — confirm before launch
-const EARLY_RENEWAL_BONUS_PCT = 0.15;
+import { classifyCcBundle, DEFAULT_CC_BUNDLES } from '@/lib/cybacoin-bundles';
 
 // Maps product name keywords → internal boost type key (order matters: longest match first)
 function classifyBoost(productName: string): string | null {
@@ -46,12 +44,7 @@ function isUnskippableUpsell(productName: string): boolean {
 
 function isMediaQuestUpsell(productName: string): boolean {
   const n = productName.toLowerCase();
-  return isPromoBlastProduct(n) && (n.includes('media cybaquest') || n.includes('media quest'));
-}
-
-function isCybashirtUpsell(productName: string): boolean {
-  const n = productName.toLowerCase();
-  return isPromoBlastProduct(n) && n.includes('cybashirt');
+  return isPromoBlastProduct(n) && (n.includes('cybaquest') || n.includes('media quest'));
 }
 
 async function activateAdTier(adId: string, expectedUserId: string, tier: AdTierKey, amountTotalCents: number | null): Promise<void> {
@@ -87,14 +80,15 @@ async function activateAdTier(adId: string, expectedUserId: string, tier: AdTier
     expiresAt: new Date(now.getTime() + days * 24 * 60 * 60 * 1000),
     ...(included.includes('unskippable') ? { unskippable: true } : {}),
     ...(included.includes('mediaQuest') ? { wantsMediaQuest: true } : {}),
-    ...(included.includes('cybashirt') ? { wantsCybashirt: true } : {}),
   });
   console.log(`✅ Ad ${adId} activated (${tier})`);
 
-  // Early-renewal bonus: this user bought a new promo slot while another one they own is
-  // still active (i.e. hasn't expired) — credit 15% of the new purchase's price as CYBACOIN.
-  // Every purchase creates its own new `ads` doc (there's no single renewable slot), so
-  // "renewal" concretely means "bought again before the previous one ran out."
+  // Overlap cash-back: this user bought a new promo slot while another one they own is still
+  // active (i.e. hasn't expired) — credit 25% of the new purchase's BASE tier price (upsells
+  // excluded, since amountTotalCents here is the tier checkout only, not an upsell purchase) as
+  // real wallet cash (payoutBalance). Every purchase creates its own new `ads` doc (there's no
+  // single renewable slot), so "overlap" concretely means "bought again before the previous one
+  // ran out."
   if (amountTotalCents != null) {
     try {
       const otherActiveSnap = await adminDb
@@ -109,36 +103,35 @@ async function activateAdTier(adId: string, expectedUserId: string, tier: AdTier
         return ms > now.getTime();
       });
       if (hasOtherActive) {
-        const rate = configData?.usdToCcRate ?? USD_TO_CC_RATE_FALLBACK;
-        const bonusCC = Math.round((amountTotalCents / 100) * EARLY_RENEWAL_BONUS_PCT * rate);
-        if (bonusCC > 0) {
+        const bonusCash = Math.round((amountTotalCents / 100) * OVERLAP_CASHBACK_PCT * 100) / 100;
+        if (bonusCash > 0) {
           const userRef = adminDb.collection('users').doc(expectedUserId);
-          await userRef.update({ cybaCoinBalance: FieldValue.increment(bonusCC) });
-          await userRef.collection('coinTransactions').add({
-            type: 'promo_renewal_bonus',
-            amount: bonusCC,
-            description: 'Early-renewal bonus — bought a new promo slot before your last one expired',
+          await userRef.update({ payoutBalance: FieldValue.increment(bonusCash) });
+          await userRef.collection('cashTransactions').add({
+            type: 'promo_blast_purchase',
+            amount: bonusCash,
+            description: 'Overlap cash-back — bought a new promo slot before your last one expired',
             timestamp: FieldValue.serverTimestamp(),
           });
           await createNotificationAdmin(expectedUserId, {
             type: 'promo_renewal_bonus',
             actorId: 'system',
             actorUsername: 'CYBAZONE',
-            message: `You earned ${bonusCC.toLocaleString()} CYBACOIN for renewing your promo slot early!`,
+            message: `You earned $${bonusCash.toFixed(2)} cash back for renewing your promo slot early!`,
             linkTo: '/wallet',
           });
-          console.log(`🎁 Early-renewal bonus: ${bonusCC} CC to ${expectedUserId}`);
+          console.log(`🎁 Overlap cash-back: $${bonusCash} to ${expectedUserId}`);
         }
       }
     } catch (err) {
-      console.error('Early-renewal bonus check failed:', err);
+      console.error('Overlap cash-back check failed:', err);
     }
   }
 }
 
 // Upsells can complete before or after the base tier checkout's webhook lands, and the ad may
 // already be 'active' by then — so this only verifies ownership, not pending_payment status.
-async function applyAdUpsell(adId: string, expectedUserId: string, kind: 'unskippable' | 'mediaQuest' | 'cybashirt'): Promise<void> {
+async function applyAdUpsell(adId: string, expectedUserId: string, kind: 'unskippable' | 'mediaQuest'): Promise<void> {
   const adRef = adminDb.collection('ads').doc(adId);
   const adSnap = await adRef.get();
   if (!adSnap.exists) {
@@ -150,7 +143,7 @@ async function applyAdUpsell(adId: string, expectedUserId: string, kind: 'unskip
     console.warn(`[stripe webhook] Ad ${adId} userId mismatch — refusing to apply upsell ${kind}`);
     return;
   }
-  const field = kind === 'unskippable' ? 'unskippable' : kind === 'mediaQuest' ? 'wantsMediaQuest' : 'wantsCybashirt';
+  const field = kind === 'unskippable' ? 'unskippable' : 'wantsMediaQuest';
   await adRef.update({ [field]: true });
   console.log(`✅ Ad ${adId} upsell applied: ${kind}`);
 }
@@ -267,11 +260,21 @@ export async function POST(request: NextRequest) {
           await applyAdUpsell(adId.trim(), userDoc.id, 'unskippable');
         } else if (isMediaQuestUpsell(productName)) {
           await applyAdUpsell(adId.trim(), userDoc.id, 'mediaQuest');
-        } else if (isCybashirtUpsell(productName)) {
-          await applyAdUpsell(adId.trim(), userDoc.id, 'cybashirt');
         } else {
           console.warn(`Unrecognized AD DROP product name: "${productName}"`);
         }
+      } else if (classifyCcBundle(productName)) {
+        // CYBACOIN fiat bundle — credit the bundle's CC amount directly.
+        const bundleKey = classifyCcBundle(productName)!;
+        const amount = DEFAULT_CC_BUNDLES[bundleKey].amount;
+        await userDoc.ref.update({ cybaCoinBalance: FieldValue.increment(amount) });
+        await userDoc.ref.collection('coinTransactions').add({
+          type: 'boost_purchase',
+          amount,
+          description: `CYBACOIN Bundle: ${DEFAULT_CC_BUNDLES[bundleKey].name}`,
+          timestamp: FieldValue.serverTimestamp(),
+        });
+        console.log(`✅ CC bundle applied [${bundleKey}]: ${rawUsername} (uid: ${userDoc.id}) +${amount}`);
       } else {
         // Determine which boost was purchased from the Stripe product name
         const detected = classifyBoost(productName);

@@ -39,6 +39,12 @@ export async function POST(request: NextRequest) {
     const newUsername = newUserDoc.data()?.username ?? 'new user';
     const now = new Date();
 
+    // 5 Zone Builder referrals → +1 to the 7-day free-promo counter. Checked against the
+    // count BEFORE this referral's increment, since FieldValue.increment doesn't let us read
+    // the post-increment value synchronously.
+    const referrerCountBefore = referrerDoc.data()?.referralCount ?? 0;
+    const crossesFiveReferrals = referrerCountBefore + 1 === 5;
+
     const batch = adminDb.batch();
     batch.update(newUserRef, {
       cybaCoinBalance: FieldValue.increment(1000),
@@ -49,6 +55,7 @@ export async function POST(request: NextRequest) {
       cybaCoinBalance: FieldValue.increment(1000),
       payoutBalance: FieldValue.increment(1),
       referralCount: FieldValue.increment(1),
+      ...(crossesFiveReferrals ? { 'freePromoVouchers.day7': FieldValue.increment(1) } : {}),
     });
     // Track this referral in referrer's subcollection
     const referralEntryRef = adminDb

@@ -30,8 +30,8 @@ export async function POST(request: NextRequest) {
         type: 'promo_expiring_soon',
         actorId: 'system',
         actorUsername: 'CYBAZONE',
-        message: 'Your promo slot expires in 3 days! Renew before it ends and get 15% of the new package price back as CYBACOIN — and if you have a minute, we\'d love a review.',
-        linkTo: '/ad-drop',
+        message: 'Your promo slot expires in 3 days! Renew before it ends and get 25% of the new slot\'s price back as cash — and if you have a minute, we\'d love a review.',
+        linkTo: '/promo-blast',
       });
       await d.ref.update({ expiryWarningSent: true });
     }
