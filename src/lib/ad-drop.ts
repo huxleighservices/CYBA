@@ -17,12 +17,15 @@ export interface AdDoc {
   videoDurationSeconds?: number;
   unskippable?: boolean;
   wantsMediaQuest?: boolean;
-  wantsCybashirt?: boolean;
+  /** Buyer's answer to "What do you want members to do?" — only set when wantsMediaQuest is true. */
+  questInstructions?: string;
   viewCount?: number;
   clickCount?: number;
   totalWatchSeconds?: number;
   /** Set once the 3-day-before-expiry notification has been sent, so the cron doesn't resend it daily. */
   expiryWarningSent?: boolean;
+  /** Free-promo voucher redemption — set when this slot was activated for $0 via a voucher. */
+  redeemedWithVoucher?: boolean;
 }
 
 export interface AdTierConfig {
@@ -46,26 +49,25 @@ export interface AdDropConfig {
   tiers: Record<AdTierKey, AdTierConfig>;
   unskippable: AdUpsellConfig;
   mediaQuest: AdUpsellConfig;
-  cybashirt: AdUpsellConfig;
   skipCostCC: number;
   /** CYBACOIN granted for watching an ad to completion. PLACEHOLDER — confirm before launch. */
   watchRewardCC: number;
-  /** USD -> CYBACOIN rate used for the early-renewal bonus (15% of price, converted). PLACEHOLDER — confirm before launch. */
+  /** USD -> CYBACOIN rate used for boost/reward conversions. PLACEHOLDER — confirm before launch. */
   usdToCcRate: number;
 }
 
-export type AdUpsellKey = 'unskippable' | 'mediaQuest' | 'cybashirt';
+export type AdUpsellKey = 'unskippable' | 'mediaQuest';
 
-/** Add-ons bundled FREE with each tier — Premium (day30) includes all 3, Standard (day14)
- *  includes CYBASHIRT, Value (day7) includes none. Any add-on not in this list for a tier is
- *  still offered, but as a paid extra. */
+/** Add-ons bundled FREE with each tier — Premium (day30) includes both, Standard (day14)
+ *  includes CYBAQUEST only, Value (day7) includes none. Any add-on not in this list for a
+ *  tier is still offered, but as a paid extra. */
 export const AD_TIER_INCLUDED_UPSELLS: Record<AdTierKey, AdUpsellKey[]> = {
   day7: [],
-  day14: ['cybashirt'],
-  day30: ['unskippable', 'mediaQuest', 'cybashirt'],
+  day14: ['mediaQuest'],
+  day30: ['unskippable', 'mediaQuest'],
 };
 
-const ALL_UPSELL_KEYS: AdUpsellKey[] = ['unskippable', 'mediaQuest', 'cybashirt'];
+const ALL_UPSELL_KEYS: AdUpsellKey[] = ['unskippable', 'mediaQuest'];
 
 /** Add-ons offered as paid extras for a tier — everything not already bundled free. */
 export function getSelectableUpsells(tier: AdTierKey): AdUpsellKey[] {
@@ -90,14 +92,20 @@ export const AD_TIER_MAX_VIDEO_SECONDS: Record<AdTierKey, number> = {
 
 export const DEFAULT_AD_DROP_CONFIG: AdDropConfig = {
   tiers: {
-    day7: { priceLabel: '$4.99', buttonLink: '', days: 7 },
-    day14: { priceLabel: '$8.99', buttonLink: '', days: 14 },
-    day30: { priceLabel: '$14.99', buttonLink: '', days: 30 },
+    day7: { priceLabel: '$24.99', buttonLink: '', days: 7 },
+    day14: { priceLabel: '$124.99', buttonLink: '', days: 14 },
+    day30: { priceLabel: '$624.99', buttonLink: '', days: 30 },
   },
   unskippable: { priceLabel: '$2.99', buttonLink: '' },
   mediaQuest: { priceLabel: '$9.99', buttonLink: '' },
-  cybashirt: { priceLabel: '$19.99', buttonLink: '' },
   skipCostCC: 1000,
   watchRewardCC: 5, // PLACEHOLDER — confirm before launch
   usdToCcRate: 100, // PLACEHOLDER — confirm before launch (100 CC per $1)
 };
+
+/** Cash-back rebate paid into CYBAWALLET (payoutBalance) when purchasing a new promo slot
+ *  while another slot is still active — 25% of the base tier price (upsells excluded). */
+export const OVERLAP_CASHBACK_PCT = 0.25;
+
+export type FreePromoTier = AdTierKey;
+export type FreePromoVouchers = Record<FreePromoTier, number>;

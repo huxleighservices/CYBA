@@ -56,7 +56,19 @@ export const DEFAULT_LEVEL_THRESHOLDS: LevelThresholds = {
   storm_posts: 300, storm_support: 3500,
 };
 
-export function computeLevel(postCount: number = 0, supportGiven: number = 0, cfg?: Partial<LevelThresholds>): Level {
+const VALID_LEVELS: readonly string[] = ['spark', 'charge', 'surge', 'storm'];
+
+export function computeLevel(
+  postCount: number = 0,
+  supportGiven: number = 0,
+  cfg?: Partial<LevelThresholds>,
+  // Admin-set manual override (users/{uid}.levelOverride) — a distinct concept from
+  // membershipTier ("Tier", Zone Pass). When set to a valid Level, it wins outright.
+  levelOverride?: string,
+): Level {
+  if (levelOverride && VALID_LEVELS.includes(levelOverride)) {
+    return levelOverride as Level;
+  }
   const t = { ...DEFAULT_LEVEL_THRESHOLDS, ...cfg };
   if (postCount >= t.storm_posts && supportGiven >= t.storm_support) return 'storm';
   if (postCount >= t.surge_posts && supportGiven >= t.surge_support) return 'surge';

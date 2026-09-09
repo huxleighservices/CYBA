@@ -1,4 +1,4 @@
-export type QuestRequirementType = 'posts' | 'supportGiven' | 'profilePictureSet' | 'bioSet';
+export type QuestRequirementType = 'posts' | 'supportGiven' | 'profilePictureSet' | 'bioSet' | 'subnetMembers';
 
 export interface QuestRequirement {
   type: QuestRequirementType;
@@ -25,6 +25,7 @@ export type UserStats = {
   supportGiven: number;
   profilePictureSet: number; // 0 or 1
   bioSet: number;            // 0 or 1
+  subnetMembers: number;     // active Subnet member count (subnets/{uid}.memberCount)
 };
 
 export const QUESTS: Quest[] = [
@@ -74,6 +75,18 @@ export const QUESTS: Quest[] = [
     requirements: [{ type: 'supportGiven', label: 'Creators supported', target: 1, icon: '🤝' }],
     reward: { coins: 75 },
     prerequisiteIds: [],
+    difficulty: 'easy',
+  },
+  {
+    id: 'just_landed',
+    level: 4.5,
+    title: 'JUST LANDED',
+    description: 'Welcome to the Zone. Finish setting up your profile and drop your first post to complete onboarding.',
+    flavorText: '"Every legend starts with a landing."',
+    nodeEmoji: '🗺️',
+    requirements: [{ type: 'posts', label: 'First post made', target: 1, icon: '📝' }],
+    reward: { coins: 100, title: 'Just Landed' },
+    prerequisiteIds: ['tut_pfp', 'tut_bio'],
     difficulty: 'easy',
   },
   {
@@ -189,6 +202,18 @@ export const QUESTS: Quest[] = [
     reward: { coins: 5000, badge: 'CYBA Legend', title: 'CYBA LEGEND' },
     prerequisiteIds: ['w3q1'],
     difficulty: 'legendary',
+  },
+  {
+    id: 'subnet_10',
+    level: 13,
+    title: 'BUILD YOUR SUBNET',
+    description: 'Get 10 CYBAs to join your Subnet.',
+    flavorText: '"Your own paid corner of the Zone."',
+    nodeEmoji: '🔒',
+    requirements: [{ type: 'subnetMembers', label: 'Subnet Members', target: 10, icon: '🔒' }],
+    reward: { coins: 2500, title: 'Subnet Builder' },
+    prerequisiteIds: [],
+    difficulty: 'hard',
   },
 ];
 

@@ -13,6 +13,7 @@ export interface CCRates {
     comment: CCRatesByLevel;
     share:   CCRatesByLevel;
   };
+  pulse: CCRatesByLevel;
 }
 
 // ─────────────────────────────────────────────
@@ -30,6 +31,7 @@ export const DEFAULT_CC_RATES: CCRates = {
     comment: { spark: 75,  charge: 150, surge: 300, storm: 600 },
     share:   { spark: 100, charge: 200, surge: 400, storm: 800 },
   },
+  pulse: { spark: 50, charge: 100, surge: 150, storm: 250 },
 };
 
 // Merge a partial Firestore override with the defaults so missing keys
@@ -46,6 +48,7 @@ export function mergeWithDefaults(partial: Partial<CCRates>): CCRates {
       comment: { ...DEFAULT_CC_RATES.engagement.comment, ...(partial.engagement?.comment ?? {}) },
       share:   { ...DEFAULT_CC_RATES.engagement.share,   ...(partial.engagement?.share   ?? {}) },
     },
+    pulse: { ...DEFAULT_CC_RATES.pulse, ...(partial.pulse ?? {}) },
   };
 }
 
@@ -63,4 +66,8 @@ export function getCCForEngagement(
   rates?: CCRates | null,
 ): number {
   return (rates ?? DEFAULT_CC_RATES).engagement[action][level];
+}
+
+export function getCCForPulse(level: Level, rates?: CCRates | null): number {
+  return (rates ?? DEFAULT_CC_RATES).pulse[level];
 }

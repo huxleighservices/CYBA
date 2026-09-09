@@ -11,7 +11,11 @@ export type NotificationType =
   | 'market_purchase'
   | 'promo_expiring_soon'
   | 'promo_renewal_bonus'
-  | 'new_post';
+  | 'new_post'
+  | 'subnet_request'
+  | 'subnet_approved'
+  | 'subnet_invite'
+  | 'subnet_revoked';
 
 export interface NotificationPayload {
   type: NotificationType;

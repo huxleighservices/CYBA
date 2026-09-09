@@ -1,5 +1,5 @@
-export type PrizeType = 'coins' | 'multiplier' | 'sponsored_post' | 'sponsored_profile' | 'bonus_spin';
-export type BoostType = 'multiplier_2x' | 'multiplier_3x' | 'sponsored_post' | 'sponsored_profile';
+export type PrizeType = 'coins' | 'multiplier' | 'sponsored_post' | 'sponsored_profile' | 'bonus_spin' | 'free_quest_entry' | 'spotlight_boost_24h';
+export type BoostType = 'multiplier_2x' | 'multiplier_3x' | 'sponsored_post' | 'sponsored_profile' | 'spotlight_boost_24h';
 
 export interface WheelPrize {
   id: string;
@@ -14,104 +14,94 @@ export interface WheelPrize {
   weight: number;
 }
 
-// 10 segments, weighted so small CC payouts are common and the big prizes (3x Multiplier,
-// 5,000 CC jackpot, Spotlight boosts) are rare.
+// CYBAWHEEL — 10 segments in the exact order/rarity spec'd: 3x Multiplier, the 5,000 CC
+// jackpot, and the 24hr Spotlight Boost are the three "Rare" wedges with the lowest weights.
 export const WHEEL_PRIZES: WheelPrize[] = [
   {
-    id: 'coins_10',
+    id: 'coins_500',
     type: 'coins',
-    label: '10',
-    description: '10 CYBACOIN',
+    label: '500',
+    description: '500 CYBACOIN',
     emoji: '🪙',
-    value: 10,
+    value: 500,
     color: '#78350f',
     textColor: '#fcd34d',
-    weight: 22,
+    weight: 20,
   },
   {
-    id: 'coins_25',
-    type: 'coins',
-    label: '25',
-    description: '25 CYBACOIN',
-    emoji: '🪙',
-    value: 25,
-    color: '#92400e',
-    textColor: '#fde68a',
-    weight: 18,
-  },
-  {
-    id: 'mult_2x',
-    type: 'multiplier',
-    label: '2x',
-    description: '2x CybaCoin Multiplier (24 hrs)',
-    emoji: '⚡',
-    value: 2,
-    color: '#4c1d95',
-    textColor: '#c4b5fd',
+    id: 'free_quest_entry',
+    type: 'free_quest_entry',
+    label: 'QUEST',
+    description: 'Free CYBAQUEST Entry',
+    emoji: '🗺️',
+    color: '#14532d',
+    textColor: '#86efac',
     weight: 15,
   },
   {
-    id: 'coins_50',
+    id: 'coins_1000_a',
     type: 'coins',
-    label: '50',
-    description: '50 CYBACOIN',
-    emoji: '🪙',
-    value: 50,
-    color: '#713f12',
-    textColor: '#fef08a',
-    weight: 14,
-  },
-  {
-    id: 'bonus_spin',
-    type: 'bonus_spin',
-    label: 'BONUS!',
-    description: 'Bonus Free Spin!',
-    emoji: '🎰',
-    color: '#14532d',
-    textColor: '#86efac',
-    weight: 12,
-  },
-  {
-    id: 'coins_100',
-    type: 'coins',
-    label: '100',
-    description: '100 CYBACOIN',
+    label: '1,000',
+    description: '1,000 CYBACOIN',
     emoji: '🏆',
-    value: 100,
+    value: 1000,
     color: '#7c2d12',
     textColor: '#fed7aa',
-    weight: 9,
+    weight: 15,
   },
   {
-    id: 'sponsored_post',
-    type: 'sponsored_post',
-    label: 'POST',
-    description: 'Spotlight Post on Global Feed',
-    emoji: '📢',
-    color: '#1e3a8a',
-    textColor: '#93c5fd',
-    weight: 5,
-  },
-  {
-    id: 'sponsored_profile',
-    type: 'sponsored_profile',
-    label: 'PROFILE',
-    description: 'Spotlight Profile on Global Feed',
+    id: 'spotlight_boost_24h',
+    type: 'spotlight_boost_24h',
+    label: 'SPOTLIGHT',
+    description: '24hr Spotlight Boost',
     emoji: '🌟',
     color: '#1e1b4b',
     textColor: '#a5b4fc',
     weight: 3,
   },
   {
+    id: 'coins_2500',
+    type: 'coins',
+    label: '2,500',
+    description: '2,500 CYBACOIN',
+    emoji: '🪙',
+    value: 2500,
+    color: '#92400e',
+    textColor: '#fde68a',
+    weight: 10,
+  },
+  {
     id: 'mult_3x',
     type: 'multiplier',
     label: '3x',
-    description: '3x CybaCoin Multiplier (24 hrs)',
+    description: '3x CYBACOIN Multiplier (24 hrs)',
     emoji: '💫',
     value: 3,
     color: '#3b0764',
     textColor: '#e9d5ff',
     weight: 2,
+  },
+  {
+    id: 'coins_1000_b',
+    type: 'coins',
+    label: '1,000',
+    description: '1,000 CYBACOIN',
+    emoji: '🏆',
+    value: 1000,
+    color: '#713f12',
+    textColor: '#fef08a',
+    weight: 15,
+  },
+  {
+    id: 'mult_2x',
+    type: 'multiplier',
+    label: '2x',
+    description: 'Double CYBACOIN (24 hrs)',
+    emoji: '⚡',
+    value: 2,
+    color: '#4c1d95',
+    textColor: '#c4b5fd',
+    weight: 15,
   },
   {
     id: 'coins_5000',
@@ -123,6 +113,16 @@ export const WHEEL_PRIZES: WheelPrize[] = [
     color: '#7f1d1d',
     textColor: '#fca5a5',
     weight: 1,
+  },
+  {
+    id: 'bonus_spin',
+    type: 'bonus_spin',
+    label: 'BONUS!',
+    description: 'Bonus Free Spin!',
+    emoji: '🎰',
+    color: '#1e3a8a',
+    textColor: '#93c5fd',
+    weight: 4,
   },
 ];
 
@@ -136,6 +136,8 @@ export interface UserInventory {
   multiplier_3x: InventorySlot;
   sponsored_post: InventorySlot;
   sponsored_profile: InventorySlot;
+  spotlight_boost_24h: InventorySlot;
+  free_quest_entry: InventorySlot;
 }
 
 export const DEFAULT_INVENTORY: UserInventory = {
@@ -143,6 +145,8 @@ export const DEFAULT_INVENTORY: UserInventory = {
   multiplier_3x: { quantity: 0 },
   sponsored_post: { quantity: 0 },
   sponsored_profile: { quantity: 0 },
+  spotlight_boost_24h: { quantity: 0 },
+  free_quest_entry: { quantity: 0 },
 };
 
 export const BOOST_INFO: Record<BoostType, {
@@ -175,13 +179,31 @@ export const BOOST_INFO: Record<BoostType, {
     emoji: '🌟',
     activateLabel: 'ACTIVATE SPOTLIGHT PROFILE',
   },
+  spotlight_boost_24h: {
+    label: '24hr Spotlight Boost',
+    description: 'Glows your posts for 24 hours, like the weekly Spotlight Boost subscription.',
+    emoji: '🌟',
+    activateLabel: 'ACTIVATE 24HR SPOTLIGHT',
+  },
 };
 
-export const SPIN_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
+export const SPIN_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours — kept for the nextSpinAt display estimate below
 
+/** @deprecated CYBAWHEEL eligibility is now purely calendar-day-based (see canSpinToday) —
+ *  kept only so any stale callers don't break; no longer used by the spin page itself. */
 export function canSpinDaily(lastSpinMs: number | null | undefined): boolean {
   if (!lastSpinMs) return true;
   return Date.now() - lastSpinMs >= SPIN_COOLDOWN_MS;
+}
+
+/** One spin per calendar day (not a rolling 24h window) — resets at local midnight. */
+export function canSpinToday(lastSpinMs: number | null | undefined): boolean {
+  if (!lastSpinMs) return true;
+  const last = new Date(lastSpinMs);
+  const now = new Date();
+  return last.getFullYear() !== now.getFullYear()
+    || last.getMonth() !== now.getMonth()
+    || last.getDate() !== now.getDate();
 }
 
 export function nextSpinAt(lastSpinMs: number): number {

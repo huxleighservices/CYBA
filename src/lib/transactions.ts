@@ -17,7 +17,8 @@ export type TransactionType =
   | 'boost_subscription'
   | 'ad_skip'
   | 'ad_watch_reward'
-  | 'promo_renewal_bonus';
+  | 'promo_renewal_bonus'
+  | 'pulse_reward';
 
 export type CashTransactionType =
   | 'quest_payout'
