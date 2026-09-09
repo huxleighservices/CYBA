@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       // Award postCount and CybaCoins that were deferred at creation time
       batch.update(adminDb.collection('users').doc(data.authorId), {
         postCount: FieldValue.increment(1),
+        weeklyPostCount: FieldValue.increment(1),
         cybaCoinBalance: FieldValue.increment(cc),
       });
     });

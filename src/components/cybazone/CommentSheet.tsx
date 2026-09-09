@@ -137,7 +137,7 @@ function CommentForm({
       if (user.uid !== postAuthorId) {
         const level = computeLevel(userProfile?.postCount, userProfile?.supportGiven, undefined, userProfile?.levelOverride);
         const cc = applyGearMultiplier(getCCForEngagement('comment', level, ccRates), userProfile?.equippedGear, 'comment');
-        updateDoc(doc(firestore, 'users', user.uid), { supportGiven: increment(1), cybaCoinBalance: increment(cc) }).catch(() => {});
+        updateDoc(doc(firestore, 'users', user.uid), { supportGiven: increment(1), weeklySupportGiven: increment(1), cybaCoinBalance: increment(cc) }).catch(() => {});
         logTransaction(firestore, user.uid, { type: 'engagement_reward', amount: cc, description: '💬 Comment' });
         createNotification(firestore, postAuthorId, {
           type: 'comment',

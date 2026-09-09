@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import {
   collection, query, orderBy, limit, addDoc, serverTimestamp, where,
@@ -149,7 +149,8 @@ export default function ChatPage() {
   );
   const { data: messages, isLoading: msgsLoading } = useCollection<Message>(msgsQuery);
 
-  const [text, setText] = useState('');
+  const searchParams = useSearchParams();
+  const [text, setText] = useState(() => searchParams.get('prefill') ?? '');
   const [sending, setSending] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 

@@ -3686,7 +3686,7 @@ function LaunchResetPanel() {
 function WeeklyPayouts() {
   const { firestore, user: currentUser } = useFirebase();
   const { toast } = useToast();
-  const [triggering, setTriggering] = useState<'payout' | 'reset' | 'boost-billing' | 'subnet-billing' | 'cleanup-ads' | 'promo-expiry' | 'cleanup-pulses' | null>(null);
+  const [triggering, setTriggering] = useState<'payout' | 'reset' | 'boost-billing' | 'subnet-billing' | 'cleanup-ads' | 'promo-expiry' | 'cleanup-pulses' | 'backfill-weekly' | null>(null);
 
   const historyQuery = useMemoFirebase(
     () => query(
@@ -3749,7 +3749,7 @@ function WeeklyPayouts() {
     }
   };
 
-  const triggerCron = async (endpoint: 'weekly-payout' | 'weekly-reset' | 'weekly-boost-billing' | 'weekly-subnet-billing' | 'cleanup-ads' | 'promo-expiry-warning' | 'cleanup-pulses') => {
+  const triggerCron = async (endpoint: 'weekly-payout' | 'weekly-reset' | 'weekly-boost-billing' | 'weekly-subnet-billing' | 'cleanup-ads' | 'promo-expiry-warning' | 'cleanup-pulses' | 'backfill-weekly-scores') => {
     setTriggering(
       endpoint === 'weekly-payout' ? 'payout'
       : endpoint === 'weekly-reset' ? 'reset'
@@ -3757,6 +3757,7 @@ function WeeklyPayouts() {
       : endpoint === 'weekly-subnet-billing' ? 'subnet-billing'
       : endpoint === 'promo-expiry-warning' ? 'promo-expiry'
       : endpoint === 'cleanup-pulses' ? 'cleanup-pulses'
+      : endpoint === 'backfill-weekly-scores' ? 'backfill-weekly'
       : 'cleanup-ads'
     );
     try {
@@ -3791,6 +3792,7 @@ function WeeklyPayouts() {
         'cleanup-ads': 'Ad cleanup complete!',
         'promo-expiry-warning': 'Promo expiry warnings sent!',
         'cleanup-pulses': 'Pulse cleanup complete!',
+        'backfill-weekly-scores': 'Weekly leaderboard backfilled!',
       };
       const descriptions: Record<typeof endpoint, string> = {
         'weekly-payout': `Paid out ${data.paidCount ?? 0} enrolled user(s).`,
@@ -3800,6 +3802,7 @@ function WeeklyPayouts() {
         'cleanup-ads': `Expired and promoted ads processed.`,
         'promo-expiry-warning': `Warned ${data.warned ?? 0} promoter(s) whose slot expires within 3 days.`,
         'cleanup-pulses': `Deleted ${data.deleted ?? 0} expired Pulse(s).`,
+        'backfill-weekly-scores': `Updated ${data.usersUpdated ?? 0} user(s) with this week's real post/support counts.`,
       };
       toast({ title: titles[endpoint], description: descriptions[endpoint] });
     } catch (e) {
@@ -3844,6 +3847,19 @@ function WeeklyPayouts() {
           >
             {triggering === 'boost-billing' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '📅 '}
             Run Boost Billing Now
+          </Button>
+          <Button
+            variant="outline"
+            className="border-red-500/50 text-red-400 hover:bg-red-950"
+            disabled={!!triggering}
+            onClick={() => {
+              if (confirm('Backfill this week\'s real post/support counts for every user from their actual activity since Sunday? Safe to run more than once.')) {
+                triggerCron('backfill-weekly-scores');
+              }
+            }}
+          >
+            {triggering === 'backfill-weekly' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '🛠️ '}
+            Fix Weekly Leaderboard (Backfill)
           </Button>
           <Button
             variant="outline"

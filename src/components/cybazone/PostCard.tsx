@@ -251,7 +251,7 @@ export function PostCard({
         console.error('Error unliking post:', err);
         toast({ variant: 'destructive', title: 'Error', description: 'Could not update like status.' });
       });
-      if (isOthersPost) updateDoc(userRef, { supportGiven: increment(-1) }).catch(() => {});
+      if (isOthersPost) updateDoc(userRef, { supportGiven: increment(-1), weeklySupportGiven: increment(-1) }).catch(() => {});
     } else {
       updateDoc(postRef, {
         likedBy: arrayUnion(user.uid),
@@ -263,7 +263,7 @@ export function PostCard({
       if (isOthersPost) {
         const level = computeLevel(actorProfile?.postCount, actorProfile?.supportGiven, undefined, actorProfile?.levelOverride);
         const cc = applyGearMultiplier(getCCForEngagement('like', level, ccRates), actorProfile?.equippedGear, 'like');
-        updateDoc(userRef, { supportGiven: increment(1), cybaCoinBalance: increment(cc) }).catch(() => {});
+        updateDoc(userRef, { supportGiven: increment(1), weeklySupportGiven: increment(1), cybaCoinBalance: increment(cc) }).catch(() => {});
         logTransaction(firestore, user.uid, { type: 'engagement_reward', amount: cc, description: '❤️ Like' });
         createNotification(firestore, post.authorId, {
           type: 'like',
@@ -304,7 +304,7 @@ export function PostCard({
         console.error('Error unreposting post:', err);
         toast({ variant: 'destructive', title: 'Error', description: 'Could not update repost status.' });
       });
-      if (isOthersPost) updateDoc(userRef, { supportGiven: increment(-1) }).catch(() => {});
+      if (isOthersPost) updateDoc(userRef, { supportGiven: increment(-1), weeklySupportGiven: increment(-1) }).catch(() => {});
     } else {
       updateDoc(postRef, {
         repostedBy: arrayUnion(user.uid),
@@ -316,7 +316,7 @@ export function PostCard({
       if (isOthersPost) {
         const level = computeLevel(actorProfile?.postCount, actorProfile?.supportGiven, undefined, actorProfile?.levelOverride);
         const cc = applyGearMultiplier(getCCForEngagement('share', level, ccRates), actorProfile?.equippedGear, 'share');
-        updateDoc(userRef, { supportGiven: increment(1), cybaCoinBalance: increment(cc) }).catch(() => {});
+        updateDoc(userRef, { supportGiven: increment(1), weeklySupportGiven: increment(1), cybaCoinBalance: increment(cc) }).catch(() => {});
         logTransaction(firestore, user.uid, { type: 'engagement_reward', amount: cc, description: '🔁 Share' });
         createNotification(firestore, post.authorId, {
           type: 'repost',

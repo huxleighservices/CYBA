@@ -372,6 +372,16 @@ function MobileNav({ hasAdminAccess }: { hasAdminAccess: boolean }) {
                 </SheetClose>
               )}
 
+              <SheetClose asChild>
+                <Link
+                  href="/contact"
+                  className="flex items-center gap-3 text-sm text-foreground/70 hover:text-primary py-2"
+                >
+                  <MessageCircle className="h-4 w-4 text-purple-400" />
+                  Contact Us
+                </Link>
+              </SheetClose>
+
               {HELP_LINKS.map(({ label, href, icon: Icon }) => (
                 <SheetClose asChild key={href}>
                   <Link

@@ -558,6 +558,7 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
         const isFirstPost = (userProfile.postCount ?? 0) === 0;
         updateDoc(doc(firestore, 'users', user.uid), {
           postCount: increment(1),
+          weeklyPostCount: increment(1),
           cybaCoinBalance: increment(cc),
         }).catch(() => {});
         if (isFirstPost) {
@@ -705,6 +706,7 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
         const isFirstPost = (userProfile.postCount ?? 0) === 0;
         updateDoc(doc(firestore, 'users', user.uid), {
           postCount: increment(1),
+          weeklyPostCount: increment(1),
           cybaCoinBalance: increment(cc),
         }).catch(() => {});
         if (isFirstPost) {
@@ -1160,7 +1162,7 @@ export default function CreatePage() {
   }
 
   return (
-    <div className="container mx-auto flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-16">
+    <div className="container mx-auto flex flex-col min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-16">
       <CreatePostForm user={user} userProfile={userProfile} />
     </div>
   );
