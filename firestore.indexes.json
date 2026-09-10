@@ -40,6 +40,14 @@
         { "fieldPath": "authorId",   "order": "ASCENDING" },
         { "fieldPath": "timestamp",  "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "engagementLog",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "direction", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
