@@ -29,6 +29,9 @@ export type MarketListing = {
   imageUrl?: string | null;
   active: boolean;
   createdAt?: any;
+  /** When set, this listing is fulfilled entirely on Shopify — the Buy button just links out
+   *  to this product page instead of using CYBAZONE's own cash/CC/wallet purchase flow. */
+  shopifyUrl?: string | null;
 };
 
 function ListingForm({
@@ -54,6 +57,8 @@ function ListingForm({
     ccPrice: item?.ccPrice?.toString() ?? '',
     imageUrl: item?.imageUrl ?? '',
     active: item?.active ?? true,
+    soldViaShopify: !!item?.shopifyUrl,
+    shopifyUrl: item?.shopifyUrl ?? '',
   });
 
   const set = (f: string, v: any) => setForm(p => ({ ...p, [f]: v }));
@@ -72,6 +77,10 @@ function ListingForm({
 
   const handleSave = async () => {
     if (!form.title.trim()) { toast({ variant: 'destructive', title: 'Title required' }); return; }
+    if (form.soldViaShopify && !form.shopifyUrl.trim()) {
+      toast({ variant: 'destructive', title: 'Shopify product link required' });
+      return;
+    }
     setSaving(true);
     try {
       const data = {
@@ -79,10 +88,14 @@ function ListingForm({
         sellerUsername,
         title: form.title.trim(),
         description: form.description.trim(),
-        price: form.price ? parseFloat(form.price) : null,
-        ccPrice: form.ccPrice ? parseInt(form.ccPrice) : null,
+        // A Shopify-fulfilled listing skips CYBAZONE's own cash/CC/wallet purchase flow
+        // entirely, so its own prices don't apply — cleared to avoid a listing that's
+        // ambiguously buyable two different ways at once.
+        price: form.soldViaShopify ? null : (form.price ? parseFloat(form.price) : null),
+        ccPrice: form.soldViaShopify ? null : (form.ccPrice ? parseInt(form.ccPrice) : null),
         imageUrl: form.imageUrl || null,
         active: form.active,
+        shopifyUrl: form.soldViaShopify ? form.shopifyUrl.trim() : null,
       };
       if (item) {
         await setDoc(doc(firestore, 'market_listings', item.id), data, { merge: true });
@@ -108,16 +121,30 @@ function ListingForm({
         <label className="text-xs text-muted-foreground block mb-1">Description</label>
         <Textarea value={form.description} onChange={e => set('description', e.target.value)} rows={3} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs text-muted-foreground block mb-1">Price (USD) — leave blank to disable</label>
-          <Input type="number" step="0.01" min="0" value={form.price} onChange={e => set('price', e.target.value)} placeholder="e.g. 9.99" />
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground block mb-1">Price (CC) — leave blank to disable</label>
-          <Input type="number" min="0" value={form.ccPrice} onChange={e => set('ccPrice', e.target.value)} placeholder="e.g. 500" />
-        </div>
+      <div className="flex items-center gap-2 rounded-lg border border-green-600/30 bg-green-950/10 px-3 py-2.5">
+        <input type="checkbox" checked={form.soldViaShopify} onChange={e => set('soldViaShopify', e.target.checked)} id="listing-shopify" />
+        <label htmlFor="listing-shopify" className="text-sm flex-1">
+          <span className="font-medium">🛍️ Sold via Shopify</span>
+          <span className="block text-xs text-muted-foreground">Buyers are sent to your Shopify product page to check out — CYBAZONE's cash/CC purchase options are skipped for this listing.</span>
+        </label>
       </div>
+      {form.soldViaShopify ? (
+        <div>
+          <label className="text-xs text-muted-foreground block mb-1">Shopify Product URL *</label>
+          <Input value={form.shopifyUrl} onChange={e => set('shopifyUrl', e.target.value)} placeholder="https://your-store.myshopify.com/products/..." />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-muted-foreground block mb-1">Price (USD) — leave blank to disable</label>
+            <Input type="number" step="0.01" min="0" value={form.price} onChange={e => set('price', e.target.value)} placeholder="e.g. 9.99" />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground block mb-1">Price (CC) — leave blank to disable</label>
+            <Input type="number" min="0" value={form.ccPrice} onChange={e => set('ccPrice', e.target.value)} placeholder="e.g. 500" />
+          </div>
+        </div>
+      )}
       <div>
         <label className="text-xs text-muted-foreground block mb-1">Product Image</label>
         {form.imageUrl && (
@@ -229,7 +256,12 @@ export function MyStore({ userId, username }: { userId: string; username: string
                 <img src={item.imageUrl} alt={item.title} className="w-full h-32 object-cover" />
               )}
               <div className="p-3 flex-1">
-                <p className="font-semibold text-sm">{item.title}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="font-semibold text-sm">{item.title}</p>
+                  {item.shopifyUrl && (
+                    <span className="text-[10px] font-bold text-green-400 border border-green-600/40 rounded-full px-1.5 py-0.5">🛍️ Shopify</span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{item.description}</p>
                 <div className="flex gap-3 mt-2 text-xs">
                   {item.price ? <span className="text-green-400 font-bold">${item.price.toFixed(2)}</span> : null}

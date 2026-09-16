@@ -294,12 +294,23 @@ export default function MarketPage() {
                   <img src={listing.imageUrl} alt={listing.title} className="w-full h-40 object-cover" />
                 )}
                 <CardContent className="p-4 flex-1">
-                  <p className="font-semibold">{listing.title}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-semibold">{listing.title}</p>
+                    {listing.shopifyUrl && (
+                      <span className="text-[10px] font-bold text-green-400 border border-green-600/40 rounded-full px-1.5 py-0.5 shrink-0">🛍️ Shopify</span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground mt-1">by @{listing.sellerUsername}</p>
                   <p className="text-sm text-foreground/70 mt-2 line-clamp-2">{listing.description}</p>
                 </CardContent>
                 <CardFooter className="p-4 pt-0 flex-col gap-3">
-                  {listing.price ? (
+                  {listing.shopifyUrl ? (
+                    <Button asChild size="sm" className="w-full bg-green-600 hover:bg-green-500 text-white">
+                      <a href={listing.shopifyUrl} target="_blank" rel="noopener noreferrer">
+                        🛍️ Buy on Shopify
+                      </a>
+                    </Button>
+                  ) : listing.price ? (
                     <div className="flex items-center justify-between w-full">
                       <span className="text-xl font-bold text-primary">${listing.price.toFixed(2)}</span>
                       <Button size="sm"
