@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '../../firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { AD_TIER_INCLUDED_UPSELLS, OVERLAP_CASHBACK_PCT, type AdTierKey } from '@/lib/ad-drop';
+import { AD_TIER_INCLUDED_UPSELLS, OVERLAP_RENEWAL_BONUS_PCT, type AdTierKey } from '@/lib/ad-drop';
 import { createNotificationAdmin } from '@/lib/notifications-admin';
 import { classifyCcBundle, DEFAULT_CC_BUNDLES } from '@/lib/cybacoin-bundles';
 
@@ -83,12 +83,12 @@ async function activateAdTier(adId: string, expectedUserId: string, tier: AdTier
   });
   console.log(`✅ Ad ${adId} activated (${tier})`);
 
-  // Overlap cash-back: this user bought a new promo slot while another one they own is still
-  // active (i.e. hasn't expired) — credit 25% of the new purchase's BASE tier price (upsells
+  // Early-renewal bonus: this user bought a new promo slot while another one they own is still
+  // active (i.e. hasn't expired) — credit 15% of the new purchase's BASE tier price (upsells
   // excluded, since amountTotalCents here is the tier checkout only, not an upsell purchase) as
-  // real wallet cash (payoutBalance). Every purchase creates its own new `ads` doc (there's no
-  // single renewable slot), so "overlap" concretely means "bought again before the previous one
-  // ran out."
+  // CYBACOIN, converted via the admin-configured usdToCcRate. Matches the published Terms of
+  // Use exactly. Every purchase creates its own new `ads` doc (there's no single renewable
+  // slot), so "renewal" concretely means "bought again before the previous one ran out."
   if (amountTotalCents != null) {
     try {
       const otherActiveSnap = await adminDb
@@ -103,28 +103,29 @@ async function activateAdTier(adId: string, expectedUserId: string, tier: AdTier
         return ms > now.getTime();
       });
       if (hasOtherActive) {
-        const bonusCash = Math.round((amountTotalCents / 100) * OVERLAP_CASHBACK_PCT * 100) / 100;
-        if (bonusCash > 0) {
+        const rate = configData?.usdToCcRate ?? 100;
+        const bonusCC = Math.round((amountTotalCents / 100) * OVERLAP_RENEWAL_BONUS_PCT * rate);
+        if (bonusCC > 0) {
           const userRef = adminDb.collection('users').doc(expectedUserId);
-          await userRef.update({ payoutBalance: FieldValue.increment(bonusCash) });
-          await userRef.collection('cashTransactions').add({
-            type: 'promo_blast_purchase',
-            amount: bonusCash,
-            description: 'Overlap cash-back — bought a new promo slot before your last one expired',
+          await userRef.update({ cybaCoinBalance: FieldValue.increment(bonusCC) });
+          await userRef.collection('coinTransactions').add({
+            type: 'promo_renewal_bonus',
+            amount: bonusCC,
+            description: 'Early-renewal bonus — bought a new promo slot before your last one expired',
             timestamp: FieldValue.serverTimestamp(),
           });
           await createNotificationAdmin(expectedUserId, {
             type: 'promo_renewal_bonus',
             actorId: 'system',
             actorUsername: 'CYBAZONE',
-            message: `You earned $${bonusCash.toFixed(2)} cash back for renewing your promo slot early!`,
+            message: `You earned ${bonusCC.toLocaleString()} CYBACOIN for renewing your promo slot early!`,
             linkTo: '/wallet',
           });
-          console.log(`🎁 Overlap cash-back: $${bonusCash} to ${expectedUserId}`);
+          console.log(`🎁 Early-renewal bonus: ${bonusCC} CC to ${expectedUserId}`);
         }
       }
     } catch (err) {
-      console.error('Overlap cash-back check failed:', err);
+      console.error('Early-renewal bonus check failed:', err);
     }
   }
 }

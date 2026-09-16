@@ -2368,7 +2368,7 @@ function AdDropManagement() {
                 onChange={e => setConfig(prev => ({ ...prev, usdToCcRate: parseInt(e.target.value, 10) || 0 }))}
               />
               <p className="text-[11px] text-muted-foreground mt-1">
-                Used for CC-conversion reward calculations elsewhere. The overlap cash-back (buying a new slot before an old one expires) now pays 25% of the new base price as real wallet cash, unrelated to this rate.
+                Renewing early (buying a new slot before an old one expires) credits 15% of the new base price × this rate, as CYBACOIN.
               </p>
             </div>
           </div>

@@ -103,9 +103,10 @@ export const DEFAULT_AD_DROP_CONFIG: AdDropConfig = {
   usdToCcRate: 100, // PLACEHOLDER — confirm before launch (100 CC per $1)
 };
 
-/** Cash-back rebate paid into CYBAWALLET (payoutBalance) when purchasing a new promo slot
- *  while another slot is still active — 25% of the base tier price (upsells excluded). */
-export const OVERLAP_CASHBACK_PCT = 0.25;
+/** Renewal bonus paid as CYBACOIN (via usdToCcRate) when purchasing a new promo slot while
+ *  another slot is still active — 15% of the base tier price (upsells excluded). Matches the
+ *  published Terms of Use exactly — do not change without updating that copy too. */
+export const OVERLAP_RENEWAL_BONUS_PCT = 0.15;
 
 export type FreePromoTier = AdTierKey;
 export type FreePromoVouchers = Record<FreePromoTier, number>;

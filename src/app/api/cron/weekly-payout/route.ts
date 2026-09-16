@@ -15,8 +15,13 @@ const PRIZES: Record<number, number> = {
 const TOP3_CC_BONUS: Record<number, number> = { 1: 50000, 2: 25000, 3: 10000 };
 const TOP3_VOUCHER_TIER: Record<number, 'day30' | 'day14' | 'day7'> = { 1: 'day30', 2: 'day14', 3: 'day7' };
 
-function score(user: { postCount?: number; supportGiven?: number }) {
-  return (user.postCount ?? 0) + (user.supportGiven ?? 0);
+// Ranks by THIS WEEK's activity (weeklyPostCount/weeklySupportGiven), matching exactly what the
+// Leaderboard page's Weekly tab shows — NOT all-time postCount/supportGiven. Using all-time
+// stats here would let someone with a huge all-time history win "Top CYBA of the Week" despite
+// having done nothing this week, which contradicted the weekly leaderboard the payout is
+// supposed to be rewarding.
+function score(user: { weeklyPostCount?: number; weeklySupportGiven?: number }) {
+  return (user.weeklyPostCount ?? 0) + (user.weeklySupportGiven ?? 0);
 }
 
 export async function POST(request: NextRequest) {
@@ -29,19 +34,21 @@ export async function POST(request: NextRequest) {
   try {
     const db = adminDb;
 
-    // Fetch users — order by postCount desc as a proxy, then re-rank in memory
+    // Fetch users — order by weeklyPostCount desc as a proxy, then re-rank in memory. Ordering
+    // by the WEEKLY field (not all-time postCount) matters here so the candidate pool actually
+    // contains this week's top performers, not just all-time prolific posters.
     const usersSnap = await db.collection('users')
       .where('leaderboardOptOut', '!=', true)
       .orderBy('leaderboardOptOut')
-      .orderBy('postCount', 'desc')
+      .orderBy('weeklyPostCount', 'desc')
       .limit(200)
       .get();
 
     type UserRow = {
       id: string;
       username?: string;
-      postCount?: number;
-      supportGiven?: number;
+      weeklyPostCount?: number;
+      weeklySupportGiven?: number;
       payoutEnrolled?: boolean;
       payoutBalance?: number;
     };
@@ -122,12 +129,13 @@ export async function POST(request: NextRequest) {
       weekOf: Date.now(),
     });
 
-    // Snapshot the top 10 winners for the weekly display
+    // Snapshot the top 10 winners for the weekly display — weeklyPostCount/weeklySupportGiven,
+    // matching exactly what the Leaderboard page's Weekly tab reads.
     const top10 = users.slice(0, 10).map((u, i) => ({
       rank: i + 1,
       name: u.username ?? 'Unknown',
-      posts: u.postCount ?? 0,
-      support: u.supportGiven ?? 0,
+      posts: u.weeklyPostCount ?? 0,
+      support: u.weeklySupportGiven ?? 0,
     }));
 
     const winnersRef = db.collection('settings').doc('weeklyWinners');
