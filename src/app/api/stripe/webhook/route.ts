@@ -199,19 +199,34 @@ export async function POST(request: NextRequest) {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
 
-    // Extract CYBAZONE username from Stripe custom fields
+    // Primary source: client_reference_id, set via buildStripeUrl()/the boost & CC-bundle
+    // checkout links (a real, reliable Payment Link parameter — unlike prefilled_custom_field,
+    // which Stripe doesn't actually support and was silently doing nothing). For PROMO BLAST
+    // it's "username|adId"; for everything else it's just the username.
+    // Falls back to the Stripe Dashboard's "CYBAZONE Username"/"Ad ID" custom fields for any
+    // older link still in circulation, or if a buyer fills them in manually.
     const customFields = (session as any).custom_fields ?? [];
-    const usernameField = customFields.find(
-      (f: any) =>
-        f.label?.custom?.toLowerCase().includes('cybazone') ||
-        f.key?.toLowerCase().includes('cybazone') ||
-        f.key?.toLowerCase().includes('username')
-    );
-    const rawUsername: string | undefined =
-      usernameField?.text?.value ?? usernameField?.dropdown?.value ?? undefined;
+    let rawUsername: string | undefined;
+    let rawAdIdFromRef: string | undefined;
+
+    if (session.client_reference_id) {
+      const [u, a] = session.client_reference_id.split('|');
+      rawUsername = u || undefined;
+      rawAdIdFromRef = a || undefined;
+    }
 
     if (!rawUsername) {
-      console.warn('No CYBAZONE username found in custom fields', customFields);
+      const usernameField = customFields.find(
+        (f: any) =>
+          f.label?.custom?.toLowerCase().includes('cybazone') ||
+          f.key?.toLowerCase().includes('cybazone') ||
+          f.key?.toLowerCase().includes('username')
+      );
+      rawUsername = usernameField?.text?.value ?? usernameField?.dropdown?.value ?? undefined;
+    }
+
+    if (!rawUsername) {
+      console.warn('No CYBAZONE username found (client_reference_id or custom fields)', session.client_reference_id, customFields);
       return NextResponse.json({ received: true });
     }
 
@@ -243,13 +258,17 @@ export async function POST(request: NextRequest) {
       const userDoc = snap.docs[0];
 
       if (isPromoBlastProduct(productName.toLowerCase())) {
-        // PROMO BLAST purchase (a duration tier or an upsell) — find the ad via the second custom field (Ad ID)
-        const adIdField = customFields.find(
-          (f: any) => f.key?.toLowerCase().includes('adid') || f.label?.custom?.toLowerCase().includes('ad id')
-        );
-        const adId: string | undefined = adIdField?.text?.value;
+        // PROMO BLAST purchase (a duration tier or an upsell) — the Ad ID comes from
+        // client_reference_id (see above), falling back to the "Ad ID" custom field for older links.
+        let adId: string | undefined = rawAdIdFromRef;
         if (!adId) {
-          console.warn('No Ad ID found in custom fields for PROMO BLAST purchase', customFields);
+          const adIdField = customFields.find(
+            (f: any) => f.key?.toLowerCase().includes('adid') || f.label?.custom?.toLowerCase().includes('ad id')
+          );
+          adId = adIdField?.text?.value;
+        }
+        if (!adId) {
+          console.warn('No Ad ID found (client_reference_id or custom fields) for PROMO BLAST purchase', session.client_reference_id, customFields);
           return NextResponse.json({ received: true });
         }
 

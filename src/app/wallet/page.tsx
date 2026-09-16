@@ -237,8 +237,10 @@ export default function WalletPage() {
         <div className="grid sm:grid-cols-3 gap-3">
           {CC_BUNDLE_ORDER.map(key => {
             const bundle = bundlesConfig[key];
+            // client_reference_id (not prefilled_custom_field, which Stripe Payment Links don't
+            // actually support) reliably carries the username through to the webhook.
             const stripeUrl = bundle.buttonLink && userProfile?.username
-              ? `${bundle.buttonLink}?prefilled_custom_field[0][value]=${encodeURIComponent(userProfile.username)}`
+              ? `${bundle.buttonLink}?client_reference_id=${encodeURIComponent(userProfile.username)}`
               : bundle.buttonLink;
             return (
               <a

@@ -23,6 +23,7 @@ import {
   Home,
   UserCircle,
   Bell,
+  Megaphone,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
@@ -68,6 +69,7 @@ const navLinks = [
   { href: '/boosts', label: 'Boosts', icon: Gem, isNew: false },
   { href: '/rewards', label: 'Rewards', icon: Star, isNew: false },
   { href: '/market', label: 'Market', icon: ShoppingBag, isNew: false },
+  { href: '/promo-blast', label: 'Promo Blast', icon: Megaphone, isNew: false },
   { href: '/messages', label: 'Messages', icon: MessageCircle, isNew: false },
 ];
 

@@ -200,8 +200,10 @@ function StripeBoostCard({
   const { active, label, inventoryNote } = getBoostStatus(boostType, userProfile);
 
   const baseUrl = item.buttonLink ?? '';
+  // client_reference_id (not prefilled_custom_field, which Stripe Payment Links don't actually
+  // support) reliably carries the username through to session.client_reference_id in the webhook.
   const stripeUrl = baseUrl && username
-    ? `${baseUrl}?prefilled_custom_field[0][value]=${encodeURIComponent(username)}`
+    ? `${baseUrl}?client_reference_id=${encodeURIComponent(username)}`
     : baseUrl;
 
   return (

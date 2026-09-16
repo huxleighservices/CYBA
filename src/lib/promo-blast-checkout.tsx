@@ -18,11 +18,20 @@ export function getVideoDuration(file: File): Promise<number> {
   });
 }
 
-/** Builds the Stripe checkout URL with the standard prefilled username + Ad ID fields shared by all 5 PROMO BLAST products. */
+/**
+ * Builds the Stripe checkout URL carrying the CYBAZONE username + Ad ID through to the webhook.
+ *
+ * NOTE: `prefilled_custom_field[N][value]` is NOT a real Stripe Payment Link parameter — Stripe
+ * hosted Payment Links don't support prefilling custom fields via URL at all. That was silently
+ * broken this whole time, meaning a buyer would land on checkout with a blank, required "Ad ID"
+ * field they have no way to know (it's an internal Firestore doc ID) — so Promo Blast could never
+ * actually auto-activate via the webhook. `client_reference_id` IS a real, documented Payment
+ * Link parameter that reliably passes a value straight through to the resulting Checkout
+ * Session (session.client_reference_id in the webhook), with no action needed from the buyer.
+ */
 export function buildStripeUrl(buttonLink: string, username: string, adId: string): string {
-  return `${buttonLink}`
-    + `?prefilled_custom_field[0][value]=${encodeURIComponent(username)}`
-    + `&prefilled_custom_field[1][value]=${encodeURIComponent(adId)}`;
+  const ref = `${username}|${adId}`;
+  return `${buttonLink}?client_reference_id=${encodeURIComponent(ref)}`;
 }
 
 /**
