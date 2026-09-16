@@ -240,7 +240,9 @@ export async function POST(request: NextRequest) {
       });
       productName = (lineItems.data[0]?.price?.product as any)?.name ?? '';
     } catch (err) {
-      console.warn('Could not fetch line items:', err);
+      // Loud on purpose — an empty productName here used to silently fall through to a
+      // dangerous default (see below). This should be rare and always worth seeing in logs.
+      console.error('Could not fetch line items (session', session.id, '):', err);
     }
 
     try {
@@ -295,11 +297,17 @@ export async function POST(request: NextRequest) {
         });
         console.log(`✅ CC bundle applied [${bundleKey}]: ${rawUsername} (uid: ${userDoc.id}) +${amount}`);
       } else {
-        // Determine which boost was purchased from the Stripe product name
-        const detected = classifyBoost(productName);
-        const boostType = detected ?? 'payout_boost'; // safe default for legacy sessions
-        if (!detected) {
-          console.warn(`Could not classify boost from product name: "${productName}", defaulting to payout_boost`);
+        // Determine which boost was purchased from the Stripe product name. Unrecognized
+        // product names (e.g. productName came back empty because the line-items lookup above
+        // failed) must NEVER silently fall back to modifying the account — a past version of
+        // this defaulted to 'payout_boost', which meant any unclassifiable purchase (for any
+        // reason — a bad API key, an empty product name, a typo in a Stripe product name)
+        // silently flipped payoutEnrolled to true and reset payoutBalance to 0 on a real user's
+        // account. Bail out and log instead; nothing here is worth guessing at.
+        const boostType = classifyBoost(productName);
+        if (!boostType) {
+          console.error(`Could not classify purchase from product name: "${productName}" (session ${session.id}) — no account changes made.`);
+          return NextResponse.json({ received: true, warning: 'unclassified product, no changes made' });
         }
         await applyBoostToUser(userDoc.ref, boostType);
         console.log(`✅ Boost applied [${boostType}]: ${rawUsername} (uid: ${userDoc.id})`);
