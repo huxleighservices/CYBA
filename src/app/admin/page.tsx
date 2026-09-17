@@ -3522,6 +3522,12 @@ function CashOutRequests() {
         fulfilledAt: serverTimestamp(),
         adminNote: adminNote || '',
       });
+      // Actually deduct the paid-out amount from the user's wallet balance — previously this
+      // only logged a transaction without touching payoutBalance, so a "fulfilled" request left
+      // the balance untouched and the same amount could be requested again indefinitely.
+      await updateDoc(doc(firestore, 'users', req.userId), {
+        payoutBalance: increment(-req.amount),
+      });
       // Log the fulfillment on the user's cash transaction history
       await logCashTransaction(firestore, req.userId, {
         type: 'cashout_fulfilled',

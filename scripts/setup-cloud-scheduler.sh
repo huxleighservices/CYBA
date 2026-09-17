@@ -7,7 +7,9 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 PROJECT_ID="studio-9029052952-9df3f"   # your Firebase project ID
-APP_URL="https://cybaweb.web.app"      # your deployed App Hosting URL
+APP_URL="https://cybazone.com"         # your deployed App Hosting URL (the App Hosting default
+                                        # domains like *.web.app / *.hosted.app 404 on this
+                                        # project — cybazone.com is the real serving domain)
 CRON_SECRET="$(gcloud secrets versions access latest --secret=CRON_SECRET --project=$PROJECT_ID)"
 REGION="us-central1"
 
