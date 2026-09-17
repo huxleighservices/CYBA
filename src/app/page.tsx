@@ -7,8 +7,6 @@ import { Loader2, Users, Globe, Radio, Megaphone, Zap, Boxes } from 'lucide-reac
 import { useCollection, useFirebase, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, orderBy, where, limit, doc, updateDoc, increment, type Timestamp } from 'firebase/firestore';
 import { PostCard, type CybazonePost } from '@/components/cybazone/PostCard';
-import { SponsoredPostCard } from '@/components/cybazone/SponsoredPostCard';
-import { SponsoredProfileCard } from '@/components/cybazone/SponsoredProfileCard';
 import { ShoutoutCard } from '@/components/cybazone/ShoutoutCard';
 import { ReviewCard, type Review } from '@/components/cybazone/ReviewCard';
 import { WeeklyWinnersTicker } from '@/components/WeeklyWinnersTicker';
@@ -30,16 +28,6 @@ type UserProfile = {
   supportGiven?: number;
   levelOverride?: string;
   adFreeBoost?: boolean;
-};
-
-type SponsoredItem = {
-  id: string;
-  type: 'post' | 'profile';
-  userId: string;
-  postId?: string;
-  postData?: CybazonePost;
-  active: boolean;
-  expiresAt?: Timestamp;
 };
 
 type Ad = {
@@ -70,13 +58,12 @@ function isPostVisible(p: CybazonePost, now: number): boolean {
 
 function buildFeedItems(
   posts: CybazonePost[],
-  sponsored: SponsoredItem[],
   shoutouts: Shoutout[] = [],
   reviews: Review[] = [],
   now: number = Date.now(),
   ads: Ad[] = [],
-): Array<{ key: string; type: 'post' | 'sponsored-post' | 'sponsored-profile' | 'shoutout' | 'review' | 'ad'; data: any }> {
-  const result: Array<{ key: string; type: 'post' | 'sponsored-post' | 'sponsored-profile' | 'shoutout' | 'review' | 'ad'; data: any }> = posts
+): Array<{ key: string; type: 'post' | 'shoutout' | 'review' | 'ad'; data: any }> {
+  const result: Array<{ key: string; type: 'post' | 'shoutout' | 'review' | 'ad'; data: any }> = posts
     .filter(p => isPostVisible(p, now))
     .map(p => ({
       key: p.id,
@@ -96,35 +83,6 @@ function buildFeedItems(
       cursor += 1; // account for the item we just inserted
     });
   }
-
-  const sponsoredPosts = sponsored.filter(s => s.type === 'post');
-  const sponsoredProfiles = sponsored.filter(s => s.type === 'profile');
-
-  // Insert sponsored posts at random positions (every ~4 posts)
-  sponsoredPosts.forEach((item, i) => {
-    const insertAt = Math.min(
-      Math.floor(seededRandom(i * 7) * 4) + (i * 4) + 2,
-      result.length
-    );
-    result.splice(insertAt, 0, {
-      key: `sp-post-${item.id}`,
-      type: 'sponsored-post',
-      data: { ...(item.postData ?? {}), id: item.postId, sponsoredItemId: item.id, ownerId: item.userId },
-    });
-  });
-
-  // Insert sponsored profiles at random positions
-  sponsoredProfiles.forEach((item, i) => {
-    const insertAt = Math.min(
-      Math.floor(seededRandom(i * 13 + 5) * 5) + (i * 5) + 3,
-      result.length
-    );
-    result.splice(insertAt, 0, {
-      key: `sp-profile-${item.id}`,
-      type: 'sponsored-profile',
-      data: { userId: item.userId, sponsoredItemId: item.id },
-    });
-  });
 
   // Inject shoutouts every ~6 items (always, regardless of post count)
   shoutouts.forEach((shoutout, i) => {
@@ -550,13 +508,6 @@ export default function CentralPage() {
   const { data: followingPostsData, isLoading: isLoadingFollowing } = useCollection<CybazonePost>(followingPostsQuery);
   const followingPosts = JSON.parse(safeFollowingListStr).length === 0 ? [] : followingPostsData;
 
-  // Load active sponsored items
-  const sponsoredQuery = useMemoFirebase(
-    () => query(collection(firestore, 'sponsored_items'), where('active', '==', true)),
-    [firestore]
-  );
-  const { data: sponsoredItems } = useCollection<SponsoredItem>(sponsoredQuery);
-
   // Load active shoutouts — no composite index needed; filter active+expiry client-side
   const shoutoutsQuery = useMemoFirebase(
     () => query(collection(firestore, 'shoutouts'), orderBy('createdAt', 'desc'), limit(24)),
@@ -599,14 +550,6 @@ export default function CentralPage() {
     .filter((x): x is RadioQueueItem => x !== null),
   [radioSubmissions]);
 
-  const activeSponsoredItems = useMemo(() => {
-    const now = Date.now();
-    return (sponsoredItems ?? []).filter(s => {
-      if (!s.expiresAt) return true; // legacy items without expiry stay active
-      return s.expiresAt.toDate().getTime() > now;
-    });
-  }, [sponsoredItems]);
-
   // Load active ads
   const adsQuery = useMemoFirebase(
     () => query(collection(firestore, 'ads'), where('status', '==', 'active')),
@@ -628,43 +571,22 @@ export default function CentralPage() {
   const inFeedAds = isAdFree ? [] : activeAds;
 
   const allFeedItems = useMemo(
-    () => buildFeedItems(allPosts ?? [], activeSponsoredItems, activeShoutouts, feedReviews, now, inFeedAds),
-    [allPosts, activeSponsoredItems, activeShoutouts, feedReviews, now, inFeedAds]
+    () => buildFeedItems(allPosts ?? [], activeShoutouts, feedReviews, now, inFeedAds),
+    [allPosts, activeShoutouts, feedReviews, now, inFeedAds]
   );
 
   const followingFeedItems = useMemo(
-    () => buildFeedItems(followingPosts ?? [], [], activeShoutouts, feedReviews, now, inFeedAds),
+    () => buildFeedItems(followingPosts ?? [], activeShoutouts, feedReviews, now, inFeedAds),
     [followingPosts, activeShoutouts, feedReviews, now, inFeedAds]
   );
 
   // Zaps — video posts only, filtered from the same Global set (no separate content type).
   const zapsFeedItems = useMemo(
-    () => buildFeedItems((allPosts ?? []).filter(p => p.mediaType === 'video'), [], [], [], now, inFeedAds),
+    () => buildFeedItems((allPosts ?? []).filter(p => p.mediaType === 'video'), [], [], now, inFeedAds),
     [allPosts, now, inFeedAds]
   );
 
   const renderFeedItem = (item: ReturnType<typeof buildFeedItems>[number]) => {
-    if (item.type === 'sponsored-post') {
-      return (
-        <div key={item.key} className="w-full max-w-2xl mx-auto pt-4">
-          <SponsoredPostCard
-            post={item.data}
-            sponsoredItemId={item.data.sponsoredItemId}
-            ownerId={item.data.ownerId}
-          />
-        </div>
-      );
-    }
-    if (item.type === 'sponsored-profile') {
-      return (
-        <div key={item.key} className="w-full max-w-2xl mx-auto pt-4">
-          <SponsoredProfileCard
-            userId={item.data.userId}
-            sponsoredItemId={item.data.sponsoredItemId}
-          />
-        </div>
-      );
-    }
     if (item.type === 'shoutout') {
       return (
         <div key={item.key} className="w-full max-w-2xl mx-auto py-2">

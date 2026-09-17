@@ -42,20 +42,6 @@ gcloud scheduler jobs create http cybazone-weekly-reset \
 
 echo "✓ weekly-reset job created (runs Sat 05:01 UTC = Sat 12:01 AM EST)"
 
-# ── 3. Every hour — clean up expired sponsored items ─────────────────────────
-gcloud scheduler jobs create http cybazone-cleanup-sponsored \
-  --project="$PROJECT_ID" \
-  --location="$REGION" \
-  --schedule="0 * * * *" \
-  --uri="$APP_URL/api/cron/cleanup-sponsored" \
-  --http-method=POST \
-  --headers="x-cron-secret=$CRON_SECRET,Content-Type=application/json" \
-  --message-body="{}" \
-  --time-zone="UTC" \
-  --description="CYBAZONE: Every hour — delete expired sponsored posts/profiles"
-
-echo "✓ cleanup-sponsored job created (runs every hour)"
-
 # ── 4. Every 5 minutes — publish scheduled posts ──────────────────────────────
 gcloud scheduler jobs create http cybazone-publish-scheduled \
   --project="$PROJECT_ID" \

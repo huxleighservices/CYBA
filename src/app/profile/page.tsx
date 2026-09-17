@@ -75,10 +75,6 @@ type UserProfile = {
   payoutPlatform?: 'cashapp' | 'venmo';
   payoutUsername?: string;
   leaderboardOptOut?: boolean;
-  inventory?: {
-    sponsored_post?: { quantity: number };
-    sponsored_profile?: { quantity: number };
-  };
   purchasedRewards?: string[];
   payoutBalance?: number;
   payoutEnrolled?: boolean;
@@ -1331,8 +1327,6 @@ function InventoryDialog({ open, onClose, profile }: {
   onClose: () => void;
   profile: UserProfile;
 }) {
-  const postSlots    = profile.inventory?.sponsored_post?.quantity ?? 0;
-  const profileSlots = profile.inventory?.sponsored_profile?.quantity ?? 0;
   const unlockedBgs  = profile.unlockedBackgrounds ?? [];
   const purchasedRewards = profile.purchasedRewards ?? [];
   const completedQuests  = profile.completedQuests ?? [];
@@ -1341,8 +1335,6 @@ function InventoryDialog({ open, onClose, profile }: {
   const coinBalance      = profile.cybaCoinBalance ?? 0;
 
   const isEmpty =
-    postSlots === 0 &&
-    profileSlots === 0 &&
     unlockedBgs.length === 0 &&
     purchasedRewards.length === 0 &&
     completedQuests.length === 0 &&
@@ -1383,43 +1375,6 @@ function InventoryDialog({ open, onClose, profile }: {
                 </div>
               )}
             </div>
-
-            {/* Sponsor slots */}
-            {(postSlots > 0 || profileSlots > 0) && (
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Spotlight Slots</p>
-                <div className="space-y-2">
-                  {postSlots > 0 && (
-                    <div className="flex items-center justify-between rounded-lg border border-purple-500/20 bg-purple-950/10 px-4 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">📝</span>
-                        <span className="text-sm font-medium">Spotlight Post</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">{postSlots}x</Badge>
-                        <Link href="/sponsor" onClick={onClose}>
-                          <Button size="sm" variant="outline" className="h-7 text-xs">Activate</Button>
-                        </Link>
-                      </div>
-                    </div>
-                  )}
-                  {profileSlots > 0 && (
-                    <div className="flex items-center justify-between rounded-lg border border-purple-500/20 bg-purple-950/10 px-4 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">👤</span>
-                        <span className="text-sm font-medium">Spotlight Profile</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">{profileSlots}x</Badge>
-                        <Link href="/sponsor" onClick={onClose}>
-                          <Button size="sm" variant="outline" className="h-7 text-xs">Activate</Button>
-                        </Link>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
 
             {/* Unlocked backgrounds */}
             {unlockedBgs.length > 0 && (
