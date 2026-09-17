@@ -15,7 +15,8 @@ export type NotificationType =
   | 'subnet_request'
   | 'subnet_approved'
   | 'subnet_invite'
-  | 'subnet_revoked';
+  | 'subnet_revoked'
+  | 'birthday_gift';
 
 export interface NotificationPayload {
   type: NotificationType;

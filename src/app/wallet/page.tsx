@@ -77,6 +77,7 @@ const TX_META: Record<TransactionType, { icon: string; color: string }> = {
   ad_watch_reward:    { icon: '📢', color: 'text-green-400' },
   promo_renewal_bonus: { icon: '🎁', color: 'text-green-400' },
   pulse_reward:       { icon: '✨', color: 'text-purple-400' },
+  birthday_gift:      { icon: '🎂', color: 'text-green-400' },
 };
 
 const CASH_TX_META: Record<CashTransactionType, { icon: string; color: string }> = {

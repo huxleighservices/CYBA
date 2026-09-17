@@ -35,6 +35,13 @@ import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import { cn } from '@/lib/utils';
 
+function isAtLeast18(dateStr: string): boolean {
+  const dob = new Date(dateStr);
+  if (Number.isNaN(dob.getTime())) return false;
+  const eighteenthBirthday = new Date(dob.getFullYear() + 18, dob.getMonth(), dob.getDate());
+  return eighteenthBirthday.getTime() <= Date.now();
+}
+
 const emailSchema = z.object({
   usernameSuffix: z.string()
     .min(1, { message: 'Enter a name after @CYBA.' })
@@ -42,6 +49,9 @@ const emailSchema = z.object({
     .regex(/^[a-zA-Z0-9_]+$/, { message: 'Letters, numbers, underscores only.' }),
   email: z.string().email({ message: 'Please enter a valid email address.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  birthday: z.string()
+    .min(1, { message: 'Birthday is required.' })
+    .refine(isAtLeast18, { message: 'You must be 18 or older to use CYBAZONE.' }),
 });
 
 // New members are auto-followed by these two official accounts so their feed isn't empty
@@ -90,6 +100,7 @@ export default function SignupPage() {
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [phoneUsernameSuffix, setPhoneUsernameSuffix] = useState('');
+  const [phoneBirthday, setPhoneBirthday] = useState('');
   const recaptchaRef = useRef<HTMLDivElement>(null);
 
   // Payout state (shared across both tabs)
@@ -106,7 +117,7 @@ export default function SignupPage() {
 
   const emailForm = useForm<z.infer<typeof emailSchema>>({
     resolver: zodResolver(emailSchema),
-    defaultValues: { usernameSuffix: '', email: '', password: '' },
+    defaultValues: { usernameSuffix: '', email: '', password: '', birthday: '' },
   });
 
   async function onEmailSubmit(values: z.infer<typeof emailSchema>) {
@@ -120,7 +131,7 @@ export default function SignupPage() {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
-        const { usernameSuffix, email } = emailForm.getValues();
+        const { usernameSuffix, email, birthday } = emailForm.getValues();
         if (usernameSuffix && email) {
           const username = 'CYBA' + usernameSuffix.trim();
           const userRef = doc(firestore, 'users', firebaseUser.uid);
@@ -129,6 +140,7 @@ export default function SignupPage() {
             username,
             username_lowercase: username.toLowerCase(),
             email,
+            birthday,
             cybaCoinBalance: 50000,
             freePromoVouchers: { day7: 1, day14: 0, day30: 0 },
           };
@@ -167,6 +179,10 @@ export default function SignupPage() {
       toast({ variant: 'destructive', title: 'Invalid number', description: 'Please enter a valid phone number with country code.' });
       return;
     }
+    if (!phoneBirthday || !isAtLeast18(phoneBirthday)) {
+      toast({ variant: 'destructive', title: 'Birthday required', description: 'You must be 18 or older to use CYBAZONE.' });
+      return;
+    }
     setIsSendingOtp(true);
     const result = await sendPhoneOtp(auth, phone, 'recaptcha-container-signup');
     setIsSendingOtp(false);
@@ -189,6 +205,7 @@ export default function SignupPage() {
         username: phoneUsername,
         username_lowercase: phoneUsername.toLowerCase(),
         phone,
+        birthday: phoneBirthday,
         cybaCoinBalance: 50000,
         freePromoVouchers: { day7: 1, day14: 0, day30: 0 },
       };
@@ -348,6 +365,19 @@ export default function SignupPage() {
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={emailForm.control}
+                    name="birthday"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Birthday</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} max={new Date().toISOString().slice(0, 10)} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   {ReferralField}
                   {PayoutField}
                   {TermsField}
@@ -383,6 +413,16 @@ export default function SignupPage() {
                         value={phone}
                         onChange={(val) => setPhone(val ?? '')}
                         className="phone-input-field"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Birthday</label>
+                      <input
+                        type="date"
+                        value={phoneBirthday}
+                        onChange={(e) => setPhoneBirthday(e.target.value)}
+                        max={new Date().toISOString().slice(0, 10)}
+                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                       />
                     </div>
                     {ReferralField}

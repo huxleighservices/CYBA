@@ -18,7 +18,8 @@ export type TransactionType =
   | 'ad_skip'
   | 'ad_watch_reward'
   | 'promo_renewal_bonus'
-  | 'pulse_reward';
+  | 'pulse_reward'
+  | 'birthday_gift';
 
 export type CashTransactionType =
   | 'quest_payout'

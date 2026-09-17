@@ -8,8 +8,9 @@ import { POST as promoExpiryWarning } from '../../cron/promo-expiry-warning/rout
 import { POST as cleanupPulses } from '../../cron/cleanup-pulses/route';
 import { POST as launchReset } from '../../cron/launch-reset/route';
 import { POST as backfillWeeklyScores } from '../../cron/backfill-weekly-scores/route';
+import { POST as birthdayGift } from '../../cron/birthday-gift/route';
 
-const ALLOWED_ENDPOINTS = ['weekly-payout', 'weekly-reset', 'weekly-boost-billing', 'weekly-subnet-billing', 'cleanup-ads', 'promo-expiry-warning', 'cleanup-pulses', 'launch-reset', 'backfill-weekly-scores'] as const;
+const ALLOWED_ENDPOINTS = ['weekly-payout', 'weekly-reset', 'weekly-boost-billing', 'weekly-subnet-billing', 'cleanup-ads', 'promo-expiry-warning', 'cleanup-pulses', 'launch-reset', 'backfill-weekly-scores', 'birthday-gift'] as const;
 type AllowedEndpoint = typeof ALLOWED_ENDPOINTS[number];
 
 // Maps each allowed endpoint straight to its route handler, called in-process below — NOT
@@ -28,6 +29,7 @@ const HANDLERS: Record<AllowedEndpoint, (req: NextRequest) => Promise<Response>>
   'cleanup-pulses': cleanupPulses,
   'launch-reset': launchReset,
   'backfill-weekly-scores': backfillWeeklyScores,
+  'birthday-gift': birthdayGift,
 };
 
 export async function POST(request: NextRequest) {

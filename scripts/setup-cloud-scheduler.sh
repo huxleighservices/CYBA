@@ -70,6 +70,20 @@ gcloud scheduler jobs create http cybazone-publish-scheduled \
 
 echo "✓ publish-scheduled job created (runs every 5 minutes)"
 
+# ── 5. Daily 9:00 AM EST = 14:00 UTC — birthday gifts ─────────────────────────
+gcloud scheduler jobs create http cybazone-birthday-gift \
+  --project="$PROJECT_ID" \
+  --location="$REGION" \
+  --schedule="0 14 * * *" \
+  --uri="$APP_URL/api/cron/birthday-gift" \
+  --http-method=POST \
+  --headers="x-cron-secret=$CRON_SECRET,Content-Type=application/json" \
+  --message-body="{}" \
+  --time-zone="UTC" \
+  --description="CYBAZONE: Daily 9:00 AM EST — grant birthday CYBACOIN gifts"
+
+echo "✓ birthday-gift job created (runs daily at 14:00 UTC = 9:00 AM EST)"
+
 echo ""
 echo "Done! View jobs at:"
 echo "  https://console.cloud.google.com/cloudscheduler?project=$PROJECT_ID"

@@ -45,6 +45,7 @@ function notifIcon(type: NotificationType) {
     case 'promo_expiring_soon':  return '⏳';
     case 'promo_renewal_bonus':  return '🎁';
     case 'new_post':             return '📝';
+    case 'birthday_gift':        return '🎂';
   }
 }
 
@@ -113,6 +114,12 @@ function notifLabel(n: Notification) {
       );
     case 'new_post':
       return <span><strong>{n.actorUsername}</strong> just posted</span>;
+    case 'birthday_gift':
+      return (
+        <span>
+          <strong>CYBAZONE</strong> {n.message ?? 'Happy Birthday! We added a CYBACOIN gift to your wallet.'}
+        </span>
+      );
   }
 }
 

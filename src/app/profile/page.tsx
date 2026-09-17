@@ -61,6 +61,7 @@ type UserProfile = {
   username: string;
   email: string;
   fullName?: string;
+  birthday?: string;
   avatarConfig?: AvatarConfig;
   username_lowercase?: string;
   profilePictureUrl?: string;
@@ -731,6 +732,56 @@ function UsernameEditor({ userId, currentUsername }: { userId: string; currentUs
       >
         {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
         Save Username
+      </Button>
+    </div>
+  );
+}
+
+function BirthdayEditor({ userId, currentBirthday }: { userId: string; currentBirthday?: string }) {
+  const { firestore } = useFirebase();
+  const { toast } = useToast();
+  const [value, setValue] = useState(currentBirthday ?? '');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!value) return;
+    const dob = new Date(value);
+    const eighteenthBirthday = new Date(dob.getFullYear() + 18, dob.getMonth(), dob.getDate());
+    if (Number.isNaN(dob.getTime()) || eighteenthBirthday.getTime() > Date.now()) {
+      toast({ variant: 'destructive', title: 'Invalid birthday', description: 'You must be 18 or older to use CYBAZONE.' });
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateDoc(doc(firestore, 'users', userId), { birthday: value });
+      toast({ title: 'Birthday saved!', description: "We'll send you a gift when it comes around." });
+    } catch {
+      toast({ variant: 'destructive', title: 'Save failed' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        max={new Date().toISOString().slice(0, 10)}
+        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+      />
+      <p className="text-xs text-muted-foreground">
+        Get a surprise CYBACOIN gift on your birthday. Never shown publicly.
+      </p>
+      <Button
+        size="sm"
+        onClick={handleSave}
+        disabled={saving || !value || value === (currentBirthday ?? '')}
+        className="w-full"
+      >
+        {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+        Save Birthday
       </Button>
     </div>
   );
@@ -1631,6 +1682,17 @@ export default function ProfilePage() {
                         </CardHeader>
                         <CardContent>
                             <FullNameEditor userId={user.uid} currentFullName={userProfile.fullName} />
+                        </CardContent>
+                    </Card>
+
+                    {/* Birthday Card */}
+                    <Card className="md:col-span-1 border-primary/20 bg-card/50">
+                        <CardHeader>
+                            <CardTitle>Birthday</CardTitle>
+                            <CardDescription>Get a CYBACOIN gift on your birthday. Never shown publicly.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <BirthdayEditor userId={user.uid} currentBirthday={userProfile.birthday} />
                         </CardContent>
                     </Card>
 

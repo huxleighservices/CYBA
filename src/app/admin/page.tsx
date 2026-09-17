@@ -3686,7 +3686,7 @@ function LaunchResetPanel() {
 function WeeklyPayouts() {
   const { firestore, user: currentUser } = useFirebase();
   const { toast } = useToast();
-  const [triggering, setTriggering] = useState<'payout' | 'reset' | 'boost-billing' | 'subnet-billing' | 'cleanup-ads' | 'promo-expiry' | 'cleanup-pulses' | 'backfill-weekly' | null>(null);
+  const [triggering, setTriggering] = useState<'payout' | 'reset' | 'boost-billing' | 'subnet-billing' | 'cleanup-ads' | 'promo-expiry' | 'cleanup-pulses' | 'backfill-weekly' | 'birthday-gift' | null>(null);
 
   const historyQuery = useMemoFirebase(
     () => query(
@@ -3749,7 +3749,7 @@ function WeeklyPayouts() {
     }
   };
 
-  const triggerCron = async (endpoint: 'weekly-payout' | 'weekly-reset' | 'weekly-boost-billing' | 'weekly-subnet-billing' | 'cleanup-ads' | 'promo-expiry-warning' | 'cleanup-pulses' | 'backfill-weekly-scores') => {
+  const triggerCron = async (endpoint: 'weekly-payout' | 'weekly-reset' | 'weekly-boost-billing' | 'weekly-subnet-billing' | 'cleanup-ads' | 'promo-expiry-warning' | 'cleanup-pulses' | 'backfill-weekly-scores' | 'birthday-gift') => {
     setTriggering(
       endpoint === 'weekly-payout' ? 'payout'
       : endpoint === 'weekly-reset' ? 'reset'
@@ -3758,6 +3758,7 @@ function WeeklyPayouts() {
       : endpoint === 'promo-expiry-warning' ? 'promo-expiry'
       : endpoint === 'cleanup-pulses' ? 'cleanup-pulses'
       : endpoint === 'backfill-weekly-scores' ? 'backfill-weekly'
+      : endpoint === 'birthday-gift' ? 'birthday-gift'
       : 'cleanup-ads'
     );
     try {
@@ -3793,6 +3794,7 @@ function WeeklyPayouts() {
         'promo-expiry-warning': 'Promo expiry warnings sent!',
         'cleanup-pulses': 'Pulse cleanup complete!',
         'backfill-weekly-scores': 'Weekly leaderboard backfilled!',
+        'birthday-gift': 'Birthday gifts sent!',
       };
       const descriptions: Record<typeof endpoint, string> = {
         'weekly-payout': `Paid out ${data.paidCount ?? 0} enrolled user(s).`,
@@ -3803,6 +3805,7 @@ function WeeklyPayouts() {
         'promo-expiry-warning': `Warned ${data.warned ?? 0} promoter(s) whose slot expires within 3 days.`,
         'cleanup-pulses': `Deleted ${data.deleted ?? 0} expired Pulse(s).`,
         'backfill-weekly-scores': `Updated ${data.usersUpdated ?? 0} user(s) with this week's real post/support counts.`,
+        'birthday-gift': `Gifted ${data.gifted ?? 0} member(s) celebrating a birthday today.`,
       };
       toast({ title: titles[endpoint], description: descriptions[endpoint] });
     } catch (e) {
@@ -3892,6 +3895,14 @@ function WeeklyPayouts() {
           >
             {triggering === 'cleanup-pulses' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '✨ '}
             Run Pulse Cleanup Now
+          </Button>
+          <Button
+            variant="outline"
+            disabled={!!triggering}
+            onClick={() => triggerCron('birthday-gift')}
+          >
+            {triggering === 'birthday-gift' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '🎂 '}
+            Run Birthday Gifts Now
           </Button>
         </CardContent>
       </Card>
