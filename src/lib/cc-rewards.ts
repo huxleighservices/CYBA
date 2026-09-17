@@ -71,3 +71,11 @@ export function getCCForEngagement(
 export function getCCForPulse(level: Level, rates?: CCRates | null): number {
   return (rates ?? DEFAULT_CC_RATES).pulse[level];
 }
+
+/** Official CYBAZONE account posts pay double CC for engagement (like/comment/share), to
+ *  incentivize interacting with platform announcements. */
+export const CYBAZONE_ENGAGEMENT_MULTIPLIER = 2;
+
+export function isCybazoneAccount(username: string | null | undefined): boolean {
+  return (username ?? '').toLowerCase() === 'cybazone';
+}

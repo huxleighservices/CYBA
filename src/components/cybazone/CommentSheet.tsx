@@ -38,7 +38,7 @@ import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { createNotification } from '@/lib/notifications';
 import { computeLevel } from '@/lib/levels';
-import { getCCForEngagement, mergeWithDefaults, type CCRates } from '@/lib/cc-rewards';
+import { getCCForEngagement, mergeWithDefaults, type CCRates, CYBAZONE_ENGAGEMENT_MULTIPLIER, isCybazoneAccount } from '@/lib/cc-rewards';
 import { applyGearMultiplier } from '@/lib/avatar-gear';
 import { logTransaction } from '@/lib/transactions';
 import { logEngagement } from '@/lib/engagement-log';
@@ -74,11 +74,13 @@ type UserProfile = {
 function CommentForm({
   postId,
   postAuthorId,
+  postAuthorUsername,
   replyingTo,
   onCancelReply,
 }: {
   postId: string;
   postAuthorId: string;
+  postAuthorUsername?: string;
   replyingTo: ReplyTarget | null;
   onCancelReply: () => void;
 }) {
@@ -136,7 +138,8 @@ function CommentForm({
       // Track outward support + award CC (only when commenting on others' posts)
       if (user.uid !== postAuthorId) {
         const level = computeLevel(userProfile?.postCount, userProfile?.supportGiven, undefined, userProfile?.levelOverride);
-        const cc = applyGearMultiplier(getCCForEngagement('comment', level, ccRates), userProfile?.equippedGear, 'comment');
+        const cc = applyGearMultiplier(getCCForEngagement('comment', level, ccRates), userProfile?.equippedGear, 'comment')
+          * (isCybazoneAccount(postAuthorUsername) ? CYBAZONE_ENGAGEMENT_MULTIPLIER : 1);
         updateDoc(doc(firestore, 'users', user.uid), { supportGiven: increment(1), weeklySupportGiven: increment(1), cybaCoinBalance: increment(cc) }).catch(() => {});
         logTransaction(firestore, user.uid, { type: 'engagement_reward', amount: cc, description: '💬 Comment' });
         createNotification(firestore, postAuthorId, {
@@ -326,11 +329,13 @@ export function CommentSheet({
   onOpenChange,
   postId,
   postAuthorId,
+  postAuthorUsername,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   postId: string;
   postAuthorId: string;
+  postAuthorUsername?: string;
 }) {
   const { firestore } = useFirebase();
 
@@ -399,6 +404,7 @@ export function CommentSheet({
             <CommentForm
               postId={postId}
               postAuthorId={postAuthorId}
+              postAuthorUsername={postAuthorUsername}
               replyingTo={replyingTo}
               onCancelReply={() => setReplyingTo(null)}
             />

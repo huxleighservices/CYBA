@@ -37,7 +37,7 @@ import { type Level, computeLevel } from '@/lib/levels';
 import { sharePulseFromMedia } from '@/lib/pulses';
 import { requestSubnetAccess } from '@/lib/subnets';
 import { applyGearMultiplier } from '@/lib/avatar-gear';
-import { getCCForEngagement, mergeWithDefaults, type CCRates } from '@/lib/cc-rewards';
+import { getCCForEngagement, mergeWithDefaults, type CCRates, CYBAZONE_ENGAGEMENT_MULTIPLIER, isCybazoneAccount } from '@/lib/cc-rewards';
 import { logTransaction } from '@/lib/transactions';
 import { logEngagement } from '@/lib/engagement-log';
 import {
@@ -262,7 +262,8 @@ export function PostCard({
       });
       if (isOthersPost) {
         const level = computeLevel(actorProfile?.postCount, actorProfile?.supportGiven, undefined, actorProfile?.levelOverride);
-        const cc = applyGearMultiplier(getCCForEngagement('like', level, ccRates), actorProfile?.equippedGear, 'like');
+        const cc = applyGearMultiplier(getCCForEngagement('like', level, ccRates), actorProfile?.equippedGear, 'like')
+          * (isCybazoneAccount(post.authorUsername) ? CYBAZONE_ENGAGEMENT_MULTIPLIER : 1);
         updateDoc(userRef, { supportGiven: increment(1), weeklySupportGiven: increment(1), cybaCoinBalance: increment(cc) }).catch(() => {});
         logTransaction(firestore, user.uid, { type: 'engagement_reward', amount: cc, description: '❤️ Like' });
         createNotification(firestore, post.authorId, {
@@ -315,7 +316,8 @@ export function PostCard({
       });
       if (isOthersPost) {
         const level = computeLevel(actorProfile?.postCount, actorProfile?.supportGiven, undefined, actorProfile?.levelOverride);
-        const cc = applyGearMultiplier(getCCForEngagement('share', level, ccRates), actorProfile?.equippedGear, 'share');
+        const cc = applyGearMultiplier(getCCForEngagement('share', level, ccRates), actorProfile?.equippedGear, 'share')
+          * (isCybazoneAccount(post.authorUsername) ? CYBAZONE_ENGAGEMENT_MULTIPLIER : 1);
         updateDoc(userRef, { supportGiven: increment(1), weeklySupportGiven: increment(1), cybaCoinBalance: increment(cc) }).catch(() => {});
         logTransaction(firestore, user.uid, { type: 'engagement_reward', amount: cc, description: '🔁 Share' });
         createNotification(firestore, post.authorId, {
@@ -741,6 +743,7 @@ export function PostCard({
         onOpenChange={setIsCommentsOpen}
         postId={post.id}
         postAuthorId={post.authorId}
+        postAuthorUsername={post.authorUsername}
       />
       <ShareToDMDialog
         open={isShareOpen}

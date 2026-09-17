@@ -2,7 +2,7 @@ export default function PrivacyPolicyPage() {
   return (
     <main className="container mx-auto max-w-2xl py-16 px-4">
       <h1 className="text-4xl font-bold mb-2">Privacy Policy</h1>
-      <p className="text-muted-foreground mb-10">Last updated: April 2026</p>
+      <p className="text-muted-foreground mb-10">Last updated: August 2026</p>
       <div className="prose prose-invert max-w-none space-y-6 text-foreground/80">
         <section>
           <h2 className="text-xl font-semibold text-foreground mb-2">Information We Collect</h2>
@@ -22,7 +22,7 @@ export default function PrivacyPolicyPage() {
         </section>
         <section>
           <h2 className="text-xl font-semibold text-foreground mb-2">Contact</h2>
-          <p>If you have questions about this Privacy Policy, please visit our <a href="/contact" className="text-primary underline">Contact Us</a> page.</p>
+          <p>If you have questions about this Privacy Policy, please visit our <a href="/contact" className="text-primary underline">Contact Us</a> page or DM us directly on CYBAZONE.</p>
         </section>
       </div>
     </main>

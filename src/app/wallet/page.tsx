@@ -20,7 +20,28 @@ type UserProfile = {
   payoutEnrolled?: boolean;
   payoutBalance?: number;
   username?: string;
+  lastCashoutRequestAt?: number;
 };
+
+const CASHOUT_MIN = 10;
+const CASHOUT_CAP = 10;
+
+/** Most recent Sunday 12:00am ET, as an epoch ms — same week-boundary convention used by the
+ *  Leaderboard's weekly reset, reused here so "$10 per Saturday" cash-out requests are gated to
+ *  once per that same weekly cycle. */
+function lastSundayMidnightEst(): number {
+  const now = new Date();
+  const etDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(now);
+  const etDow = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short' }).format(now);
+  const DOW_MAP: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  const daysBack = DOW_MAP[etDow] ?? 0;
+  const [y, m, d] = etDateStr.split('-').map(Number);
+  const lastSunday = new Date(Date.UTC(y, m - 1, d - daysBack));
+  const sy = lastSunday.getUTCFullYear();
+  const sm = String(lastSunday.getUTCMonth() + 1).padStart(2, '0');
+  const sd = String(lastSunday.getUTCDate()).padStart(2, '0');
+  return new Date(`${sy}-${sm}-${sd}T00:00:00-05:00`).getTime();
+}
 
 type Transaction = {
   id: string;
@@ -143,15 +164,24 @@ export default function WalletPage() {
   const payoutEnrolled = userProfile?.payoutEnrolled ?? false;
   const payoutBalance = userProfile?.payoutBalance ?? 0;
 
+  // Terms of Use: "Members with an active Payout Boost may request cash payouts up to $10 per
+  // Saturday... remaining balances carry over to the following Saturday." Gate the request to
+  // once per weekly cycle (same Sunday-midnight-ET boundary the Leaderboard uses) and cap the
+  // requested amount at $10, requiring at least $10 banked before the button is usable at all.
+  const currentCycleStart = lastSundayMidnightEst();
+  const alreadyRequestedThisCycle = !!userProfile?.lastCashoutRequestAt && userProfile.lastCashoutRequestAt >= currentCycleStart;
+  const canRequestCashout = payoutEnrolled && payoutBalance >= CASHOUT_MIN && !alreadyRequestedThisCycle;
+  const cashoutRequestAmount = Math.min(payoutBalance, CASHOUT_CAP);
+
   const handleCashOut = async () => {
-    if (!user || !userProfile || payoutBalance <= 0 || !payoutEnrolled) return;
+    if (!user || !userProfile || !canRequestCashout) return;
     setCashingOut(true);
     try {
       // Create the cash out request — balance stays in wallet until admin approves
       await addDoc(collection(firestore, 'cashout_requests'), {
         userId: user.uid,
         username: userProfile.username ?? '',
-        amount: payoutBalance,
+        amount: cashoutRequestAmount,
         status: 'pending',
         requestedAt: serverTimestamp(),
       });
@@ -159,11 +189,16 @@ export default function WalletPage() {
       await logCashTransaction(firestore, user.uid, {
         type: 'cashout_request',
         amount: 0,
-        description: `Cash Out Request: $${payoutBalance.toFixed(2)} pending approval`,
+        description: `Cash Out Request: $${cashoutRequestAmount.toFixed(2)} pending approval`,
+      });
+      // Lock out further requests until next week's cycle — remainder rolls over automatically
+      // since payoutBalance itself isn't touched here.
+      await updateDoc(doc(firestore, 'users', user.uid), {
+        lastCashoutRequestAt: Date.now(),
       });
       toast({
         title: 'Cash Out Requested!',
-        description: `$${payoutBalance.toFixed(2)} payout request submitted. Your balance will remain until we process it via CashApp/Venmo.`,
+        description: `$${cashoutRequestAmount.toFixed(2)} payout request submitted. Any remaining balance carries over to next Saturday. We'll process it via CashApp/Venmo.`,
       });
     } catch (e) {
       console.error(e);
@@ -275,10 +310,10 @@ export default function WalletPage() {
               <span className="text-lg text-muted-foreground mb-1">USD</span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed max-w-sm mb-4">
-              Your cash balance from referrals, quest payouts, and Payout Boost earnings. Request a payout via CashApp or Venmo.
+              Your cash balance from referrals, quest payouts, and Payout Boost earnings. Request up to ${CASHOUT_CAP} per Saturday via CashApp or Venmo — the rest carries over automatically.
             </p>
             <div className="flex flex-wrap items-center gap-3">
-              {payoutBalance > 0 ? (
+              {canRequestCashout ? (
                 <Button
                   onClick={handleCashOut}
                   disabled={cashingOut}
@@ -288,12 +323,16 @@ export default function WalletPage() {
                     ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
                     : <DollarSign className="w-4 h-4 mr-2" />
                   }
-                  Cash Out ${payoutBalance.toFixed(2)}
+                  Cash Out ${cashoutRequestAmount.toFixed(2)}
                 </Button>
               ) : (
                 <div className="inline-flex items-center gap-1.5 bg-green-950/40 border border-green-500/30 text-green-400 text-xs rounded-full px-3 py-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                  {payoutEnrolled ? 'Enrolled — Keep earning!' : 'Keep referring to earn more!'}
+                  {alreadyRequestedThisCycle
+                    ? 'Requested this week — check back Saturday!'
+                    : payoutBalance < CASHOUT_MIN
+                      ? `Keep earning — $${CASHOUT_MIN} minimum to cash out`
+                      : payoutEnrolled ? 'Enrolled — Keep earning!' : 'Keep referring to earn more!'}
                 </div>
               )}
               {!payoutEnrolled && (

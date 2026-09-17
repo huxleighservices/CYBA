@@ -8,7 +8,7 @@ import {
 } from 'firebase/firestore';
 import { AvatarDisplay } from '@/components/AvatarDisplay';
 import { ShareToDMDialog } from '@/components/cybazone/ShareToDMDialog';
-import { Loader2, Plus, X, Send, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Plus, X, Send, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { AvatarConfig } from '@/lib/avatar-assets';
@@ -286,6 +286,11 @@ export function PulseViewer({
         <Link href={`/u/${current.authorUsername}`} className="flex items-center gap-2 text-white">
           <AvatarDisplay profilePictureUrl={current.authorProfilePictureUrl ?? undefined} avatarConfig={current.authorAvatarConfig ?? undefined} size={28} />
           <span className="text-sm font-semibold">@{current.authorUsername}</span>
+          {current.authorId === currentUserId && (current.viewedBy?.length ?? 0) > 0 && (
+            <span className="flex items-center gap-1 text-xs text-white/70">
+              <Eye className="h-3.5 w-3.5" /> {current.viewedBy.length.toLocaleString()}
+            </span>
+          )}
         </Link>
         <div className="flex items-center gap-2">
           <button onClick={() => onShare(current)} className="text-white/80 hover:text-white p-1.5">
