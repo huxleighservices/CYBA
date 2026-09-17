@@ -24,8 +24,10 @@ import {
   UserCircle,
   Bell,
   Megaphone,
+  X,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { AvatarDisplay } from '@/components/AvatarDisplay';
 import type { AvatarConfig } from '@/lib/avatar-assets';
@@ -207,65 +209,96 @@ function AuthButton({ userProfile }: { userProfile?: HeaderUserProfile | null })
   );
 }
 
-function MainNav({ hasAdminAccess }: { hasAdminAccess: boolean }) {
+/** Desktop nav, condensed into a single 3x3 dot-grid launcher button — clicking it opens a
+ *  full-screen, heavily blurred overlay (macOS Launchpad style) showing every nav destination
+ *  as a tile grid, instead of a permanent row of icon buttons in the header itself. */
+function NavLauncher({ hasAdminAccess }: { hasAdminAccess: boolean }) {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  // Portal target isn't available until after mount (no `document` during SSR) — also doubles
+  // as the guard that skips rendering the portal at all on the server.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  // Close automatically on navigation, and on Escape while open.
+  useEffect(() => { setOpen(false); }, [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('keydown', onKey);
+    // Lock page scroll behind the overlay while it's open.
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open]);
+
+  const items = hasAdminAccess
+    ? [...navLinks, { href: '/admin', label: 'Admin Panel', icon: Shield, isNew: false }]
+    : navLinks;
 
   return (
-    <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
-      <TooltipProvider>
-        {navLinks.map((link) => (
-          <Tooltip key={link.href}>
-            <TooltipTrigger asChild>
-              <Button
-                asChild
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  'relative rounded-full w-12 h-12',
-                  pathname === link.href ? 'bg-muted text-primary' : 'text-foreground/60'
-                )}
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="hidden md:grid grid-cols-3 gap-[3px] h-10 w-10 place-items-center rounded-xl hover:bg-muted transition-colors shrink-0"
+        aria-label="Open menu"
+      >
+        {Array.from({ length: 9 }).map((_, i) => (
+          <span key={i} className="h-1.5 w-1.5 rounded-full bg-foreground/70" />
+        ))}
+      </button>
+
+      {/* Portaled to <body> — rendering this fixed-position overlay as a descendant of
+          <header> (which has its own backdrop-blur) would confine "fixed" to the header's own
+          ~64px box instead of the viewport, since a backdrop-filter on an ancestor establishes
+          a new containing block for fixed-position descendants. Escaping via a portal avoids
+          that entirely, so inset-0 actually covers (and blurs/darkens) the whole screen. */}
+      {mounted && open && createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-2xl animate-in fade-in duration-200"
+          onClick={() => setOpen(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="absolute top-6 right-6 h-11 w-11 rounded-full flex items-center justify-center hover:bg-white/10 text-white/80 transition-colors"
+            aria-label="Close menu"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <div
+            className="grid grid-cols-3 gap-6 sm:gap-8 p-8 max-w-xl"
+            onClick={e => e.stopPropagation()}
+          >
+            {items.map(item => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex flex-col items-center gap-2 group"
               >
-                <Link href={link.href}>
-                  <link.icon className="h-6 w-6" />
-                  <span className="sr-only">{link.label}</span>
-                  {link.isNew && (
-                    <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-[9px] font-bold px-1 py-0.5 rounded-full leading-none">
+                <div className={cn(
+                  'relative h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-white/10 border flex items-center justify-center shadow-lg transition-all group-hover:scale-110',
+                  pathname === item.href ? 'border-primary text-primary' : 'border-white/20 text-white/80 group-hover:border-primary/60 group-hover:text-primary'
+                )}>
+                  <item.icon className="h-7 w-7 sm:h-8 sm:w-8" />
+                  {item.isNew && (
+                    <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[9px] font-bold px-1 py-0.5 rounded-full leading-none">
                       NEW
                     </span>
                   )}
-                </Link>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{link.label}</p>
-            </TooltipContent>
-          </Tooltip>
-        ))}
-        {hasAdminAccess && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                asChild
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  'relative rounded-full w-12 h-12',
-                  pathname === '/admin' ? 'bg-muted text-cyan-400' : 'text-cyan-400/70'
-                )}
-              >
-                <Link href="/admin">
-                  <Shield className="h-6 w-6" />
-                  <span className="sr-only">Admin Panel</span>
-                </Link>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Admin Panel</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
-      </TooltipProvider>
-    </nav>
+                </div>
+                <span className="text-xs font-semibold text-white/80 text-center">{item.label}</span>
+              </Link>
+            ))}
+          </div>
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }
 
@@ -318,9 +351,8 @@ function MobileNav({ hasAdminAccess }: { hasAdminAccess: boolean }) {
             <SheetTitle className="sr-only">Mobile Menu</SheetTitle>
             <SheetDescription className="sr-only">Main navigation links for CYBA.</SheetDescription>
             <SheetClose asChild>
-              <Link href="/" className="flex items-center gap-2">
-                <Image src="/cyblogo.png" alt="CYBA Logo" width={30} height={30} />
-                <Image src="https://preview.redd.it/cybazone-2-v0-pg6fhpkr65kg1.png?width=1080&crop=smart&auto=webp&s=6df4067e5f00ad1660deb7f6b1b13dcb326f26f0" alt="CYBAZONE Logo" width={80} height={13} />
+              <Link href="/" className="flex items-center">
+                <Image src="/cybazone-logo.png" alt="CYBAZONE" width={160} height={32} />
               </Link>
             </SheetClose>
           </SheetHeader>
@@ -557,26 +589,23 @@ export function Header() {
           {/* Left side */}
           <div className="flex items-center gap-2 md:gap-4">
             <MobileNav hasAdminAccess={hasAdminAccess} />
-            {/* Desktop: icon only, left-aligned — the wordmark sits between here and the wallet (see AuthButton) */}
-            <Link href="/" className="hidden md:flex items-center">
-              <Image src="/cyblogo.png" alt="CYBA Logo" width={40} height={40} />
-            </Link>
+            {/* Desktop nav, condensed into a single 3x3 dot launcher (opens a full-screen tile grid) */}
+            <NavLauncher hasAdminAccess={hasAdminAccess} />
           </div>
 
           {/* Center */}
           <div className="flex flex-1 items-center justify-center">
-            {/* Mobile: wordmark takes the prominent center spot in the header */}
+            {/* Mobile: full logo (icon + wordmark) takes the prominent center spot in the header */}
             <Link href="/" className="md:hidden">
-              <Image src="https://preview.redd.it/cybazone-2-v0-pg6fhpkr65kg1.png?width=1080&crop=smart&auto=webp&s=6df4067e5f00ad1660deb7f6b1b13dcb326f26f0" alt="CYBAZONE Logo" width={130} height={22} />
+              <Image src="/cybazone-logo.png" alt="CYBAZONE" width={140} height={28} priority />
             </Link>
-            <MainNav hasAdminAccess={hasAdminAccess} />
           </div>
 
           {/* Right side */}
           <div className="hidden md:flex items-center justify-end gap-3">
-            {/* Wordmark — sits between the icon logo (far left) and the wallet, sized to be noticeable */}
-            <Link href="/" className="text-xl font-black tracking-widest text-primary text-glow shrink-0">
-              CYBAZONE
+            {/* Full logo (icon + wordmark) — sits between the launcher and the wallet */}
+            <Link href="/" className="shrink-0">
+              <Image src="/cybazone-logo.png" alt="CYBAZONE" width={180} height={36} priority />
             </Link>
             <AuthButton userProfile={userProfile} />
           </div>
