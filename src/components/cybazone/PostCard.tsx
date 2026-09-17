@@ -436,46 +436,54 @@ export function PostCard({
     <>
       {(hasSpotlightBoost || isCurator) && (
         <style>{`
-          @keyframes spotlight-boost-pulse {
-            0%, 100% {
-              box-shadow:
-                0 0 20px rgba(168,85,247,0.75),
-                0 0 55px rgba(139,92,246,0.45),
-                0 0 110px rgba(109,40,217,0.22),
-                inset 0 0 28px rgba(168,85,247,0.07);
-            }
-            50% {
-              box-shadow:
-                0 0 38px rgba(168,85,247,1),
-                0 0 95px rgba(139,92,246,0.75),
-                0 0 190px rgba(109,40,217,0.38),
-                inset 0 0 50px rgba(168,85,247,0.14);
-            }
+          @keyframes spotlight-ring-spin {
+            0%   { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
           }
+          @keyframes spotlight-label-pulse {
+            0%, 100% { opacity: 0.7; }
+            50%       { opacity: 1; }
+          }
+          .spotlight-glow-ring { animation: spotlight-ring-spin 5s linear infinite; }
+          .spotlight-label-pulse { animation: spotlight-label-pulse 2s ease-in-out infinite; }
           @keyframes curator-glow-pulse {
             0%, 100% { box-shadow: 0 0 18px rgba(34,197,94,0.55), 0 0 40px rgba(22,163,74,0.25); }
             50%       { box-shadow: 0 0 28px rgba(34,197,94,0.85), 0 0 60px rgba(22,163,74,0.4); }
           }
-          .spotlight-boost-glow { animation: spotlight-boost-pulse 2.5s ease-in-out infinite; border-color: rgba(168,85,247,0.75) !important; }
           .curator-glow { animation: curator-glow-pulse 3s ease-in-out infinite; border-color: rgba(34,197,94,0.6) !important; }
         `}</style>
       )}
-      <Card className={`relative w-full h-full flex flex-col${hasSpotlightBoost && !isCurator ? ' spotlight-boost-glow border-purple-500/70 bg-gradient-to-b from-purple-950/50 via-card/80 to-card/60' : ' border-primary/20 bg-card/50'}${isCurator ? ' curator-glow border-green-500/60 bg-gradient-to-b from-green-950/30 via-card/80 to-card/60' : ''}`}>
+      <div className="relative w-full h-full">
+        {hasSpotlightBoost && !isCurator && (
+          <>
+            {/* Spinning gradient border ring — same treatment as the Spotlight Boost subscription
+                uses everywhere else it renders a glow (unified per the CYBAZONE style guide). */}
+            <div className="absolute -inset-[2px] rounded-2xl overflow-hidden z-0 pointer-events-none">
+              <div
+                className="spotlight-glow-ring absolute inset-[-100%]"
+                style={{ background: 'conic-gradient(from 0deg, #7c3aed, #a855f7, #ec4899, #7c3aed, #3b82f6, #7c3aed)' }}
+              />
+            </div>
+            <div
+              className="absolute -inset-[3px] rounded-2xl pointer-events-none spotlight-label-pulse"
+              style={{ boxShadow: '0 0 30px rgba(139,92,246,0.5), 0 0 60px rgba(139,92,246,0.2)' }}
+            />
+            <div className="absolute -top-3 left-4 z-20">
+              <span
+                className="spotlight-label-pulse inline-flex items-center gap-1.5 bg-gradient-to-r from-violet-600 to-purple-500 text-white text-[9px] font-black tracking-[0.2em] uppercase px-3 py-1 rounded-full shadow-lg"
+                style={{ boxShadow: '0 0 12px rgba(139,92,246,0.8)' }}
+              >
+                <span className="text-yellow-300">★</span>
+                SPOTLIGHT
+              </span>
+            </div>
+          </>
+        )}
+      <Card className={`relative z-10 w-full h-full flex flex-col${hasSpotlightBoost && !isCurator ? ' mt-2 border-purple-500/40 bg-card/50' : ' border-primary/20 bg-card/50'}${isCurator ? ' curator-glow border-green-500/60 bg-gradient-to-b from-green-950/30 via-card/80 to-card/60' : ''}`}>
         {post.authorLevel && (
           <div className="absolute top-2.5 right-2.5 z-10">
             <LevelBadge level={post.authorLevel} />
           </div>
-        )}
-        {hasSpotlightBoost && !isCurator && (
-          <>
-            <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-purple-400 to-transparent opacity-80" />
-            <div className="flex items-center gap-1.5 px-4 pt-3 pb-0">
-              <span className="inline-flex items-center gap-1.5 bg-purple-600/25 border border-purple-400/60 text-purple-200 text-[10px] font-black tracking-widest uppercase rounded-full px-3 py-0.5 shadow-[0_0_8px_rgba(168,85,247,0.4)]">
-                <span className="w-1.5 h-1.5 rounded-full bg-purple-300 animate-pulse shadow-[0_0_4px_rgba(216,180,254,0.8)]" />
-                Spotlighted
-              </span>
-            </div>
-          </>
         )}
         {isCurator && (
           <div className="flex items-center gap-1.5 px-4 pt-3 pb-0">
@@ -736,6 +744,7 @@ export function PostCard({
           />
         )}
       </Card>
+      </div>
       <CommentSheet
         open={isCommentsOpen}
         onOpenChange={setIsCommentsOpen}

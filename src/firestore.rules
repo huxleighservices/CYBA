@@ -104,12 +104,6 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
-    // ── Sponsored Items ──────────────────────────────────────────────────────
-    match /sponsored_items/{itemId} {
-      allow read: if true;
-      allow write: if isSignedIn();
-    }
-
     // ── Conversations & Messages ─────────────────────────────────────────────
     match /conversations/{convId} {
       allow read: if isSignedIn() &&

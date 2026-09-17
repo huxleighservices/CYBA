@@ -15,7 +15,6 @@ function classifyBoost(productName: string): string | null {
   if (n.includes('payout')) return 'payout_boost';
   if (n.includes('market')) return 'market_boost';
   if (n.includes('radio')) return 'radio_boost';
-  if (n.includes('spotlight')) return 'spotlight_boost';
   return null;
 }
 
@@ -160,10 +159,6 @@ async function applyBoostToUser(userRef: any, boostType: string): Promise<void> 
       break;
     case 'radio_boost':
       await userRef.update({ radioBoost: true, radioBoostAt: now });
-      break;
-    case 'spotlight_boost':
-      // Adds one sponsored-post inventory slot (same mechanic as the CC-purchased slots)
-      await userRef.update({ 'inventory.sponsored_post.quantity': FieldValue.increment(1) });
       break;
     case 'zone_pass':
       await userRef.update({ membershipTier: 'zone_pass', membershipAt: now });

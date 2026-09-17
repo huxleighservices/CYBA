@@ -46,10 +46,6 @@ type UserProfile = {
   boostSubscriptions?: Partial<Record<BoostSubscriptionType, { subscribed: boolean; priority?: number }>>;
   radioExtraSlots?: number;
   marketBoostTier?: 'base' | 'mid' | 'top';
-  inventory?: {
-    sponsored_post?: { quantity: number };
-    sponsored_profile?: { quantity: number };
-  };
 };
 
 const SUBSCRIPTION_META: Record<BoostSubscriptionType, { label: string; description: string; icon: any; card: string; badge: string; btn: string }> = {
@@ -156,7 +152,6 @@ function detectBoostType(itemName: string): string {
 function getBoostStatus(boostType: string, userProfile?: UserProfile | null): {
   active: boolean;
   label: string;
-  inventoryNote?: string; // shown as info alongside the buy button, never blocks purchase
 } {
   const tier = userProfile?.membershipTier ?? '';
   switch (boostType) {
@@ -166,15 +161,6 @@ function getBoostStatus(boostType: string, userProfile?: UserProfile | null): {
       return { active: !!userProfile?.marketBoost, label: '🛒 Market Boost Active' };
     case 'radio_boost':
       return { active: !!userProfile?.radioBoost, label: '📻 Radio Boost Active' };
-    case 'spotlight_boost': {
-      const qty = userProfile?.inventory?.sponsored_post?.quantity ?? 0;
-      // Never block purchase — slots stack and don't expire
-      return {
-        active: false,
-        label: '',
-        inventoryNote: qty > 0 ? `📝 You have ${qty} slot${qty !== 1 ? 's' : ''} in inventory` : undefined,
-      };
-    }
     case 'zone_pass':
       return { active: ['zone_pass', 'zone_pass_pro', 'zone_pass_ultimate'].includes(tier), label: '🎟️ Zone Pass Active' };
     case 'zone_pass_pro':
@@ -197,7 +183,7 @@ function StripeBoostCard({
 }) {
   const boostType = detectBoostType(item.name ?? '');
   const styles = BOOST_STYLES[boostType] ?? BOOST_STYLES.payout_boost;
-  const { active, label, inventoryNote } = getBoostStatus(boostType, userProfile);
+  const { active, label } = getBoostStatus(boostType, userProfile);
 
   const baseUrl = item.buttonLink ?? '';
   // client_reference_id (not prefilled_custom_field, which Stripe Payment Links don't actually
@@ -226,12 +212,6 @@ function StripeBoostCard({
             </li>
           ))}
         </ul>
-        {inventoryNote && (
-          <div className="text-xs bg-muted/30 rounded-lg px-3 py-2 text-center text-muted-foreground">
-            {inventoryNote} —{' '}
-            <Link href="/sponsor" className="underline text-foreground">Activate →</Link>
-          </div>
-        )}
         {username && !active && (
           <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2 text-center">
             Purchasing as: <span className="text-foreground font-semibold">@{username}</span>

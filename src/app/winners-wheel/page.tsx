@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { useFirebase, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, updateDoc, increment, collection, query, where, orderBy, limit, Timestamp } from 'firebase/firestore';
 import {
@@ -212,7 +211,7 @@ function PrizeModal({ prize, onClose }: { prize: WheelPrize | null; onClose: () 
             <span className="text-sm text-yellow-300 font-bold">+{prize.value} CYBACOIN</span>
           </div>
         )}
-        {(prize.type === 'multiplier' || prize.type === 'sponsored_post' || prize.type === 'sponsored_profile') && (
+        {prize.type === 'multiplier' && (
           <div className="my-3 bg-purple-950/50 border border-purple-800 rounded-lg p-3">
             <p className="text-[8px] text-purple-300">ADDED TO YOUR INVENTORY</p>
           </div>
@@ -331,7 +330,6 @@ interface UserWheelData {
 
 export default function WinnersWheelPage() {
   const { firestore, user, isUserLoading } = useFirebase();
-  const router = useRouter();
   const [spinAngle, setSpinAngle] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [wonPrize, setWonPrize] = useState<WheelPrize | null>(null);
@@ -455,20 +453,6 @@ export default function WinnersWheelPage() {
       } else {
         updates[`inventory.${key}.quantity`] = 1;
       }
-    } else if (prize.type === 'sponsored_post') {
-      const alreadyHas = (inventorySnapshot.sponsored_post?.quantity ?? 0) > 0;
-      if (alreadyHas) {
-        updates.cybaCoinBalance = increment(10);
-      } else {
-        updates['inventory.sponsored_post.quantity'] = 1;
-      }
-    } else if (prize.type === 'sponsored_profile') {
-      const alreadyHas = (inventorySnapshot.sponsored_profile?.quantity ?? 0) > 0;
-      if (alreadyHas) {
-        updates.cybaCoinBalance = increment(10);
-      } else {
-        updates['inventory.sponsored_profile.quantity'] = 1;
-      }
     } else if (prize.type === 'spotlight_boost_24h') {
       const alreadyHas = (inventorySnapshot.spotlight_boost_24h?.quantity ?? 0) > 0;
       if (alreadyHas) {
@@ -516,13 +500,6 @@ export default function WinnersWheelPage() {
       const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
       updates[`inventory.${boostType}.expiresAt`] = expiresAt;
       updates['activeMultiplier'] = { rate, expiresAt };
-    } else if (boostType === 'sponsored_post') {
-      // Navigate to sponsor page — it handles deducting inventory + creating sponsored_items
-      router.push('/sponsor?type=post');
-      return;
-    } else if (boostType === 'sponsored_profile') {
-      router.push('/sponsor?type=profile');
-      return;
     } else if (boostType === 'spotlight_boost_24h') {
       // Reuses the same spotlightBoost flag the weekly subscription grants (post glow), just
       // temporary — a cron would be needed to clear it after 24h; PLACEHOLDER until that exists.

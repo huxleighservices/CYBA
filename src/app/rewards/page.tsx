@@ -46,10 +46,6 @@ type UserProfile = {
   unlockedQuests?: string[];
   purchasedGear?: string[];
   equippedGear?: string[];
-  inventory?: {
-    sponsored_post?: { quantity: number };
-    sponsored_profile?: { quantity: number };
-  };
 };
 
 type RewardExtra = {
@@ -952,56 +948,6 @@ export default function RewardsPage() {
           })}
         </div>
       </section>
-
-      {/* Sponsored slots inventory */}
-      {user && (() => {
-        const postQty = userProfile?.inventory?.sponsored_post?.quantity ?? 0;
-        const profileQty = userProfile?.inventory?.sponsored_profile?.quantity ?? 0;
-        return (postQty > 0 || profileQty > 0) ? (
-          <section className="mt-14">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="h-px flex-1 bg-border/50" />
-              <h2 className="text-xs font-bold tracking-widest uppercase text-muted-foreground px-2">
-                My Inventory
-              </h2>
-              <div className="h-px flex-1 bg-border/50" />
-            </div>
-
-            <div className="rounded-2xl border border-purple-500/30 bg-purple-950/10 p-6">
-              <div className="grid sm:grid-cols-2 gap-4">
-                {postQty > 0 && (
-                  <div className="flex items-center justify-between rounded-lg border border-purple-500/20 bg-purple-950/20 px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">📝</span>
-                      <div>
-                        <p className="text-sm font-semibold">Spotlight Post</p>
-                        <p className="text-xs text-muted-foreground">{postQty} slot{postQty > 1 ? 's' : ''} ready</p>
-                      </div>
-                    </div>
-                    <Button size="sm" asChild className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white">
-                      <Link href="/sponsor">Activate</Link>
-                    </Button>
-                  </div>
-                )}
-                {profileQty > 0 && (
-                  <div className="flex items-center justify-between rounded-lg border border-purple-500/20 bg-purple-950/20 px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">👤</span>
-                      <div>
-                        <p className="text-sm font-semibold">Spotlight Profile</p>
-                        <p className="text-xs text-muted-foreground">{profileQty} slot{profileQty > 1 ? 's' : ''} ready</p>
-                      </div>
-                    </div>
-                    <Button size="sm" asChild className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white">
-                      <Link href="/sponsor">Activate</Link>
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-        ) : null;
-      })()}
 
       <p className="text-center text-xs text-muted-foreground mt-12">
         Earn CYBACOIN by posting, engaging, and spinning the{' '}

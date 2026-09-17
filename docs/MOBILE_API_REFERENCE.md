@@ -175,7 +175,7 @@ Base URL: `https://cybazone.com` (or the current Firebase App Hosting URL). Thes
 These exist in `src/app/api/` but are not part of the product's client-facing surface — don't call them from the mobile app:
 
 - **`/api/stripe/webhook`** — Stripe payment webhook receiver, signature-verified against Stripe's own signing secret.
-- **`/api/cron/*`** (`weekly-payout`, `weekly-reset`, `weekly-boost-billing`, `cleanup-ads`, `cleanup-pulses`, `cleanup-sponsored`, `promo-expiry-warning`, `publish-scheduled`, `launch-reset`) — scheduled jobs, gated behind an `x-cron-secret` header. `launch-reset` in particular is a one-time destructive migration (wipes CYBACOIN/level/quest progress and grants 10k CC to every user) meant to run exactly once at public launch — don't touch it.
+- **`/api/cron/*`** (`weekly-payout`, `weekly-reset`, `weekly-boost-billing`, `cleanup-ads`, `cleanup-pulses`, `promo-expiry-warning`, `publish-scheduled`, `launch-reset`) — scheduled jobs, gated behind an `x-cron-secret` header. `launch-reset` in particular is a one-time destructive migration (wipes CYBACOIN/level/quest progress and grants 10k CC to every user) meant to run exactly once at public launch — don't touch it.
 - **`/api/admin/trigger-cron`** — relays to the routes above for the admin panel's manual "run now" buttons. Also has no real caller-identity check today (flagged separately to David).
 - **`/api/kitchenbot`, `/api/sheets`, `/api/sync-leaderboard`** — unrelated internal tooling sharing this codebase/repo: an ESP32 restaurant kitchen-ticket voice system and a legacy Google Sheets leaderboard sync. Not part of CYBAZONE at all — ignore these entirely.
 

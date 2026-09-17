@@ -1,5 +1,5 @@
-export type PrizeType = 'coins' | 'multiplier' | 'sponsored_post' | 'sponsored_profile' | 'bonus_spin' | 'free_quest_entry' | 'spotlight_boost_24h';
-export type BoostType = 'multiplier_2x' | 'multiplier_3x' | 'sponsored_post' | 'sponsored_profile' | 'spotlight_boost_24h';
+export type PrizeType = 'coins' | 'multiplier' | 'bonus_spin' | 'free_quest_entry' | 'spotlight_boost_24h';
+export type BoostType = 'multiplier_2x' | 'multiplier_3x' | 'spotlight_boost_24h';
 
 export interface WheelPrize {
   id: string;
@@ -134,8 +134,6 @@ export interface InventorySlot {
 export interface UserInventory {
   multiplier_2x: InventorySlot;
   multiplier_3x: InventorySlot;
-  sponsored_post: InventorySlot;
-  sponsored_profile: InventorySlot;
   spotlight_boost_24h: InventorySlot;
   free_quest_entry: InventorySlot;
 }
@@ -143,8 +141,6 @@ export interface UserInventory {
 export const DEFAULT_INVENTORY: UserInventory = {
   multiplier_2x: { quantity: 0 },
   multiplier_3x: { quantity: 0 },
-  sponsored_post: { quantity: 0 },
-  sponsored_profile: { quantity: 0 },
   spotlight_boost_24h: { quantity: 0 },
   free_quest_entry: { quantity: 0 },
 };
@@ -166,18 +162,6 @@ export const BOOST_INFO: Record<BoostType, {
     description: 'Triples your CYBACOIN earnings for 24 hours.',
     emoji: '💫',
     activateLabel: 'ACTIVATE 3x BOOST',
-  },
-  sponsored_post: {
-    label: 'Spotlight Post',
-    description: 'Pins your next post to the top of the Global Feed.',
-    emoji: '📢',
-    activateLabel: 'ACTIVATE SPOTLIGHT POST',
-  },
-  sponsored_profile: {
-    label: 'Spotlight Profile',
-    description: 'Features your profile at the top of the Global Feed.',
-    emoji: '🌟',
-    activateLabel: 'ACTIVATE SPOTLIGHT PROFILE',
   },
   spotlight_boost_24h: {
     label: '24hr Spotlight Boost',
