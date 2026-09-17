@@ -72,6 +72,63 @@ gcloud scheduler jobs create http cybazone-birthday-gift \
 
 echo "✓ birthday-gift job created (runs daily at 14:00 UTC = 9:00 AM EST)"
 
+# ── 6. Saturday 12:10 AM EST = Saturday 05:10 UTC — weekly boost billing ─────
+# 10 minutes after weekly-reset so it never races the same week's data.
+gcloud scheduler jobs create http cybazone-weekly-boost-billing \
+  --project="$PROJECT_ID" \
+  --location="$REGION" \
+  --schedule="10 05 * * 6" \
+  --uri="$APP_URL/api/cron/weekly-boost-billing" \
+  --http-method=POST \
+  --headers="x-cron-secret=$CRON_SECRET,Content-Type=application/json" \
+  --message-body="{}" \
+  --time-zone="UTC" \
+  --description="CYBAZONE: Saturday 12:10 AM EST — bill weekly CC boost subscriptions"
+
+echo "✓ weekly-boost-billing job created (runs Sat 05:10 UTC = Sat 12:10 AM EST)"
+
+# ── 7. Daily 10:00 AM EST = 15:00 UTC — promo expiry warnings ────────────────
+gcloud scheduler jobs create http cybazone-promo-expiry-warning \
+  --project="$PROJECT_ID" \
+  --location="$REGION" \
+  --schedule="0 15 * * *" \
+  --uri="$APP_URL/api/cron/promo-expiry-warning" \
+  --http-method=POST \
+  --headers="x-cron-secret=$CRON_SECRET,Content-Type=application/json" \
+  --message-body="{}" \
+  --time-zone="UTC" \
+  --description="CYBAZONE: Daily 10:00 AM EST — warn promoters 3 days before expiry"
+
+echo "✓ promo-expiry-warning job created (runs daily at 15:00 UTC = 10:00 AM EST)"
+
+# ── 8. Every hour — expire/promote ads ────────────────────────────────────────
+gcloud scheduler jobs create http cybazone-cleanup-ads \
+  --project="$PROJECT_ID" \
+  --location="$REGION" \
+  --schedule="0 * * * *" \
+  --uri="$APP_URL/api/cron/cleanup-ads" \
+  --http-method=POST \
+  --headers="x-cron-secret=$CRON_SECRET,Content-Type=application/json" \
+  --message-body="{}" \
+  --time-zone="UTC" \
+  --description="CYBAZONE: Every hour — expire active Promo Blast ads past their expiresAt"
+
+echo "✓ cleanup-ads job created (runs every hour)"
+
+# ── 9. Every hour — delete expired Pulses ─────────────────────────────────────
+gcloud scheduler jobs create http cybazone-cleanup-pulses \
+  --project="$PROJECT_ID" \
+  --location="$REGION" \
+  --schedule="5 * * * *" \
+  --uri="$APP_URL/api/cron/cleanup-pulses" \
+  --http-method=POST \
+  --headers="x-cron-secret=$CRON_SECRET,Content-Type=application/json" \
+  --message-body="{}" \
+  --time-zone="UTC" \
+  --description="CYBAZONE: Every hour — delete expired Pulses"
+
+echo "✓ cleanup-pulses job created (runs every hour)"
+
 echo ""
 echo "Done! View jobs at:"
 echo "  https://console.cloud.google.com/cloudscheduler?project=$PROJECT_ID"
