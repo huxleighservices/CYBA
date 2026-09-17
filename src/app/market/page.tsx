@@ -8,7 +8,7 @@ import {
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import {
   collection, orderBy, query, doc, updateDoc, increment, addDoc,
-  serverTimestamp, where, setDoc,
+  serverTimestamp, where, setDoc, getDocs, type Firestore,
 } from 'firebase/firestore';
 import { Loader2, ShoppingBag } from 'lucide-react';
 import Image from 'next/image';
@@ -19,6 +19,25 @@ import { logTransaction, logCashTransaction } from '@/lib/transactions';
 import { createNotification } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 import { MyStore, type MarketListing } from '@/components/market/MyStore';
+
+// Same admin allowlist used to gate /admin — kept in sync manually since there's no shared
+// server-side admin list accessible from client code.
+const ADMIN_EMAILS = ['contactcyba@gmail.com', 'z1mmerman@yahoo.com'];
+
+async function notifyAdminsOfMerchOrder(firestore: Firestore, buyerUsername: string, itemName: string) {
+  try {
+    const snap = await getDocs(query(collection(firestore, 'users'), where('email', 'in', ADMIN_EMAILS)));
+    await Promise.all(snap.docs.map(adminDoc => createNotification(firestore, adminDoc.id, {
+      type: 'merch_order',
+      actorId: 'system',
+      actorUsername: 'CYBAZONE',
+      message: `New CYBAMERCH order: ${itemName} from @${buyerUsername}. Check the admin panel to fulfill it.`,
+      linkTo: '/admin',
+    })));
+  } catch {
+    // Non-critical — never block the purchase on this
+  }
+}
 
 type UserProfile = {
   username?: string;
@@ -77,6 +96,7 @@ export default function MarketPage() {
         userId: user.uid, username: userProfile.username ?? '', itemId: item.id, itemName: item.name,
         paidWith: 'cybacoin', amount: ccPrice, status: 'pending', orderedAt: serverTimestamp(),
       });
+      notifyAdminsOfMerchOrder(firestore, userProfile.username ?? user.uid, item.name);
       toast({ title: 'Order placed!', description: `${ccPrice.toLocaleString()} CYBACOIN spent.` });
     } catch {
       toast({ variant: 'destructive', title: 'Purchase failed' });
@@ -104,6 +124,7 @@ export default function MarketPage() {
         userId: user.uid, username: userProfile.username ?? '', itemId: item.id, itemName: item.name,
         paidWith: 'wallet_cash', amount: price, status: 'pending', orderedAt: serverTimestamp(),
       });
+      notifyAdminsOfMerchOrder(firestore, userProfile.username ?? user.uid, item.name);
       toast({ title: 'Order placed!', description: `$${price.toFixed(2)} wallet cash spent.` });
     } catch {
       toast({ variant: 'destructive', title: 'Purchase failed' });

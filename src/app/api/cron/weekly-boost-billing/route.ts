@@ -13,7 +13,9 @@ export async function POST(request: NextRequest) {
     const db = adminDb;
 
     const ratesSnap = await db.collection('settings').doc('boostSubscriptionRates').get();
-    const rates = { ...DEFAULT_BOOST_SUBSCRIPTION_RATES, ...(ratesSnap.exists ? ratesSnap.data() : {}) };
+    const rawRates = ratesSnap.exists ? ratesSnap.data() ?? {} : {};
+    const rates = { ...DEFAULT_BOOST_SUBSCRIPTION_RATES, ...rawRates };
+    const marketTierExtraRate = { ...MARKET_TIER_EXTRA_RATE, ...(rawRates.marketTierExtraRate ?? {}) };
 
     const results = Object.fromEntries(
       BOOST_SUBSCRIPTION_TYPES.map(t => [t, { charged: 0, paused: 0 }])
@@ -48,7 +50,7 @@ export async function POST(request: NextRequest) {
       for (const type of subscribedTypes) {
         // Market Boost's Mid/Top tiers add a surcharge on top of the base weekly rate.
         const marketSurcharge = type === 'market'
-          ? MARKET_TIER_EXTRA_RATE[(data.marketBoostTier as MarketBoostTier) ?? 'base']
+          ? marketTierExtraRate[(data.marketBoostTier as MarketBoostTier) ?? 'base']
           : 0;
         const price = (rates[type] ?? DEFAULT_BOOST_SUBSCRIPTION_RATES[type]) + marketSurcharge;
         const flagField = BOOST_FLAG_FIELD[type];

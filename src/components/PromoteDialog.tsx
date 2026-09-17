@@ -343,7 +343,7 @@ export function PromoteDialog({
                   <Checkbox checked={wantUnskippable} onCheckedChange={c => setWantUnskippable(c === true)} className="mt-0.5" />
                   <span className="flex-1">
                     <span className="flex items-center gap-1.5 text-sm font-semibold"><Zap className="w-3.5 h-3.5" /> Unskippable — {config.unskippable.priceLabel}</span>
-                    <span className="block text-xs text-muted-foreground">Your promo plays in full with no skip option.</span>
+                    <span className="block text-xs text-muted-foreground">{config.unskippable.description}</span>
                   </span>
                 </label>
               )}
@@ -352,7 +352,7 @@ export function PromoteDialog({
                   <Checkbox checked={wantMediaQuest} onCheckedChange={c => setWantMediaQuest(c === true)} className="mt-0.5" />
                   <span className="flex-1">
                     <span className="flex items-center gap-1.5 text-sm font-semibold"><Target className="w-3.5 h-3.5" /> CYBAQUEST — {config.mediaQuest.priceLabel}</span>
-                    <span className="block text-xs text-muted-foreground">A CYBAQUEST is created prompting CYBAs to purchase your product or service.</span>
+                    <span className="block text-xs text-muted-foreground">{config.mediaQuest.description}</span>
                   </span>
                 </label>
               )}

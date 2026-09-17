@@ -24,11 +24,16 @@ export const MARKET_TIER_ITEM_CAP: Record<MarketBoostTier, number> = {
   top: Infinity,
 };
 // PLACEHOLDER weekly CYBACOIN rates for Mid/Top — Base uses the `market` rate above.
+// Admin-overridable via settings/boostSubscriptionRates.marketTierExtraRate.
 export const MARKET_TIER_EXTRA_RATE: Record<MarketBoostTier, number> = {
   base: 0,
   mid: 500,
   top: 1500,
 };
+
+// PLACEHOLDER one-time CC cost to buy an extra Radio Boost video slot for the month.
+// Admin-overridable via settings/boostSubscriptionRates.radioExtraSlotCost.
+export const DEFAULT_RADIO_EXTRA_SLOT_COST_CC = 2500;
 
 // Field on users/{uid} that reflects the actual granted state (what the rest
 // of the app already checks — PostCard glow, market "My Store", radio widget,

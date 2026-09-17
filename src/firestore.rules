@@ -157,8 +157,11 @@ service cloud.firestore {
 
     // ── Market Orders ────────────────────────────────────────────────────────
     match /merch_orders/{orderId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // Any signed-in user can read/update — admin-only actions (fulfillment, tracking) are
+      // gated in the app UI, same pattern as cashout_requests above.
+      allow read: if isSignedIn();
       allow create: if isSignedIn();
+      allow update: if isSignedIn();
     }
 
     // ── Kitchen Tickets ──────────────────────────────────────────────────────

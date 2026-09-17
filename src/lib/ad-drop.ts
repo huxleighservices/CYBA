@@ -37,6 +37,7 @@ export interface AdTierConfig {
 export interface AdUpsellConfig {
   priceLabel: string;
   buttonLink: string;
+  description: string;
 }
 
 /** Parses a "$4.99" price label into a numeric USD amount, for wallet-cash balance payments. */
@@ -96,8 +97,8 @@ export const DEFAULT_AD_DROP_CONFIG: AdDropConfig = {
     day14: { priceLabel: '$124.99', buttonLink: '', days: 14 },
     day30: { priceLabel: '$624.99', buttonLink: '', days: 30 },
   },
-  unskippable: { priceLabel: '$2.99', buttonLink: '' },
-  mediaQuest: { priceLabel: '$9.99', buttonLink: '' },
+  unskippable: { priceLabel: '$2.99', buttonLink: '', description: 'Your promo plays in full with no skip option.' },
+  mediaQuest: { priceLabel: '$9.99', buttonLink: '', description: 'A CYBAQUEST is created prompting CYBAs to purchase your product or service.' },
   skipCostCC: 1000,
   watchRewardCC: 5, // PLACEHOLDER — confirm before launch
   usdToCcRate: 100, // PLACEHOLDER — confirm before launch (100 CC per $1)

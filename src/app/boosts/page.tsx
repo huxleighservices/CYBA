@@ -28,7 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   DEFAULT_BOOST_SUBSCRIPTION_RATES, BOOST_SUBSCRIPTION_TYPES, BOOST_FLAG_FIELD,
-  MARKET_TIER_ITEM_CAP, MARKET_TIER_EXTRA_RATE,
+  MARKET_TIER_ITEM_CAP, MARKET_TIER_EXTRA_RATE, DEFAULT_RADIO_EXTRA_SLOT_COST_CC,
   type BoostSubscriptionRates, type BoostSubscriptionType, type BoostSubscriptionDescriptions, type MarketBoostTier,
 } from '@/lib/boost-subscriptions';
 import { Radio, ShoppingBag, Sparkles, Pause, Banknote as BanknoteIcon, ShieldOff } from 'lucide-react';
@@ -453,9 +453,13 @@ function MarketBoostTierSelector({ userId, currentTier, balance }: { userId: str
   const { toast } = useToast();
   const [switching, setSwitching] = useState<MarketBoostTier | null>(null);
 
+  const ratesRef = useMemoFirebase(() => doc(firestore, 'settings', 'boostSubscriptionRates'), [firestore]);
+  const { data: rawRates } = useDoc<{ marketTierExtraRate?: Partial<Record<MarketBoostTier, number>> }>(ratesRef);
+  const marketTierExtraRate = { ...MARKET_TIER_EXTRA_RATE, ...rawRates?.marketTierExtraRate };
+
   const handleSwitch = async (tier: MarketBoostTier) => {
     if (tier === currentTier) return;
-    const price = MARKET_TIER_EXTRA_RATE[tier];
+    const price = marketTierExtraRate[tier];
     if (price > 0 && balance < price) {
       toast({ variant: 'destructive', title: 'Not enough CYBACOIN' });
       return;
@@ -489,7 +493,7 @@ function MarketBoostTierSelector({ userId, currentTier, balance }: { userId: str
             )}
           >
             {switching === tier ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : TIER_LABEL[tier]}
-            {MARKET_TIER_EXTRA_RATE[tier] > 0 && <span className="block text-[10px] opacity-70">+{MARKET_TIER_EXTRA_RATE[tier].toLocaleString()} CC/wk</span>}
+            {marketTierExtraRate[tier] > 0 && <span className="block text-[10px] opacity-70">+{marketTierExtraRate[tier].toLocaleString()} CC/wk</span>}
           </button>
         ))}
       </div>
@@ -506,8 +510,6 @@ function extractYtVideoId(url: string): string | null {
   } catch { return null; }
 }
 
-const RADIO_EXTRA_SLOT_COST_CC = 2500;
-
 function RadioBoostSubmission({ userId, username, extraSlots = 0, balance = 0 }: { userId: string; username: string; extraSlots?: number; balance?: number }) {
   const { firestore, storage } = useFirebase();
   const { toast } = useToast();
@@ -519,6 +521,10 @@ function RadioBoostSubmission({ userId, username, extraSlots = 0, balance = 0 }:
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [buyingSlot, setBuyingSlot] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const ratesRef = useMemoFirebase(() => doc(firestore, 'settings', 'boostSubscriptionRates'), [firestore]);
+  const { data: rawRates } = useDoc<{ radioExtraSlotCost?: number }>(ratesRef);
+  const RADIO_EXTRA_SLOT_COST_CC = rawRates?.radioExtraSlotCost ?? DEFAULT_RADIO_EXTRA_SLOT_COST_CC;
 
   const monthKey = new Date().toISOString().slice(0, 7);
   const slotLimit = 1 + extraSlots;

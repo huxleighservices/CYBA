@@ -46,6 +46,8 @@ function notifIcon(type: NotificationType) {
     case 'promo_renewal_bonus':  return '🎁';
     case 'new_post':             return '📝';
     case 'birthday_gift':        return '🎂';
+    case 'merch_order':          return '📦';
+    case 'merch_shipped':        return '🚚';
   }
 }
 
@@ -118,6 +120,18 @@ function notifLabel(n: Notification) {
       return (
         <span>
           <strong>CYBAZONE</strong> {n.message ?? 'Happy Birthday! We added a CYBACOIN gift to your wallet.'}
+        </span>
+      );
+    case 'merch_order':
+      return (
+        <span>
+          <strong>CYBAZONE</strong> {n.message ?? 'New merch order placed.'}
+        </span>
+      );
+    case 'merch_shipped':
+      return (
+        <span>
+          <strong>CYBAZONE</strong> {n.message ?? 'Your order has shipped!'}
         </span>
       );
   }

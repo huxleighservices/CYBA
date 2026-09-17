@@ -54,8 +54,8 @@ import { sendSystemDM } from '@/lib/system-dm';
 import { CC_BUNDLE_ORDER, DEFAULT_CC_BUNDLES, type CcBundlesConfig } from '@/lib/cybacoin-bundles';
 import type { KeywordResponder } from '@/lib/keyword-responders';
 import {
-  DEFAULT_BOOST_SUBSCRIPTION_RATES, BOOST_SUBSCRIPTION_TYPES,
-  type BoostSubscriptionRates, type BoostSubscriptionType, type BoostSubscriptionDescriptions,
+  DEFAULT_BOOST_SUBSCRIPTION_RATES, BOOST_SUBSCRIPTION_TYPES, MARKET_TIER_EXTRA_RATE, DEFAULT_RADIO_EXTRA_SLOT_COST_CC,
+  type BoostSubscriptionRates, type BoostSubscriptionType, type BoostSubscriptionDescriptions, type MarketBoostTier,
 } from '@/lib/boost-subscriptions';
 import { DEFAULT_AD_DROP_CONFIG, AD_TIER_ORDER, type AdDropConfig, type AdDoc, type AdTierKey } from '@/lib/ad-drop';
 import { logTransaction, logCashTransaction } from '@/lib/transactions';
@@ -1384,6 +1384,147 @@ function ShopManagement() {
   );
 }
 
+type MerchOrder = {
+  id: string;
+  userId: string;
+  username: string;
+  itemName: string;
+  paidWith: 'cybacoin' | 'wallet_cash';
+  amount: number;
+  status: 'pending' | 'shipped';
+  orderedAt?: any;
+  trackingNumber?: string;
+};
+
+function MerchOrdersManagement() {
+  const { firestore } = useFirebase();
+  const { toast } = useToast();
+  const [filter, setFilter] = useState<'pending' | 'shipped' | 'all'>('pending');
+  const [shippingFor, setShippingFor] = useState<string | null>(null);
+  const [tracking, setTracking] = useState('');
+  const [saving, setSaving] = useState<string | null>(null);
+
+  const ordersQuery = useMemoFirebase(
+    () => filter === 'all'
+      ? query(collection(firestore, 'merch_orders'), limit(100))
+      : query(collection(firestore, 'merch_orders'), where('status', '==', filter), limit(100)),
+    [firestore, filter]
+  );
+  const { data: ordersRaw, isLoading } = useCollection<MerchOrder>(ordersQuery);
+  const orders = useMemo(
+    () => [...(ordersRaw ?? [])].sort((a: any, b: any) => (b.orderedAt?.seconds ?? 0) - (a.orderedAt?.seconds ?? 0)),
+    [ordersRaw]
+  );
+
+  const handleMarkShipped = async (order: MerchOrder) => {
+    setSaving(order.id);
+    try {
+      await updateDoc(doc(firestore, 'merch_orders', order.id), {
+        status: 'shipped',
+        trackingNumber: tracking.trim() || null,
+        shippedAt: serverTimestamp(),
+      });
+      await sendSystemDM(
+        firestore,
+        order.userId,
+        tracking.trim()
+          ? `Your CYBAMERCH order (${order.itemName}) has shipped! Tracking number: ${tracking.trim()}`
+          : `Your CYBAMERCH order (${order.itemName}) has shipped!`,
+      );
+      setShippingFor(null);
+      setTracking('');
+      toast({ title: 'Marked as shipped!', description: `@${order.username} notified.` });
+    } catch {
+      toast({ variant: 'destructive', title: 'Action failed' });
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Merch Orders</CardTitle>
+        <CardDescription>Fulfill CYBAMERCH orders and notify buyers with tracking info.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-2 mb-4 flex-wrap">
+          {(['pending', 'shipped', 'all'] as const).map(f => (
+            <Button key={f} size="sm" variant={filter === f ? 'default' : 'outline'} className="capitalize" onClick={() => setFilter(f)}>
+              {f === 'pending' && '📦 '}
+              {f === 'shipped' && '🚚 '}
+              {f}
+            </Button>
+          ))}
+        </div>
+        {isLoading ? (
+          <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>
+        ) : !orders?.length ? (
+          <div className="text-center py-10 text-muted-foreground text-sm border border-dashed border-border rounded-xl">
+            No {filter === 'all' ? '' : filter} merch orders.
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>User</TableHead>
+                <TableHead>Item</TableHead>
+                <TableHead>Paid</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {orders.map(order => (
+                <TableRow key={order.id}>
+                  <TableCell className="font-medium">@{order.username}</TableCell>
+                  <TableCell>{order.itemName}</TableCell>
+                  <TableCell>
+                    {order.paidWith === 'cybacoin' ? `${order.amount.toLocaleString()} CC` : `$${order.amount.toFixed(2)}`}
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={cn('text-xs capitalize', order.status === 'pending' ? 'bg-yellow-600' : 'bg-green-600')}>
+                      {order.status}
+                    </Badge>
+                    {order.trackingNumber && <p className="text-[10px] text-muted-foreground mt-0.5">#{order.trackingNumber}</p>}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {order.status === 'pending' && (
+                      shippingFor === order.id ? (
+                        <div className="flex items-center gap-2 justify-end">
+                          <Input
+                            placeholder="Tracking # (optional)"
+                            value={tracking}
+                            onChange={e => setTracking(e.target.value)}
+                            className="h-7 text-xs w-40"
+                          />
+                          <Button size="sm" variant="outline" onClick={() => { setShippingFor(null); setTracking(''); }}>✕</Button>
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-500 text-white"
+                            disabled={saving === order.id}
+                            onClick={() => handleMarkShipped(order)}
+                          >
+                            {saving === order.id ? <Loader2 className="w-3 h-3 animate-spin" /> : '✓ Ship'}
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button size="sm" className="bg-green-600 hover:bg-green-500 text-white" onClick={() => setShippingFor(order.id)}>
+                          Mark Shipped
+                        </Button>
+                      )
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function ShopForm({ item }: { item?: any }) {
   const [open, setOpen] = useState(false);
   const { firestore, storage } = useFirebase();
@@ -1967,21 +2108,29 @@ function CCSubsManagement() {
   const { toast } = useToast();
 
   const ratesRef = useMemoFirebase(() => doc(firestore, 'settings', 'boostSubscriptionRates'), [firestore]);
-  const { data: rawRates } = useDoc<Partial<BoostSubscriptionRates> & { descriptions?: BoostSubscriptionDescriptions }>(ratesRef);
+  const { data: rawRates } = useDoc<Partial<BoostSubscriptionRates> & {
+    descriptions?: BoostSubscriptionDescriptions;
+    marketTierExtraRate?: Partial<Record<MarketBoostTier, number>>;
+    radioExtraSlotCost?: number;
+  }>(ratesRef);
 
   const [rates, setRates] = useState<BoostSubscriptionRates>(DEFAULT_BOOST_SUBSCRIPTION_RATES);
   const [descriptions, setDescriptions] = useState<BoostSubscriptionDescriptions>({});
+  const [marketTierExtraRate, setMarketTierExtraRate] = useState<Record<MarketBoostTier, number>>(MARKET_TIER_EXTRA_RATE);
+  const [radioExtraSlotCost, setRadioExtraSlotCost] = useState<number>(DEFAULT_RADIO_EXTRA_SLOT_COST_CC);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setRates(rawRates ? { ...DEFAULT_BOOST_SUBSCRIPTION_RATES, ...rawRates } : DEFAULT_BOOST_SUBSCRIPTION_RATES);
     setDescriptions(rawRates?.descriptions ?? {});
+    setMarketTierExtraRate({ ...MARKET_TIER_EXTRA_RATE, ...rawRates?.marketTierExtraRate });
+    setRadioExtraSlotCost(rawRates?.radioExtraSlotCost ?? DEFAULT_RADIO_EXTRA_SLOT_COST_CC);
   }, [rawRates]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await setDoc(doc(firestore, 'settings', 'boostSubscriptionRates'), { ...rates, descriptions });
+      await setDoc(doc(firestore, 'settings', 'boostSubscriptionRates'), { ...rates, descriptions, marketTierExtraRate, radioExtraSlotCost });
       toast({ title: 'CC Subscription rates saved' });
     } catch {
       toast({ variant: 'destructive', title: 'Save failed' });
@@ -2032,6 +2181,44 @@ function CCSubsManagement() {
             />
           </div>
         ))}
+
+        <div className="space-y-2 border-t border-border/40 pt-4">
+          <span className="text-sm font-semibold">🛒 Market Boost tier upcharges</span>
+          <p className="text-xs text-muted-foreground">Extra weekly CC on top of the base Market rate above, for the Mid and Top listing-cap tiers.</p>
+          <div className="flex flex-wrap gap-4">
+            {(['mid', 'top'] as MarketBoostTier[]).map(tier => (
+              <div key={tier} className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground capitalize w-10">{tier}</span>
+                <Input
+                  type="number"
+                  min={0}
+                  step={50}
+                  value={marketTierExtraRate[tier]}
+                  onChange={e => setMarketTierExtraRate(prev => ({ ...prev, [tier]: isNaN(parseInt(e.target.value, 10)) ? 0 : parseInt(e.target.value, 10) }))}
+                  className="h-9 w-28"
+                />
+                <span className="text-xs text-muted-foreground">CC / week</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-2 border-t border-border/40 pt-4">
+          <span className="text-sm font-semibold">📻 Radio extra video slot</span>
+          <p className="text-xs text-muted-foreground">One-time CC cost for a Radio Boost member to buy an extra monthly video submission slot.</p>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              min={0}
+              step={100}
+              value={radioExtraSlotCost}
+              onChange={e => setRadioExtraSlotCost(isNaN(parseInt(e.target.value, 10)) ? 0 : parseInt(e.target.value, 10))}
+              className="h-9 w-28"
+            />
+            <span className="text-xs text-muted-foreground">CC</span>
+          </div>
+        </div>
+
         <Button onClick={handleSave} disabled={saving} className="mt-2">
           {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
           Save Rates & Descriptions
@@ -2145,30 +2332,46 @@ function AdDropManagement() {
           <div>
             <p className="text-sm font-semibold mb-2">Upsells</p>
             <div className="space-y-3">
-              <div className="grid sm:grid-cols-[110px_100px_1fr] gap-2 items-center">
-                <span className="text-xs text-muted-foreground">Unskippable</span>
+              <div className="space-y-1.5">
+                <div className="grid sm:grid-cols-[110px_100px_1fr] gap-2 items-center">
+                  <span className="text-xs text-muted-foreground">Unskippable</span>
+                  <Input
+                    value={config.unskippable.priceLabel}
+                    onChange={e => setConfig(prev => ({ ...prev, unskippable: { ...prev.unskippable, priceLabel: e.target.value } }))}
+                    placeholder="$2.99"
+                  />
+                  <Input
+                    value={config.unskippable.buttonLink}
+                    onChange={e => setConfig(prev => ({ ...prev, unskippable: { ...prev.unskippable, buttonLink: e.target.value } }))}
+                    placeholder="https://buy.stripe.com/..."
+                  />
+                </div>
                 <Input
-                  value={config.unskippable.priceLabel}
-                  onChange={e => setConfig(prev => ({ ...prev, unskippable: { ...prev.unskippable, priceLabel: e.target.value } }))}
-                  placeholder="$2.99"
-                />
-                <Input
-                  value={config.unskippable.buttonLink}
-                  onChange={e => setConfig(prev => ({ ...prev, unskippable: { ...prev.unskippable, buttonLink: e.target.value } }))}
-                  placeholder="https://buy.stripe.com/..."
+                  value={config.unskippable.description}
+                  onChange={e => setConfig(prev => ({ ...prev, unskippable: { ...prev.unskippable, description: e.target.value } }))}
+                  placeholder="Description shown to buyers"
+                  className="text-xs"
                 />
               </div>
-              <div className="grid sm:grid-cols-[110px_100px_1fr] gap-2 items-center">
-                <span className="text-xs text-muted-foreground">CYBAQUEST</span>
+              <div className="space-y-1.5">
+                <div className="grid sm:grid-cols-[110px_100px_1fr] gap-2 items-center">
+                  <span className="text-xs text-muted-foreground">CYBAQUEST</span>
+                  <Input
+                    value={config.mediaQuest.priceLabel}
+                    onChange={e => setConfig(prev => ({ ...prev, mediaQuest: { ...prev.mediaQuest, priceLabel: e.target.value } }))}
+                    placeholder="$9.99"
+                  />
+                  <Input
+                    value={config.mediaQuest.buttonLink}
+                    onChange={e => setConfig(prev => ({ ...prev, mediaQuest: { ...prev.mediaQuest, buttonLink: e.target.value } }))}
+                    placeholder="https://buy.stripe.com/..."
+                  />
+                </div>
                 <Input
-                  value={config.mediaQuest.priceLabel}
-                  onChange={e => setConfig(prev => ({ ...prev, mediaQuest: { ...prev.mediaQuest, priceLabel: e.target.value } }))}
-                  placeholder="$9.99"
-                />
-                <Input
-                  value={config.mediaQuest.buttonLink}
-                  onChange={e => setConfig(prev => ({ ...prev, mediaQuest: { ...prev.mediaQuest, buttonLink: e.target.value } }))}
-                  placeholder="https://buy.stripe.com/..."
+                  value={config.mediaQuest.description}
+                  onChange={e => setConfig(prev => ({ ...prev, mediaQuest: { ...prev.mediaQuest, description: e.target.value } }))}
+                  placeholder="Description shown to buyers"
+                  className="text-xs"
                 />
               </div>
             </div>
@@ -5024,7 +5227,7 @@ function AdminPanel({ email, allowedTabs }: { email: string; allowedTabs?: strin
         {hasTab('curator') && <TabsContent value="curator"><CuratorManagement /></TabsContent>}
         {hasTab('boosts') && <TabsContent value="boosts"><BoostsManagement /></TabsContent>}
         {hasTab('rewards') && <TabsContent value="rewards"><RewardsManagement /></TabsContent>}
-        {hasTab('shop') && <TabsContent value="shop"><ShopManagement /></TabsContent>}
+        {hasTab('shop') && <TabsContent value="shop" className="space-y-6"><ShopManagement /><MerchOrdersManagement /></TabsContent>}
         {hasTab('memberships') && <TabsContent value="memberships"><MembershipManagement /></TabsContent>}
         {hasTab('avatars') && <TabsContent value="avatars"><AvatarManagement /></TabsContent>}
         {hasTab('levels') && <TabsContent value="levels"><LevelManagement /></TabsContent>}
