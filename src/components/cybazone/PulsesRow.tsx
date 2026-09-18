@@ -9,7 +9,7 @@ import {
 } from 'firebase/firestore';
 import { AvatarDisplay } from '@/components/AvatarDisplay';
 import { ShareToDMDialog } from '@/components/cybazone/ShareToDMDialog';
-import { Loader2, Plus, X, Send, ChevronLeft, ChevronRight, Eye, Camera, Image as ImageIcon, Trash2, RefreshCw } from 'lucide-react';
+import { Loader2, Plus, X, Send, ChevronLeft, ChevronRight, Eye, Camera, Image as ImageIcon, Trash2, RefreshCw, Volume2, VolumeX } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { AvatarConfig } from '@/lib/avatar-assets';
@@ -335,6 +335,7 @@ export function PulseComposeDialog({
   onPost: (caption: string) => void;
 }) {
   const [caption, setCaption] = useState('');
+  const [muted, setMuted] = useState(true);
   const previewUrl = useMemo(() => URL.createObjectURL(file), [file]);
   useEffect(() => () => URL.revokeObjectURL(previewUrl), [previewUrl]);
 
@@ -357,9 +358,20 @@ export function PulseComposeDialog({
         </button>
       </div>
 
-      <div className="flex-1 flex items-center justify-center overflow-hidden px-4">
+      <div className="flex-1 relative flex items-center justify-center overflow-hidden px-4">
         {isVideo ? (
-          <video src={previewUrl} className="max-h-full max-w-full rounded-lg" autoPlay muted loop playsInline />
+          <>
+            {/* Starts muted so autoplay is never blocked by the browser — tap the speaker to
+                confirm the recording actually has audio before posting. */}
+            <video src={previewUrl} className="max-h-full max-w-full rounded-lg" autoPlay muted={muted} loop playsInline />
+            <button
+              onClick={() => setMuted(m => !m)}
+              className="absolute bottom-3 right-3 h-9 w-9 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+              title={muted ? 'Unmute' : 'Mute'}
+            >
+              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            </button>
+          </>
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={previewUrl} alt="" className="max-h-full max-w-full rounded-lg object-contain" />
@@ -408,6 +420,7 @@ export function PulseCameraCapture({
   const [isRecording, setIsRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [noMic, setNoMic] = useState(false);
 
   const stopStream = () => {
     streamRef.current?.getTracks().forEach(t => t.stop());
@@ -417,11 +430,17 @@ export function PulseCameraCapture({
   useEffect(() => {
     let cancelled = false;
     stopStream();
+    // Ask for camera+mic together first (one combined permission prompt on most browsers). If
+    // that's refused specifically because of the mic (some browsers reject the whole call rather
+    // than silently dropping the audio constraint), retry video-only so photo/video capture still
+    // works — just flagged as silent, rather than failing the whole camera view.
     navigator.mediaDevices?.getUserMedia?.({ video: { facingMode }, audio: true })
+      .catch(() => navigator.mediaDevices.getUserMedia({ video: { facingMode } }))
       .then(stream => {
         if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
         streamRef.current = stream;
         if (videoRef.current) videoRef.current.srcObject = stream;
+        setNoMic(stream.getAudioTracks().length === 0);
         setError(null);
       })
       .catch(() => setError('Camera access denied or unavailable. Check your browser permissions.'));
@@ -528,6 +547,11 @@ export function PulseCameraCapture({
             className={cn('max-h-full max-w-full', facingMode === 'user' && '-scale-x-100')}
           />
         )}
+        {!error && noMic && (
+          <span className="absolute top-3 left-1/2 -translate-x-1/2 text-[11px] font-semibold text-amber-300 bg-black/60 rounded-full px-3 py-1">
+            ⚠ No microphone access — video will be silent
+          </span>
+        )}
       </div>
 
       <div className="flex flex-col items-center gap-3 py-8 shrink-0">
@@ -568,6 +592,9 @@ export function PulseViewer({
   const { toast } = useToast();
   const [index, setIndex] = useState(0);
   const [deleting, setDeleting] = useState(false);
+  // Starts muted — unmuted `autoPlay` is blocked outright by most browsers' autoplay policy,
+  // which meant video Pulses could silently fail to play at all, not just play without sound.
+  const [muted, setMuted] = useState(true);
   const current = pulses[index];
   const markedRef = useRef<Set<string>>(new Set());
 
@@ -639,6 +666,11 @@ export function PulseViewer({
           )}
         </Link>
         <div className="flex items-center gap-2">
+          {current.mediaType === 'video' && (
+            <button onClick={() => setMuted(m => !m)} className="text-white/80 hover:text-white p-1.5" title={muted ? 'Unmute' : 'Mute'}>
+              {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+            </button>
+          )}
           {current.authorId === currentUserId && (
             <button onClick={handleDelete} disabled={deleting} className="text-white/80 hover:text-red-400 p-1.5 disabled:opacity-40">
               {deleting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
@@ -656,7 +688,7 @@ export function PulseViewer({
       {/* Media */}
       <div className="relative w-full h-full max-w-md mx-auto flex items-center justify-center">
         {current.mediaType === 'video' ? (
-          <video src={current.mediaUrl} className="max-h-full max-w-full" autoPlay playsInline onEnded={advance} />
+          <video src={current.mediaUrl} className="max-h-full max-w-full" autoPlay muted={muted} playsInline onEnded={advance} />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={current.mediaUrl} alt="" className="max-h-full max-w-full object-contain" />
