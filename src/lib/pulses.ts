@@ -1,5 +1,5 @@
 import type { Firestore } from 'firebase/firestore';
-import { addDoc, collection, doc, increment, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, increment, serverTimestamp, updateDoc } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { v4 as uuidv4 } from 'uuid';
@@ -23,11 +23,12 @@ async function writePulseDoc(
     avatarConfig?: AvatarConfig | null;
     mediaUrl: string;
     mediaType: 'image' | 'video';
+    caption?: string;
     level: Level;
     ccRates?: CCRates | null;
   },
 ): Promise<{ cc: number }> {
-  const { userId, username, profilePictureUrl, avatarConfig, mediaUrl, mediaType, level, ccRates } = params;
+  const { userId, username, profilePictureUrl, avatarConfig, mediaUrl, mediaType, caption, level, ccRates } = params;
   const nowDate = new Date();
   await addDoc(collection(firestore, 'pulses'), {
     authorId: userId,
@@ -36,6 +37,7 @@ async function writePulseDoc(
     authorAvatarConfig: avatarConfig ?? null,
     mediaUrl,
     mediaType,
+    caption: caption?.trim() || null,
     createdAt: serverTimestamp(),
     expiresAt: new Date(nowDate.getTime() + PULSE_LIFETIME_MS),
     viewedBy: [],
@@ -64,11 +66,12 @@ export async function createPulse(
     profilePictureUrl?: string | null;
     avatarConfig?: AvatarConfig | null;
     file: File;
+    caption?: string;
     level: Level;
     ccRates?: CCRates | null;
   },
 ): Promise<{ cc: number }> {
-  const { userId, username, profilePictureUrl, avatarConfig, file, level, ccRates } = params;
+  const { userId, username, profilePictureUrl, avatarConfig, file, caption, level, ccRates } = params;
   const isImage = file.type.startsWith('image/');
   const isVideo = file.type.startsWith('video/');
   if (!isImage && !isVideo) {
@@ -85,9 +88,15 @@ export async function createPulse(
 
   return writePulseDoc(firestore, {
     userId, username, profilePictureUrl, avatarConfig,
-    mediaUrl, mediaType: isImage ? 'image' : 'video',
+    mediaUrl, mediaType: isImage ? 'image' : 'video', caption,
     level, ccRates,
   });
+}
+
+/** Deletes a Pulse — caller must already have confirmed this is the author's own Pulse
+ *  (Firestore rules also enforce owner-only delete server-side). */
+export async function deletePulse(firestore: Firestore, pulseId: string): Promise<void> {
+  await deleteDoc(doc(firestore, 'pulses', pulseId));
 }
 
 /** Re-publishes an existing post's media (already in Storage) as a Pulse — "Share to Pulse". */

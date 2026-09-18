@@ -5,7 +5,7 @@ import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { addDoc, collection, serverTimestamp, doc, updateDoc, increment, Timestamp } from 'firebase/firestore';
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { v4 as uuidv4 } from 'uuid';
-import { Loader2, ImagePlus, X, Video, Clock, Scissors, ImageIcon } from 'lucide-react';
+import { Loader2, ImagePlus, X, Video, Clock, Scissors, ImageIcon, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -34,6 +34,7 @@ import { createAutoShoutout } from '@/lib/shoutouts';
 import { getDocs as _getDocs, query as _query, collection as _collection, where as _where, limit as _limit } from 'firebase/firestore';
 import { getVideoDuration } from '@/lib/promo-blast-checkout';
 import { createPulse } from '@/lib/pulses';
+import { PulseComposeDialog } from '@/components/cybazone/PulsesRow';
 import { applyGearMultiplier } from '@/lib/avatar-gear';
 
 type UserProfile = {
@@ -344,10 +345,12 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
   // Pulse (a completely separate, minimal upload flow — see the early-return branch below).
   const [publishMode, setPublishMode] = useState<'post' | 'pulse' | 'zap'>('post');
   const [pulseUploading, setPulseUploading] = useState(false);
-  const pulseFileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingPulseFile, setPendingPulseFile] = useState<File | null>(null);
+  const pulseCameraInputRef = useRef<HTMLInputElement>(null);
+  const pulseLibraryInputRef = useRef<HTMLInputElement>(null);
 
-  const handlePulseFile = async (file: File) => {
-    if (!user || !userProfile) return;
+  const handlePulseFile = async (caption: string) => {
+    if (!user || !userProfile || !pendingPulseFile) return;
     setPulseUploading(true);
     try {
       const level = computeLevel(userProfile.postCount, userProfile.supportGiven, undefined, userProfile.levelOverride);
@@ -356,7 +359,8 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
         username: userProfile.username,
         profilePictureUrl: userProfile.profilePictureUrl,
         avatarConfig: userProfile.avatarConfig,
-        file,
+        file: pendingPulseFile,
+        caption,
         level,
         ccRates,
       });
@@ -366,7 +370,9 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
       toast({ variant: 'destructive', title: 'Failed to post Pulse', description: err?.message });
     } finally {
       setPulseUploading(false);
-      if (pulseFileInputRef.current) pulseFileInputRef.current.value = '';
+      setPendingPulseFile(null);
+      if (pulseCameraInputRef.current) pulseCameraInputRef.current.value = '';
+      if (pulseLibraryInputRef.current) pulseLibraryInputRef.current.value = '';
     }
   };
 
@@ -793,26 +799,58 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
             <CardTitle className="text-2xl font-bold tracking-widest">✨ Post a Pulse</CardTitle>
             <CardDescription>Visible to your followers for 24 hours. Earns CYBACOIN.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-2">
             <input
-              ref={pulseFileInputRef}
+              ref={pulseCameraInputRef}
+              type="file"
+              accept="image/*,video/*"
+              capture="environment"
+              className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) setPendingPulseFile(f); }}
+            />
+            <input
+              ref={pulseLibraryInputRef}
               type="file"
               accept="image/*,video/*"
               className="hidden"
-              onChange={e => { const f = e.target.files?.[0]; if (f) handlePulseFile(f); }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) setPendingPulseFile(f); }}
             />
             <Button
               type="button"
               className="w-full"
               size="lg"
               disabled={pulseUploading}
-              onClick={() => pulseFileInputRef.current?.click()}
+              onClick={() => pulseCameraInputRef.current?.click()}
             >
-              {pulseUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImagePlus className="mr-2 h-4 w-4" />}
-              {pulseUploading ? 'Posting…' : 'Choose Photo or Video'}
+              <Camera className="mr-2 h-4 w-4" />
+              Take Photo or Video
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              size="lg"
+              disabled={pulseUploading}
+              onClick={() => pulseLibraryInputRef.current?.click()}
+            >
+              <ImagePlus className="mr-2 h-4 w-4" />
+              Choose from Library
             </Button>
           </CardContent>
         </Card>
+
+        {pendingPulseFile && (
+          <PulseComposeDialog
+            file={pendingPulseFile}
+            uploading={pulseUploading}
+            onCancel={() => {
+              setPendingPulseFile(null);
+              if (pulseCameraInputRef.current) pulseCameraInputRef.current.value = '';
+              if (pulseLibraryInputRef.current) pulseLibraryInputRef.current.value = '';
+            }}
+            onPost={handlePulseFile}
+          />
+        )}
       </>
     );
   }

@@ -171,6 +171,16 @@ service cloud.firestore {
       allow write: if false;  // server-only via Admin SDK
     }
 
+    // ── Pulses ────────────────────────────────────────────────────────────────
+    match /pulses/{pulseId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      // update covers both the author editing (unused today) and any signed-in viewer marking
+      // a pulse as seen (viewedBy) — delete is owner-only.
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+    }
+
     // ── Fallback ──────────────────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if isSignedIn();
