@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Loader2, Users, Globe, Radio, Megaphone, Zap, Boxes } from 'lucide-react';
@@ -12,7 +13,7 @@ import { ReviewCard, type Review } from '@/components/cybazone/ReviewCard';
 import { WeeklyWinnersTicker } from '@/components/WeeklyWinnersTicker';
 import { cn } from '@/lib/utils';
 import type { Shoutout } from '@/lib/shoutouts';
-import { Shuffle, SkipForward } from 'lucide-react';
+import { SkipForward, Menu, X, Play, Pause } from 'lucide-react';
 import { mergeWithDefaults, type CCRates } from '@/lib/cc-rewards';
 import { PulsesRow } from '@/components/cybazone/PulsesRow';
 import { SubnetsTab } from '@/components/cybazone/SubnetsTab';
@@ -130,39 +131,41 @@ function CybaRadioPlayer({
   const containerRef = useRef<HTMLDivElement>(null);
   const videoElRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<any>(null);
+  const [isOpen, setIsOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isShuffled, setIsShuffled] = useState(false);
   const [isReady, setIsReady] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
-  const [isLarge, setIsLarge] = useState(false);
   const [showPlaylist, setShowPlaylist] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [queueIndex, setQueueIndex] = useState(0);
+
+  useEffect(() => { setMounted(true); }, []);
 
   const useQueue = (queueItems?.length ?? 0) > 0;
   const [shuffledQueue, setShuffledQueue] = useState<RadioQueueItem[]>([]);
   useEffect(() => {
+    // Always shuffled — there's no user-facing shuffle toggle, the queue is just randomized
+    // once per session so repeat visits don't hear tracks in upload order.
     if (useQueue) { setShuffledQueue(shuffleArray(queueItems!)); setQueueIndex(0); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [useQueue, queueItems?.length]);
 
   const currentItem = useQueue ? shuffledQueue[queueIndex] : null;
-  const trackLabel = currentItem?.username
-    ? `${currentItem.username}${currentItem.title ? ` — ${currentItem.title}` : ''}`
-    : null;
 
   const advanceQueue = () => setQueueIndex(i => (shuffledQueue.length ? (i + 1) % shuffledQueue.length : 0));
 
   // ── YouTube player — created for the fallback playlist, or for the current queue item
   // when it's a YouTube submission. Destroyed/recreated whenever we switch to/from an
-  // uploaded-video item, since the YT IFrame API can't play arbitrary file URLs. ──
+  // uploaded-video item, since the YT IFrame API can't play arbitrary file URLs. Only attempted
+  // while open — the container div isn't mounted at all while closed (just the bubble), so
+  // opening is what first makes the container available for `createPlayer()` to attach to.
+  // Always autoplays: a player only ever gets (re)created as a result of opening, and the whole
+  // point of clicking the closed bubble is "start playing," per the closed/open = stopped/playing
+  // design below.
   useEffect(() => {
+    if (!isOpen) return;
     if (useQueue && currentItem?.type !== 'youtube') return;
     if (useQueue && !currentItem) return;
 
-    // The old player (if any) is torn down below before this runs again, so controls must not
-    // read as "ready" against a player that no longer exists — without this, switching tracks
-    // left isReady=true from the previous track for a moment, and clicking play/skip/shuffle
-    // during that window silently did nothing (playerRef.current was already null).
     setIsReady(false);
 
     let player: any;
@@ -172,9 +175,9 @@ function CybaRadioPlayer({
         player = new (window as any).YT.Player(containerRef.current, {
           height: '100%', width: '100%',
           videoId: currentItem.videoId,
-          playerVars: { autoplay: isPlaying ? 1 : 0, controls: 0, rel: 0, enablejsapi: 1 },
+          playerVars: { autoplay: 1, controls: 0, rel: 0, enablejsapi: 1 },
           events: {
-            onReady: (e: any) => { playerRef.current = player; setIsReady(true); if (isPlaying) e.target.playVideo(); },
+            onReady: (e: any) => { playerRef.current = player; setIsReady(true); setIsPlaying(true); e.target.playVideo(); },
             onStateChange: (e: any) => {
               setIsPlaying(e.data === 1);
               if (e.data === 0) advanceQueue(); // ended → next track
@@ -184,9 +187,9 @@ function CybaRadioPlayer({
       } else if (!useQueue && playlistId) {
         player = new (window as any).YT.Player(containerRef.current, {
           height: '100%', width: '100%',
-          playerVars: { listType: 'playlist', list: playlistId, autoplay: 0, controls: 0, rel: 0, enablejsapi: 1 },
+          playerVars: { listType: 'playlist', list: playlistId, autoplay: 1, controls: 0, rel: 0, enablejsapi: 1 },
           events: {
-            onReady: () => { setIsReady(true); playerRef.current = player; },
+            onReady: (e: any) => { setIsReady(true); playerRef.current = player; setIsPlaying(true); e.target.playVideo(); },
             onStateChange: (e: any) => setIsPlaying(e.data === 1),
           },
         });
@@ -208,21 +211,21 @@ function CybaRadioPlayer({
 
     return () => { player?.destroy(); playerRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playlistId, useQueue, currentItem?.type, currentItem?.videoId, queueIndex]);
+  }, [playlistId, useQueue, currentItem?.type, currentItem?.videoId, queueIndex, isOpen]);
 
   // ── Uploaded-video playback — plain <video> element, swapped in when the current queue
   // item is a direct upload rather than a YouTube submission. ──
   useEffect(() => {
-    if (!useQueue || currentItem?.type !== 'upload') { setIsReady(false); return; }
+    if (!isOpen || !useQueue || currentItem?.type !== 'upload') { setIsReady(false); return; }
     setIsReady(true);
     const el = videoElRef.current;
-    if (el && isPlaying) el.play().catch(() => {});
-  }, [useQueue, currentItem, isPlaying, queueIndex]);
+    if (el) el.play().then(() => setIsPlaying(true)).catch(() => {});
+  }, [isOpen, useQueue, currentItem, queueIndex]);
 
-  // The YouTube IFrame API freezes the iframe's pixel size at creation time — toggling the
-  // mini/large layout resizes the *container* via CSS, but the iframe inside needs an explicit
-  // setSize() call or it stays the old size (looks blank/clipped in the new layout). Not needed
-  // for the <video> case above, since a native <video> element already follows CSS sizing.
+  // The YouTube IFrame API freezes the iframe's pixel size at creation time — opening the
+  // player resizes the *container* via CSS, but the iframe inside needs an explicit setSize()
+  // call or it stays the old size (looks blank/clipped). Not needed for the <video> case above,
+  // since a native <video> element already follows CSS sizing.
   useEffect(() => {
     const el = containerRef.current;
     const p = playerRef.current;
@@ -233,7 +236,7 @@ function CybaRadioPlayer({
       }
     });
     return () => cancelAnimationFrame(id);
-  }, [isLarge, isReady]);
+  }, [isOpen, isReady]);
 
   const togglePlay = () => {
     if (useQueue && currentItem?.type === 'upload') {
@@ -250,15 +253,12 @@ function CybaRadioPlayer({
     if (useQueue) { advanceQueue(); return; }
     playerRef.current?.nextVideo();
   };
-  const toggleShuffle = () => {
-    const next = !isShuffled;
-    setIsShuffled(next);
-    if (useQueue) { setShuffledQueue(prev => shuffleArray(prev)); setQueueIndex(0); return; }
-    playerRef.current?.setShuffle(next);
-  };
+  // Closing tears the player down entirely (the container unmounts) rather than playing
+  // silently in the background — matches "closed = idle, click the button to start playing."
+  const handleClose = () => { setIsOpen(false); setShowPlaylist(false); setIsPlaying(false); };
 
   return (
-    <div className={isLarge && !isMinimized ? 'fixed inset-0 z-[60] bg-black/95 flex items-center justify-center p-4' : 'fixed bottom-20 md:bottom-4 right-4 z-50'}>
+    <>
       <style>{`
         @keyframes radio-pulse{0%,100%{box-shadow:0 0 8px rgba(168,85,247,.35),0 0 18px rgba(168,85,247,.1)}50%{box-shadow:0 0 14px rgba(168,85,247,.6),0 0 32px rgba(168,85,247,.2)}}
         @keyframes radio-bar{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
@@ -270,152 +270,130 @@ function CybaRadioPlayer({
         .radio-bar-3{animation:radio-bar .6s ease-in-out .3s infinite}
       `}</style>
 
-      {isMinimized ? (
-        /* Minimized bubble */
+      {!isOpen ? (
+        /* Closed — just the purple button. Clicking opens the player and starts it playing. */
         <button
-          onClick={() => setIsMinimized(false)}
-          className="radio-bubble-glow relative h-14 w-14 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
+          onClick={() => setIsOpen(true)}
+          className="radio-bubble-glow fixed bottom-20 md:bottom-4 right-4 z-40 h-14 w-14 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
           style={{ background: 'radial-gradient(circle at 40% 35%,#7c3aed,#3b0764)', border: '1px solid rgba(139,92,246,.6)' }}
           title="Open CYBAZONE RADIO"
         >
           <Radio className="h-6 w-6 text-purple-200" />
-          {isPlaying && (
-            <span className="absolute -top-0.5 -right-0.5 h-3 w-3 bg-green-400 rounded-full border-2 border-background" />
-          )}
         </button>
       ) : (
-        /* Expanded floating player */
-        <div className={cn(
-          'radio-glow rounded-xl border border-purple-500/40 bg-gradient-to-r from-purple-950/90 via-black/90 to-indigo-950/80 backdrop-blur-md overflow-hidden shadow-2xl',
-          isLarge ? 'w-full max-w-2xl max-h-full flex flex-col' : 'w-[290px] sm:w-[330px]',
-        )}>
-          <div className={cn(isLarge ? 'flex flex-col' : 'flex items-stretch', isLarge ? '' : 'h-[82px]')}>
-            {/* Video panel — YT iframe for youtube tracks/fallback playlist, <video> for uploads */}
-            {useQueue && currentItem?.type === 'upload' ? (
-              <video
-                ref={videoElRef}
-                src={currentItem.mediaUrl}
-                className={cn('shrink-0 bg-black object-contain', isLarge ? 'w-full aspect-video max-h-[60vh]' : 'w-[130px] sm:w-[150px] h-full')}
-                muted
-                playsInline
-                onEnded={advanceQueue}
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
-              />
-            ) : (
-              <div ref={containerRef} className={cn('shrink-0 bg-black', isLarge ? 'w-full aspect-video max-h-[60vh]' : 'w-[130px] sm:w-[150px] h-full')} />
-            )}
+        /* Open player bar — full width w/ small side padding above the mobile footer, a fixed
+           bottom-right card on desktop. */
+        <div className="fixed z-40 left-2 right-2 bottom-16 md:left-auto md:right-4 md:bottom-4 md:w-[400px]">
+          <div className="radio-glow rounded-2xl border border-purple-500/40 bg-gradient-to-r from-purple-950/90 via-black/90 to-indigo-950/80 backdrop-blur-md overflow-hidden shadow-2xl">
+            <div className="flex items-stretch h-[84px]">
+              {/* Video panel — YT iframe for youtube tracks/fallback playlist, <video> for uploads */}
+              {useQueue && currentItem?.type === 'upload' ? (
+                <video
+                  ref={videoElRef}
+                  src={currentItem.mediaUrl}
+                  className="shrink-0 bg-black object-contain w-[140px] sm:w-[160px] h-full"
+                  muted
+                  playsInline
+                  onEnded={advanceQueue}
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                />
+              ) : (
+                <div ref={containerRef} className="shrink-0 bg-black w-[140px] sm:w-[160px] h-full" />
+              )}
 
-            {!isLarge && <div className="w-px bg-purple-500/20 shrink-0" />}
+              <div className="w-px bg-purple-500/20 shrink-0" />
 
-            {/* Controls column */}
-            <div className={cn('flex flex-col justify-center min-w-0 gap-1 relative', isLarge ? 'px-3 py-2.5' : 'flex-1 px-2.5')}>
-              {/* Minimize + expand buttons */}
-              <div className="absolute top-1.5 right-1.5 flex items-center gap-1">
-                {isLarge && useQueue && (
-                  <button
-                    onClick={() => setShowPlaylist(v => !v)}
-                    className="h-4 w-4 rounded-full flex items-center justify-center text-purple-400/60 hover:text-purple-200 hover:bg-purple-800/40 transition-colors text-[9px] leading-none"
-                    title="Browse Playlist"
-                  >
-                    ☰
+              {/* Controls column */}
+              <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5 px-3.5 relative">
+                <button
+                  onClick={handleClose}
+                  className="absolute top-2 right-2 h-6 w-6 rounded-full flex items-center justify-center text-purple-400/70 hover:text-purple-200 hover:bg-purple-800/40 transition-colors"
+                  title="Close"
+                >
+                  <span className="text-base leading-none">›</span>
+                </button>
+
+                {/* Status — submitter username is a link to their profile, shown as soon as a
+                    track is loaded (not gated on isPlaying, so it's clickable while paused too) */}
+                <span className="text-[11px] text-white/70 truncate pr-7">
+                  {!isReady ? 'Loading…' : currentItem?.username ? (
+                    <>
+                      <Link href={`/u/${currentItem.username}`} className="text-purple-300 hover:underline font-semibold">
+                        {currentItem.username}
+                      </Link>
+                      {currentItem.title ? ` — ${currentItem.title}` : ''}
+                    </>
+                  ) : isPlaying ? 'Now Streaming…' : 'CYBAZONE RADIO'}
+                </span>
+
+                {/* Playback controls */}
+                <div className="flex items-center gap-2.5">
+                  <button onClick={() => setShowPlaylist(true)} disabled={!useQueue} title="Browse tracks"
+                    className="h-8 w-8 rounded-full flex items-center justify-center transition-all hover:scale-105 disabled:opacity-30"
+                    style={{ background: 'rgba(109,40,217,.25)', border: '1px solid rgba(139,92,246,.4)' }}>
+                    <Menu className="w-3.5 h-3.5 text-purple-100" />
                   </button>
-                )}
-                <button
-                  onClick={() => { setIsLarge(v => !v); setShowPlaylist(false); }}
-                  className="h-4 w-4 rounded-full flex items-center justify-center text-purple-400/60 hover:text-purple-200 hover:bg-purple-800/40 transition-colors text-[9px] leading-none"
-                  title={isLarge ? 'Exit Fullscreen' : 'Fullscreen'}
-                >
-                  {isLarge ? '⤡' : '⤢'}
-                </button>
-                <button
-                  onClick={() => setIsMinimized(true)}
-                  className="h-4 w-4 rounded-full flex items-center justify-center text-purple-400/60 hover:text-purple-200 hover:bg-purple-800/40 transition-colors text-[10px] leading-none"
-                  title="Minimize"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Top row: icon + animated bars + label */}
-              <div className="flex items-center gap-1.5">
-                <div className="h-5 w-5 rounded-full flex items-center justify-center shrink-0" style={{ background: 'radial-gradient(circle,#7c3aed,#4c1d95)', boxShadow: '0 0 6px rgba(124,58,237,.5)' }}>
-                  <Radio className="h-2.5 w-2.5 text-purple-200" />
+                  <button onClick={togglePlay} disabled={!isReady}
+                    className="h-9 w-9 rounded-full flex items-center justify-center transition-transform hover:scale-105 disabled:opacity-40"
+                    style={{ background: isPlaying ? '#6d28d9' : 'rgba(109,40,217,.35)', border: '1px solid rgba(139,92,246,.5)' }}>
+                    {isPlaying
+                      ? <Pause className="w-3.5 h-3.5 text-white" fill="currentColor" />
+                      : <Play className="w-3.5 h-3.5 text-white ml-0.5" fill="currentColor" />
+                    }
+                  </button>
+                  <button onClick={skipNext} disabled={!isReady} title="Next"
+                    className="h-8 w-8 rounded-full flex items-center justify-center transition-all hover:scale-105 disabled:opacity-30"
+                    style={{ background: 'rgba(109,40,217,.25)', border: '1px solid rgba(139,92,246,.4)' }}>
+                    <SkipForward className="w-3.5 h-3.5 text-purple-100" fill="currentColor" />
+                  </button>
                 </div>
-                {isPlaying && (
-                  <div className="flex items-end gap-[2px] h-3">
-                    {['radio-bar-1','radio-bar-2','radio-bar-3'].map(c => (
-                      <div key={c} className={`${c} w-[2px] rounded-full bg-purple-400`} style={{ height: 10, transformOrigin: 'bottom' }} />
-                    ))}
-                  </div>
-                )}
-                <span className="text-[8px] font-black tracking-[0.18em] uppercase text-purple-400 truncate">CYBAZONE RADIO</span>
-              </div>
-
-              {/* Status — submitter username is a link to their profile, shown as soon as a
-                  track is loaded (not gated on isPlaying, so it's clickable while paused too) */}
-              <span className="text-[11px] text-white/70 truncate relative z-20">
-                {!isReady ? 'Loading...' : currentItem?.username ? (
-                  <>
-                    <Link href={`/u/${currentItem.username}`} className="text-purple-300 hover:underline font-semibold">
-                      {currentItem.username}
-                    </Link>
-                    {currentItem.title ? ` — ${currentItem.title}` : ''}
-                  </>
-                ) : isPlaying ? 'Now Streaming...' : 'Tap ▶ to tune in'}
-              </span>
-
-              {/* Playback controls */}
-              <div className="flex items-center gap-1">
-                <button onClick={toggleShuffle} disabled={!isReady} title={isShuffled ? 'Shuffle on' : 'Shuffle off'}
-                  className="h-6 w-6 rounded-full flex items-center justify-center transition-all hover:scale-105 disabled:opacity-40"
-                  style={{ background: isShuffled ? 'rgba(139,92,246,.5)' : 'rgba(109,40,217,.2)', border: '1px solid rgba(139,92,246,.35)' }}>
-                  <Shuffle className="w-2 h-2 text-white" />
-                </button>
-                <button onClick={togglePlay} disabled={!isReady}
-                  className="h-7 w-7 rounded-full flex items-center justify-center transition-transform hover:scale-105 disabled:opacity-40"
-                  style={{ background: isPlaying ? '#6d28d9' : 'rgba(109,40,217,.3)', border: '1px solid rgba(139,92,246,.5)' }}>
-                  {isPlaying
-                    ? <svg width="8" height="8" viewBox="0 0 12 12" fill="white"><rect x="1" y="1" width="4" height="10" rx="1"/><rect x="7" y="1" width="4" height="10" rx="1"/></svg>
-                    : <svg width="8" height="8" viewBox="0 0 12 12" fill="white"><polygon points="2,1 11,6 2,11"/></svg>
-                  }
-                </button>
-                <button onClick={skipNext} disabled={!isReady} title="Skip"
-                  className="h-6 w-6 rounded-full flex items-center justify-center transition-all hover:scale-105 disabled:opacity-40"
-                  style={{ background: 'rgba(109,40,217,.2)', border: '1px solid rgba(139,92,246,.35)' }}>
-                  <SkipForward className="w-2 h-2 text-white" />
-                </button>
               </div>
             </div>
           </div>
-
-          {/* Playlist browser — fullscreen only, lists the full submission queue */}
-          {isLarge && showPlaylist && useQueue && (
-            <div className="border-t border-purple-500/20 overflow-y-auto max-h-[30vh]">
-              {shuffledQueue.map((item, i) => (
-                <button
-                  key={`${item.type}-${i}`}
-                  onClick={() => { setQueueIndex(i); setShowPlaylist(false); }}
-                  className={cn(
-                    'w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-purple-800/30 transition-colors',
-                    i === queueIndex ? 'bg-purple-800/40 text-purple-200' : 'text-white/70',
-                  )}
-                >
-                  <span className="shrink-0">{item.type === 'upload' ? '📤' : '▶️'}</span>
-                  <span className="truncate">
-                    {item.username ? <span className="font-semibold">{item.username}</span> : 'Unknown'}
-                    {item.title ? ` — ${item.title}` : ''}
-                  </span>
-                </button>
-              ))}
-              {shuffledQueue.length === 0 && (
-                <p className="px-3 py-4 text-xs text-white/40 text-center">No submissions in the queue yet.</p>
-              )}
-            </div>
-          )}
         </div>
       )}
-    </div>
+
+      {/* Full-screen track pop-out — hamburger opens this on both mobile and desktop. Portaled
+          to document.body so it isn't confined by any ancestor's backdrop-filter (the header has
+          one, which otherwise traps "fixed" descendants inside its own small box). */}
+      {mounted && showPlaylist && useQueue && createPortal(
+        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex flex-col" onClick={() => setShowPlaylist(false)}>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-purple-500/20 shrink-0">
+            <span className="text-sm font-black tracking-widest uppercase text-purple-300">CYBAZONE RADIO — Tracks</span>
+            <button
+              onClick={() => setShowPlaylist(false)}
+              className="h-9 w-9 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+              title="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto" onClick={e => e.stopPropagation()}>
+            {shuffledQueue.map((item, i) => (
+              <button
+                key={`${item.type}-${i}`}
+                onClick={() => { setQueueIndex(i); setShowPlaylist(false); }}
+                className={cn(
+                  'w-full text-left px-5 py-3.5 text-sm flex items-center gap-3 border-b border-white/5 hover:bg-purple-800/20 transition-colors',
+                  i === queueIndex ? 'bg-purple-800/30 text-purple-200' : 'text-white/70',
+                )}
+              >
+                <span className="shrink-0">{item.type === 'upload' ? '📤' : '▶️'}</span>
+                <span className="truncate">
+                  {item.username ? <span className="font-semibold">{item.username}</span> : 'Unknown'}
+                  {item.title ? ` — ${item.title}` : ''}
+                </span>
+              </button>
+            ))}
+            {shuffledQueue.length === 0 && (
+              <p className="px-5 py-10 text-sm text-white/40 text-center">No submissions in the queue yet.</p>
+            )}
+          </div>
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }
 
