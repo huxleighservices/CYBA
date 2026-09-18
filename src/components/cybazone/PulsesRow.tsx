@@ -9,7 +9,7 @@ import {
 } from 'firebase/firestore';
 import { AvatarDisplay } from '@/components/AvatarDisplay';
 import { ShareToDMDialog } from '@/components/cybazone/ShareToDMDialog';
-import { Loader2, Plus, X, Send, ChevronLeft, ChevronRight, Eye, Camera, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { Loader2, Plus, X, Send, ChevronLeft, ChevronRight, Eye, Camera, Image as ImageIcon, Trash2, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { AvatarConfig } from '@/lib/avatar-assets';
@@ -68,9 +68,21 @@ export function PulsesRow({
   const [viewerAuthorId, setViewerAuthorId] = useState<string | null>(null);
   const [shareTarget, setShareTarget] = useState<Pulse | null>(null);
   const [showSourceMenu, setShowSourceMenu] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
+
+  const handleTakePhotoOrVideo = () => {
+    setShowSourceMenu(false);
+    // Fall back to the OS picker's capture hint on browsers without getUserMedia — old Safari
+    // versions and a handful of embedded webviews.
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      cameraInputRef.current?.click();
+      return;
+    }
+    setShowCamera(true);
+  };
 
   const now = Date.now();
   const pulsesQuery = useMemoFirebase(
@@ -203,7 +215,7 @@ export function PulsesRow({
                 >
                   <button
                     type="button"
-                    onClick={() => { setShowSourceMenu(false); cameraInputRef.current?.click(); }}
+                    onClick={handleTakePhotoOrVideo}
                     className="w-full flex items-center gap-3 px-4 py-4 text-sm font-medium hover:bg-muted transition-colors text-left"
                   >
                     <Camera className="h-5 w-5 text-primary" /> Take Photo or Video
@@ -286,6 +298,13 @@ export function PulsesRow({
         />
       )}
 
+      {showCamera && (
+        <PulseCameraCapture
+          onCancel={() => setShowCamera(false)}
+          onCapture={(file) => { setShowCamera(false); setPendingFile(file); }}
+        />
+      )}
+
       {pendingFile && (
         <PulseComposeDialog
           file={pendingFile}
@@ -356,6 +375,175 @@ export function PulseComposeDialog({
           disabled={uploading}
           className="w-full rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
         />
+      </div>
+    </div>
+  );
+}
+
+const MAX_RECORD_MS = 15000;
+
+/**
+ * A real in-page camera view (getUserMedia + canvas snapshot for photos, MediaRecorder for
+ * video) — used instead of `<input type="file" capture>` because `capture` is only ever a
+ * *hint*; most browsers (all of Android Chrome, and desktop Chrome/Firefox entirely) ignore it
+ * and just open the same file/gallery picker regardless, which made "Take Photo or Video" and
+ * "Choose from Library" behave identically. This works the same everywhere getUserMedia is
+ * supported — mobile and desktop.
+ */
+export function PulseCameraCapture({
+  onCapture,
+  onCancel,
+}: {
+  onCapture: (file: File) => void;
+  onCancel: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const recordIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordSeconds, setRecordSeconds] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  const stopStream = () => {
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    stopStream();
+    navigator.mediaDevices?.getUserMedia?.({ video: { facingMode }, audio: true })
+      .then(stream => {
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
+        streamRef.current = stream;
+        if (videoRef.current) videoRef.current.srcObject = stream;
+        setError(null);
+      })
+      .catch(() => setError('Camera access denied or unavailable. Check your browser permissions.'));
+    return () => { cancelled = true; stopStream(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [facingMode]);
+
+  useEffect(() => () => {
+    if (recordIntervalRef.current) clearInterval(recordIntervalRef.current);
+    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+  }, []);
+
+  const handleClose = () => { stopStream(); onCancel(); };
+
+  const takePhoto = () => {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    if (facingMode === 'user') { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
+    ctx.drawImage(video, 0, 0);
+    canvas.toBlob(blob => {
+      if (!blob) return;
+      stopStream();
+      onCapture(new File([blob], `pulse-${Date.now()}.jpg`, { type: 'image/jpeg' }));
+    }, 'image/jpeg', 0.9);
+  };
+
+  const startRecording = () => {
+    const stream = streamRef.current;
+    if (!stream || isRecording) return;
+    const mimeType = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4']
+      .find(t => (window as any).MediaRecorder?.isTypeSupported?.(t)) ?? '';
+    try {
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      chunksRef.current = [];
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: mimeType || 'video/webm' });
+        const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+        stopStream();
+        onCapture(new File([blob], `pulse-${Date.now()}.${ext}`, { type: blob.type }));
+      };
+      recorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+      setRecordSeconds(0);
+      recordIntervalRef.current = setInterval(() => {
+        setRecordSeconds(s => {
+          if (s + 1 >= MAX_RECORD_MS / 1000) { stopRecording(); return s; }
+          return s + 1;
+        });
+      }, 1000);
+    } catch {
+      setError('Video recording is not supported in this browser.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (!isRecording) return;
+    recorderRef.current?.stop();
+    setIsRecording(false);
+    if (recordIntervalRef.current) { clearInterval(recordIntervalRef.current); recordIntervalRef.current = null; }
+  };
+
+  // Tap = photo. Press-and-hold (>350ms) = start recording; releasing then stops it.
+  const handleShutterDown = () => {
+    holdTimerRef.current = setTimeout(startRecording, 350);
+  };
+  const handleShutterUp = () => {
+    if (holdTimerRef.current) { clearTimeout(holdTimerRef.current); holdTimerRef.current = null; }
+    if (isRecording) stopRecording();
+    else takePhoto();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[80] bg-black flex flex-col">
+      <div className="flex items-center justify-between px-4 py-3 shrink-0">
+        <button onClick={handleClose} className="text-white/80 hover:text-white p-1.5">
+          <X className="h-6 w-6" />
+        </button>
+        {isRecording && (
+          <span className="flex items-center gap-1.5 text-white text-sm font-semibold">
+            <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" /> {recordSeconds}s
+          </span>
+        )}
+        <button onClick={() => setFacingMode(m => m === 'environment' ? 'user' : 'environment')} disabled={isRecording} className="text-white/80 hover:text-white p-1.5 disabled:opacity-30">
+          <RefreshCw className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="flex-1 relative overflow-hidden flex items-center justify-center">
+        {error ? (
+          <p className="text-white/70 text-sm text-center px-8">{error}</p>
+        ) : (
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className={cn('max-h-full max-w-full', facingMode === 'user' && '-scale-x-100')}
+          />
+        )}
+      </div>
+
+      <div className="flex flex-col items-center gap-3 py-8 shrink-0">
+        <button
+          onPointerDown={handleShutterDown}
+          onPointerUp={handleShutterUp}
+          onPointerLeave={() => { if (isRecording) stopRecording(); }}
+          disabled={!!error}
+          className={cn(
+            'h-16 w-16 rounded-full border-4 border-white flex items-center justify-center transition-transform disabled:opacity-30',
+            isRecording ? 'bg-red-500 scale-110' : 'bg-white/20',
+          )}
+        >
+          <span className={cn('bg-white transition-all', isRecording ? 'h-6 w-6 rounded-md' : 'h-12 w-12 rounded-full')} />
+        </button>
+        <p className="text-white/50 text-xs">Tap for photo · Hold for video</p>
       </div>
     </div>
   );

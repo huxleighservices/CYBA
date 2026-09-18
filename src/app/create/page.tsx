@@ -34,7 +34,7 @@ import { createAutoShoutout } from '@/lib/shoutouts';
 import { getDocs as _getDocs, query as _query, collection as _collection, where as _where, limit as _limit } from 'firebase/firestore';
 import { getVideoDuration } from '@/lib/promo-blast-checkout';
 import { createPulse } from '@/lib/pulses';
-import { PulseComposeDialog } from '@/components/cybazone/PulsesRow';
+import { PulseComposeDialog, PulseCameraCapture } from '@/components/cybazone/PulsesRow';
 import { applyGearMultiplier } from '@/lib/avatar-gear';
 
 type UserProfile = {
@@ -346,8 +346,18 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
   const [publishMode, setPublishMode] = useState<'post' | 'pulse' | 'zap'>('post');
   const [pulseUploading, setPulseUploading] = useState(false);
   const [pendingPulseFile, setPendingPulseFile] = useState<File | null>(null);
+  const [showPulseCamera, setShowPulseCamera] = useState(false);
   const pulseCameraInputRef = useRef<HTMLInputElement>(null);
   const pulseLibraryInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePulseTakePhotoOrVideo = () => {
+    // Fall back to the OS picker's capture hint on browsers without getUserMedia.
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      pulseCameraInputRef.current?.click();
+      return;
+    }
+    setShowPulseCamera(true);
+  };
 
   const handlePulseFile = async (caption: string) => {
     if (!user || !userProfile || !pendingPulseFile) return;
@@ -820,7 +830,7 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
               className="w-full"
               size="lg"
               disabled={pulseUploading}
-              onClick={() => pulseCameraInputRef.current?.click()}
+              onClick={handlePulseTakePhotoOrVideo}
             >
               <Camera className="mr-2 h-4 w-4" />
               Take Photo or Video
@@ -838,6 +848,13 @@ function CreatePostForm({ user, userProfile }: { user: any; userProfile: UserPro
             </Button>
           </CardContent>
         </Card>
+
+        {showPulseCamera && (
+          <PulseCameraCapture
+            onCancel={() => setShowPulseCamera(false)}
+            onCapture={(file) => { setShowPulseCamera(false); setPendingPulseFile(file); }}
+          />
+        )}
 
         {pendingPulseFile && (
           <PulseComposeDialog
