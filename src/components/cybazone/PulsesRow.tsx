@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import {
@@ -68,6 +69,8 @@ export function PulsesRow({
   const [shareTarget, setShareTarget] = useState<Pulse | null>(null);
   const [showSourceMenu, setShowSourceMenu] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   const now = Date.now();
   const pulsesQuery = useMemoFirebase(
@@ -189,31 +192,39 @@ export function PulsesRow({
             </div>
             <span className="text-[10px] text-muted-foreground">Your Pulse</span>
 
-            {showSourceMenu && (
-              <>
-                <button
-                  type="button"
-                  aria-label="Dismiss"
-                  onClick={() => setShowSourceMenu(false)}
-                  className="fixed inset-0 z-20 cursor-default"
-                />
-                <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 w-44 rounded-xl border border-primary/20 bg-card shadow-xl overflow-hidden">
+            {/* Portaled to document.body — this row scrolls horizontally (overflow-x-auto),
+                which clips any absolutely-positioned child that isn't escaped via a portal,
+                cutting the menu off on some mobile browsers (notably Android Chrome). */}
+            {mounted && showSourceMenu && createPortal(
+              <div className="fixed inset-0 z-[100] flex items-end sm:items-center sm:justify-center bg-black/70" onClick={() => setShowSourceMenu(false)}>
+                <div
+                  className="w-full sm:w-72 rounded-t-2xl sm:rounded-2xl border border-primary/20 bg-card shadow-xl overflow-hidden pb-[env(safe-area-inset-bottom)]"
+                  onClick={e => e.stopPropagation()}
+                >
                   <button
                     type="button"
-                    onClick={() => cameraInputRef.current?.click()}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm hover:bg-muted transition-colors text-left"
+                    onClick={() => { setShowSourceMenu(false); cameraInputRef.current?.click(); }}
+                    className="w-full flex items-center gap-3 px-4 py-4 text-sm font-medium hover:bg-muted transition-colors text-left"
                   >
-                    <Camera className="h-4 w-4 text-primary" /> Take Photo or Video
+                    <Camera className="h-5 w-5 text-primary" /> Take Photo or Video
                   </button>
                   <button
                     type="button"
-                    onClick={() => libraryInputRef.current?.click()}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm hover:bg-muted transition-colors text-left border-t border-border/50"
+                    onClick={() => { setShowSourceMenu(false); libraryInputRef.current?.click(); }}
+                    className="w-full flex items-center gap-3 px-4 py-4 text-sm font-medium hover:bg-muted transition-colors text-left border-t border-border/50"
                   >
-                    <ImageIcon className="h-4 w-4 text-primary" /> Choose from Library
+                    <ImageIcon className="h-5 w-5 text-primary" /> Choose from Library
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowSourceMenu(false)}
+                    className="w-full px-4 py-4 text-sm font-semibold text-center hover:bg-muted transition-colors border-t border-border/50 text-muted-foreground"
+                  >
+                    Cancel
                   </button>
                 </div>
-              </>
+              </div>,
+              document.body,
             )}
           </div>
         )}
