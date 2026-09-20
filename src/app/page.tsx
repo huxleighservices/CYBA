@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Loader2, Users, Globe, Radio, Megaphone, Zap, Boxes } from 'lucide-react';
+import { Loader2, Users, Globe, Radio, Zap, Boxes } from 'lucide-react';
 import { useCollection, useFirebase, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, orderBy, where, limit, doc, updateDoc, increment, type Timestamp } from 'firebase/firestore';
 import { PostCard, type CybazonePost } from '@/components/cybazone/PostCard';
@@ -13,7 +12,6 @@ import { ReviewCard, type Review } from '@/components/cybazone/ReviewCard';
 import { WeeklyWinnersTicker } from '@/components/WeeklyWinnersTicker';
 import { cn } from '@/lib/utils';
 import type { Shoutout } from '@/lib/shoutouts';
-import { SkipForward, Menu, X, Play, Pause } from 'lucide-react';
 import { mergeWithDefaults, type CCRates } from '@/lib/cc-rewards';
 import { PulsesRow } from '@/components/cybazone/PulsesRow';
 import { SubnetsTab } from '@/components/cybazone/SubnetsTab';
@@ -108,294 +106,6 @@ function buildFeedItems(
   return result;
 }
 
-function shuffleArray<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-type RadioQueueItem =
-  | { type: 'youtube'; videoId: string; mediaUrl?: undefined; username?: string; title?: string }
-  | { type: 'upload'; mediaUrl: string; videoId?: undefined; username?: string; title?: string };
-
-function CybaRadioPlayer({
-  playlistId,
-  queueItems,
-}: {
-  playlistId?: string;
-  queueItems?: RadioQueueItem[];
-}) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const videoElRef = useRef<HTMLVideoElement>(null);
-  const playerRef = useRef<any>(null);
-  const [isOpen, setIsOpen] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isReady, setIsReady] = useState(false);
-  const [showPlaylist, setShowPlaylist] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [queueIndex, setQueueIndex] = useState(0);
-
-  useEffect(() => { setMounted(true); }, []);
-
-  const useQueue = (queueItems?.length ?? 0) > 0;
-  const [shuffledQueue, setShuffledQueue] = useState<RadioQueueItem[]>([]);
-  useEffect(() => {
-    // Always shuffled — there's no user-facing shuffle toggle, the queue is just randomized
-    // once per session so repeat visits don't hear tracks in upload order.
-    if (useQueue) { setShuffledQueue(shuffleArray(queueItems!)); setQueueIndex(0); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useQueue, queueItems?.length]);
-
-  const currentItem = useQueue ? shuffledQueue[queueIndex] : null;
-
-  const advanceQueue = () => setQueueIndex(i => (shuffledQueue.length ? (i + 1) % shuffledQueue.length : 0));
-
-  // ── YouTube player — created for the fallback playlist, or for the current queue item
-  // when it's a YouTube submission. Destroyed/recreated whenever we switch to/from an
-  // uploaded-video item, since the YT IFrame API can't play arbitrary file URLs. Only attempted
-  // while open — the container div isn't mounted at all while closed (just the bubble), so
-  // opening is what first makes the container available for `createPlayer()` to attach to.
-  // Always autoplays: a player only ever gets (re)created as a result of opening, and the whole
-  // point of clicking the closed bubble is "start playing," per the closed/open = stopped/playing
-  // design below.
-  useEffect(() => {
-    if (!isOpen) return;
-    if (useQueue && currentItem?.type !== 'youtube') return;
-    if (useQueue && !currentItem) return;
-
-    setIsReady(false);
-
-    let player: any;
-    function createPlayer() {
-      if (!containerRef.current) return;
-      if (useQueue && currentItem?.type === 'youtube') {
-        player = new (window as any).YT.Player(containerRef.current, {
-          height: '100%', width: '100%',
-          videoId: currentItem.videoId,
-          playerVars: { autoplay: 1, controls: 0, rel: 0, enablejsapi: 1 },
-          events: {
-            onReady: (e: any) => { playerRef.current = player; setIsReady(true); setIsPlaying(true); e.target.playVideo(); },
-            onStateChange: (e: any) => {
-              setIsPlaying(e.data === 1);
-              if (e.data === 0) advanceQueue(); // ended → next track
-            },
-          },
-        });
-      } else if (!useQueue && playlistId) {
-        player = new (window as any).YT.Player(containerRef.current, {
-          height: '100%', width: '100%',
-          playerVars: { listType: 'playlist', list: playlistId, autoplay: 1, controls: 0, rel: 0, enablejsapi: 1 },
-          events: {
-            onReady: (e: any) => { setIsReady(true); playerRef.current = player; setIsPlaying(true); e.target.playVideo(); },
-            onStateChange: (e: any) => setIsPlaying(e.data === 1),
-          },
-        });
-      }
-    }
-
-    if (typeof window === 'undefined') return;
-    if ((window as any).YT?.Player) {
-      createPlayer();
-    } else {
-      if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
-        const tag = document.createElement('script');
-        tag.src = 'https://www.youtube.com/iframe_api';
-        document.head.appendChild(tag);
-      }
-      const prev = (window as any).onYouTubeIframeAPIReady;
-      (window as any).onYouTubeIframeAPIReady = () => { prev?.(); createPlayer(); };
-    }
-
-    return () => { player?.destroy(); playerRef.current = null; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playlistId, useQueue, currentItem?.type, currentItem?.videoId, queueIndex, isOpen]);
-
-  // ── Uploaded-video playback — plain <video> element, swapped in when the current queue
-  // item is a direct upload rather than a YouTube submission. ──
-  useEffect(() => {
-    if (!isOpen || !useQueue || currentItem?.type !== 'upload') { setIsReady(false); return; }
-    setIsReady(true);
-    const el = videoElRef.current;
-    if (el) el.play().then(() => setIsPlaying(true)).catch(() => {});
-  }, [isOpen, useQueue, currentItem, queueIndex]);
-
-  // The YouTube IFrame API freezes the iframe's pixel size at creation time — opening the
-  // player resizes the *container* via CSS, but the iframe inside needs an explicit setSize()
-  // call or it stays the old size (looks blank/clipped). Not needed for the <video> case above,
-  // since a native <video> element already follows CSS sizing.
-  useEffect(() => {
-    const el = containerRef.current;
-    const p = playerRef.current;
-    if (!el || !p?.setSize) return;
-    const id = requestAnimationFrame(() => {
-      if (containerRef.current && playerRef.current?.setSize) {
-        playerRef.current.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-      }
-    });
-    return () => cancelAnimationFrame(id);
-  }, [isOpen, isReady]);
-
-  const togglePlay = () => {
-    if (useQueue && currentItem?.type === 'upload') {
-      const el = videoElRef.current;
-      if (!el) return;
-      if (isPlaying) { el.pause(); setIsPlaying(false); } else { el.play().catch(() => {}); setIsPlaying(true); }
-      return;
-    }
-    const p = playerRef.current;
-    if (!p) return;
-    isPlaying ? p.pauseVideo() : p.playVideo();
-  };
-  const skipNext = () => {
-    if (useQueue) { advanceQueue(); return; }
-    playerRef.current?.nextVideo();
-  };
-  // Closing tears the player down entirely (the container unmounts) rather than playing
-  // silently in the background — matches "closed = idle, click the button to start playing."
-  const handleClose = () => { setIsOpen(false); setShowPlaylist(false); setIsPlaying(false); };
-
-  return (
-    <>
-      <style>{`
-        @keyframes radio-pulse{0%,100%{box-shadow:0 0 8px rgba(168,85,247,.35),0 0 18px rgba(168,85,247,.1)}50%{box-shadow:0 0 14px rgba(168,85,247,.6),0 0 32px rgba(168,85,247,.2)}}
-        @keyframes radio-bar{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
-        @keyframes radio-bubble{0%,100%{box-shadow:0 0 10px rgba(168,85,247,.5),0 0 22px rgba(168,85,247,.2)}50%{box-shadow:0 0 18px rgba(168,85,247,.8),0 0 36px rgba(168,85,247,.3)}}
-        .radio-glow{animation:radio-pulse 2.5s ease-in-out infinite}
-        .radio-bubble-glow{animation:radio-bubble 2.5s ease-in-out infinite}
-        .radio-bar-1{animation:radio-bar .6s ease-in-out infinite}
-        .radio-bar-2{animation:radio-bar .6s ease-in-out .15s infinite}
-        .radio-bar-3{animation:radio-bar .6s ease-in-out .3s infinite}
-      `}</style>
-
-      {!isOpen ? (
-        /* Closed — just the purple button. Clicking opens the player and starts it playing. */
-        <button
-          onClick={() => setIsOpen(true)}
-          className="radio-bubble-glow fixed bottom-20 md:bottom-4 right-4 z-40 h-14 w-14 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
-          style={{ background: 'radial-gradient(circle at 40% 35%,#7c3aed,#3b0764)', border: '1px solid rgba(139,92,246,.6)' }}
-          title="Open CYBAZONE RADIO"
-        >
-          <Radio className="h-6 w-6 text-purple-200" />
-        </button>
-      ) : (
-        /* Open player bar — full width w/ small side padding above the mobile footer, a fixed
-           bottom-right card on desktop. */
-        <div className="fixed z-40 left-2 right-2 bottom-16 md:left-auto md:right-4 md:bottom-4 md:w-[400px]">
-          <div className="radio-glow rounded-2xl border border-purple-500/40 bg-gradient-to-r from-purple-950/90 via-black/90 to-indigo-950/80 backdrop-blur-md overflow-hidden shadow-2xl">
-            <div className="flex items-stretch h-[84px]">
-              {/* Video panel — YT iframe for youtube tracks/fallback playlist, <video> for uploads */}
-              {useQueue && currentItem?.type === 'upload' ? (
-                <video
-                  ref={videoElRef}
-                  src={currentItem.mediaUrl}
-                  className="shrink-0 bg-black object-contain w-[140px] sm:w-[160px] h-full"
-                  muted
-                  playsInline
-                  onEnded={advanceQueue}
-                  onPlay={() => setIsPlaying(true)}
-                  onPause={() => setIsPlaying(false)}
-                />
-              ) : (
-                <div ref={containerRef} className="shrink-0 bg-black w-[140px] sm:w-[160px] h-full" />
-              )}
-
-              <div className="w-px bg-purple-500/20 shrink-0" />
-
-              {/* Controls column */}
-              <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5 px-3.5 relative">
-                <button
-                  onClick={handleClose}
-                  className="absolute top-2 right-2 h-6 w-6 rounded-full flex items-center justify-center text-purple-400/70 hover:text-purple-200 hover:bg-purple-800/40 transition-colors"
-                  title="Close"
-                >
-                  <span className="text-base leading-none">›</span>
-                </button>
-
-                {/* Status — submitter username is a link to their profile, shown as soon as a
-                    track is loaded (not gated on isPlaying, so it's clickable while paused too) */}
-                <span className="text-[11px] text-white/70 truncate pr-7">
-                  {!isReady ? 'Loading…' : currentItem?.username ? (
-                    <>
-                      <Link href={`/u/${currentItem.username}`} className="text-purple-300 hover:underline font-semibold">
-                        {currentItem.username}
-                      </Link>
-                      {currentItem.title ? ` — ${currentItem.title}` : ''}
-                    </>
-                  ) : isPlaying ? 'Now Streaming…' : 'CYBAZONE RADIO'}
-                </span>
-
-                {/* Playback controls */}
-                <div className="flex items-center gap-2.5">
-                  <button onClick={() => setShowPlaylist(true)} disabled={!useQueue} title="Browse tracks"
-                    className="h-8 w-8 rounded-full flex items-center justify-center transition-all hover:scale-105 disabled:opacity-30"
-                    style={{ background: 'rgba(109,40,217,.25)', border: '1px solid rgba(139,92,246,.4)' }}>
-                    <Menu className="w-3.5 h-3.5 text-purple-100" />
-                  </button>
-                  <button onClick={togglePlay} disabled={!isReady}
-                    className="h-9 w-9 rounded-full flex items-center justify-center transition-transform hover:scale-105 disabled:opacity-40"
-                    style={{ background: isPlaying ? '#6d28d9' : 'rgba(109,40,217,.35)', border: '1px solid rgba(139,92,246,.5)' }}>
-                    {isPlaying
-                      ? <Pause className="w-3.5 h-3.5 text-white" fill="currentColor" />
-                      : <Play className="w-3.5 h-3.5 text-white ml-0.5" fill="currentColor" />
-                    }
-                  </button>
-                  <button onClick={skipNext} disabled={!isReady} title="Next"
-                    className="h-8 w-8 rounded-full flex items-center justify-center transition-all hover:scale-105 disabled:opacity-30"
-                    style={{ background: 'rgba(109,40,217,.25)', border: '1px solid rgba(139,92,246,.4)' }}>
-                    <SkipForward className="w-3.5 h-3.5 text-purple-100" fill="currentColor" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Full-screen track pop-out — hamburger opens this on both mobile and desktop. Portaled
-          to document.body so it isn't confined by any ancestor's backdrop-filter (the header has
-          one, which otherwise traps "fixed" descendants inside its own small box). */}
-      {mounted && showPlaylist && useQueue && createPortal(
-        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex flex-col" onClick={() => setShowPlaylist(false)}>
-          <div className="flex items-center justify-between px-5 py-4 border-b border-purple-500/20 shrink-0">
-            <span className="text-sm font-black tracking-widest uppercase text-purple-300">CYBAZONE RADIO — Tracks</span>
-            <button
-              onClick={() => setShowPlaylist(false)}
-              className="h-9 w-9 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-              title="Close"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto" onClick={e => e.stopPropagation()}>
-            {shuffledQueue.map((item, i) => (
-              <button
-                key={`${item.type}-${i}`}
-                onClick={() => { setQueueIndex(i); setShowPlaylist(false); }}
-                className={cn(
-                  'w-full text-left px-5 py-3.5 text-sm flex items-center gap-3 border-b border-white/5 hover:bg-purple-800/20 transition-colors',
-                  i === queueIndex ? 'bg-purple-800/30 text-purple-200' : 'text-white/70',
-                )}
-              >
-                <span className="shrink-0">{item.type === 'upload' ? '📤' : '▶️'}</span>
-                <span className="truncate">
-                  {item.username ? <span className="font-semibold">{item.username}</span> : 'Unknown'}
-                  {item.title ? ` — ${item.title}` : ''}
-                </span>
-              </button>
-            ))}
-            {shuffledQueue.length === 0 && (
-              <p className="px-5 py-10 text-sm text-white/40 text-center">No submissions in the queue yet.</p>
-            )}
-          </div>
-        </div>,
-        document.body,
-      )}
-    </>
-  );
-}
 
 export default function CentralPage() {
   const { firestore, user: currentUser, isUserLoading } = useFirebase();
@@ -504,29 +214,6 @@ export default function CentralPage() {
   );
   const { data: reviewsRaw } = useCollection<Review>(reviewsQuery);
   const feedReviews = reviewsRaw ?? [];
-
-  // Load current radio station
-  const radioRef = useMemoFirebase(() => doc(firestore, 'settings', 'radio'), [firestore]);
-  const { data: radioStation } = useDoc<{ playlistId?: string; active?: boolean }>(radioRef);
-
-  // Load Radio Boost submissions for this month
-  const radioSubsQuery = useMemoFirebase(
-    () => query(collection(firestore, 'radio_submissions')),
-    [firestore]
-  );
-  const { data: radioSubmissions } = useCollection<{ videoId?: string; mediaUrl?: string; sourceType?: 'youtube' | 'upload'; username?: string; title?: string }>(radioSubsQuery);
-  const radioQueueItems: RadioQueueItem[] = useMemo(() => (radioSubmissions ?? [])
-    .map((s): RadioQueueItem | null => {
-      if (s.sourceType === 'upload' && s.mediaUrl) {
-        return { type: 'upload', mediaUrl: s.mediaUrl, username: s.username, title: s.title };
-      }
-      if (s.videoId) {
-        return { type: 'youtube', videoId: s.videoId, username: s.username, title: s.title };
-      }
-      return null;
-    })
-    .filter((x): x is RadioQueueItem => x !== null),
-  [radioSubmissions]);
 
   // Load active ads
   const adsQuery = useMemoFirebase(
@@ -790,23 +477,6 @@ export default function CentralPage() {
         )}
       </div>
 
-      {/* ── PROMO BLAST — floating bubble, stacked above the radio bubble ── */}
-      <Link
-        href="/promo-blast"
-        className="fixed bottom-40 md:bottom-24 right-4 z-50 h-14 w-14 rounded-full flex items-center justify-center transition-transform hover:scale-110"
-        style={{ background: 'radial-gradient(circle at 40% 35%,#f59e0b,#7c2d12)', border: '1px solid rgba(245,158,11,.6)', boxShadow: '0 0 14px rgba(245,158,11,.4)' }}
-        title="PROMO BLAST"
-      >
-        <Megaphone className="h-6 w-6 text-amber-100" />
-      </Link>
-
-      {/* ── CYBAZONE RADIO — floating bubble ── */}
-      {(radioQueueItems.length > 0 || (radioStation?.active && radioStation?.playlistId)) && (
-        <CybaRadioPlayer
-          playlistId={radioStation?.playlistId}
-          queueItems={radioQueueItems.length > 0 ? radioQueueItems : undefined}
-        />
-      )}
     </div>
   );
 }

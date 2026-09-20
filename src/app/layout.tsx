@@ -11,6 +11,8 @@ import { JustLandedQuestPrompt } from '@/components/JustLandedQuestPrompt';
 import { OnboardingExplainerPopup } from '@/components/OnboardingExplainerPopup';
 import { AdDropPopup } from '@/components/AdDropPopup';
 import { SplashScreen } from '@/components/layout/SplashScreen';
+import { RadioProvider } from '@/contexts/radio-context';
+import { RadioEngine } from '@/components/radio/RadioEngine';
 
 export const metadata: Metadata = {
   title: 'CYBAZONE',
@@ -46,18 +48,23 @@ export default function RootLayout({
         <SplashScreen />
         <FirebaseClientProvider>
           <BanGate>
-            <VideoBackground />
-            <div className="relative z-10 flex flex-col flex-1">
-              <Header />
-              {/* pb-14 reserves space for the fixed mobile bottom nav bar (Header renders it below md) */}
-              <main className="flex-grow pb-14 md:pb-0">{children}</main>
-              <Toaster />
-              <IGHandlePrompt />
-              <TikTokHandlePrompt />
-              <JustLandedQuestPrompt />
-              <OnboardingExplainerPopup />
-              <AdDropPopup />
-            </div>
+            <RadioProvider>
+              <VideoBackground />
+              <div className="relative z-10 flex flex-col flex-1">
+                <Header />
+                {/* pb-14 reserves space for the fixed mobile bottom nav bar (Header renders it below md) */}
+                <main className="flex-grow pb-14 md:pb-0">{children}</main>
+                <Toaster />
+                <IGHandlePrompt />
+                <TikTokHandlePrompt />
+                <JustLandedQuestPrompt />
+                <OnboardingExplainerPopup />
+                <AdDropPopup />
+                {/* Mounted once here (not inside any routed page) so radio playback survives
+                    navigation instead of restarting/stopping on every route change. */}
+                <RadioEngine />
+              </div>
+            </RadioProvider>
           </BanGate>
         </FirebaseClientProvider>
       </body>

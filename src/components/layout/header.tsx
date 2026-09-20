@@ -25,6 +25,7 @@ import {
   Bell,
   Megaphone,
   X,
+  Radio,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
@@ -72,6 +73,7 @@ const navLinks = [
   { href: '/rewards', label: 'Rewards', icon: Star, isNew: false },
   { href: '/market', label: 'Market', icon: ShoppingBag, isNew: false },
   { href: '/promo-blast', label: 'Promo Blast', icon: Megaphone, isNew: false },
+  { href: '/radio', label: 'Radio', icon: Radio, isNew: false },
   { href: '/messages', label: 'Messages', icon: MessageCircle, isNew: false },
 ];
 
