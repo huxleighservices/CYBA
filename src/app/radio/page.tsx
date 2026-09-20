@@ -19,9 +19,11 @@ export default function RadioPage() {
 
   return (
     <div className="flex flex-col md:flex-row min-h-[calc(100vh-4rem)]">
-      {/* Spacer reserving the exact space the fixed <RadioEngine> docks into — top half on
-          mobile, left column on desktop. Keep these dimensions in sync with RadioEngine.tsx. */}
-      <div className="h-[50vh] md:h-auto md:w-[440px] shrink-0" aria-hidden />
+      {/* Spacer reserving the exact space the fixed <RadioEngine> docks into: mobile is the
+          38vh media dock plus its h-36 (144px) controls panel below it; desktop is the 440px
+          left column. Keep these dimensions in sync with RadioEngine.tsx — if they drift, the
+          fixed player overlaps and hides the top of this playlist. */}
+      <div className="h-[calc(38vh+9rem)] md:h-auto md:w-[440px] shrink-0" aria-hidden />
 
       <div className="flex-1 min-w-0 min-h-0">
         {useQueue ? (

@@ -38,9 +38,6 @@ export function RadioEngine() {
   if (!hasQueue) return null;
 
   const isLarge = pathname === '/radio';
-  const trackLabel = currentItem?.username
-    ? `${currentItem.username}${currentItem.title ? ` — ${currentItem.title}` : ''}`
-    : 'CYBAZONE RADIO';
 
   return (
     <div
@@ -48,11 +45,14 @@ export function RadioEngine() {
         'fixed z-30 border-purple-500/40 bg-gradient-to-b from-purple-950/95 via-black/95 to-black/90 backdrop-blur-md',
         isLarge
           ? 'top-16 inset-x-0 h-auto max-h-[calc(100vh-4rem)] border-b md:bottom-0 md:inset-x-auto md:left-0 md:w-[440px] md:border-b-0 md:border-r flex flex-col overflow-y-auto'
-          : 'inset-x-0 bottom-14 md:bottom-0 h-11 border-t bg-gradient-to-r flex items-center px-3 gap-3 overflow-visible',
+          : 'inset-x-0 bottom-14 md:bottom-0 h-14 border-t bg-gradient-to-r flex items-center px-3 gap-3 overflow-visible',
       )}
     >
-      {/* Media dock — always mounted at the same position in the tree; only its own CSS moves. */}
-      <div className={cn('bg-black overflow-hidden shrink-0', isLarge ? 'w-full h-[50vh] md:h-auto md:flex-1 md:min-h-0' : 'absolute -left-[9999px] top-0 h-[220px] w-[360px]')}>
+      {/* Media dock — always mounted at the same position in the tree; only its own CSS moves.
+          Mobile height (38vh) + the controls panel below (h-36) must add up to exactly what
+          the /radio page's spacer reserves (RADIO_MOBILE_DOCK_HEIGHT in that file) — otherwise
+          this fixed-position panel overlaps and hides the top of the playlist beneath it. */}
+      <div className={cn('bg-black overflow-hidden shrink-0', isLarge ? 'w-full h-[38vh] md:h-auto md:flex-1 md:min-h-0' : 'absolute -left-[9999px] top-0 h-[220px] w-[360px]')}>
         {useQueue && currentItem?.type === 'upload' ? (
           <video
             ref={videoElRef}
@@ -68,7 +68,7 @@ export function RadioEngine() {
       </div>
 
       {isLarge ? (
-        <div className="shrink-0 p-4 space-y-3">
+        <div className="shrink-0 h-36 md:h-auto p-3 md:p-4 flex flex-col justify-center gap-2 md:gap-3">
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 rounded-full flex items-center justify-center shrink-0" style={{ background: 'radial-gradient(circle,#7c3aed,#4c1d95)' }}>
               <Radio className="h-3 w-3 text-purple-200" />
@@ -95,9 +95,9 @@ export function RadioEngine() {
             <button
               onClick={togglePlay}
               disabled={!isReady}
-              className="h-14 w-14 rounded-full flex items-center justify-center transition-transform hover:scale-105 disabled:opacity-40 bg-white text-black"
+              className="h-12 w-12 md:h-14 md:w-14 rounded-full flex items-center justify-center transition-transform hover:scale-105 disabled:opacity-40 bg-white text-black"
             >
-              {isPlaying ? <Pause className="h-6 w-6" fill="currentColor" /> : <Play className="h-6 w-6 ml-0.5" fill="currentColor" />}
+              {isPlaying ? <Pause className="h-5 w-5 md:h-6 md:w-6" fill="currentColor" /> : <Play className="h-5 w-5 md:h-6 md:w-6 ml-0.5" fill="currentColor" />}
             </button>
             <button
               onClick={skipNext}
@@ -127,8 +127,13 @@ export function RadioEngine() {
           <div className="h-6 w-6 rounded-full flex items-center justify-center shrink-0" style={{ background: 'radial-gradient(circle,#7c3aed,#4c1d95)' }}>
             <Radio className={cn('h-3 w-3 text-purple-200', isPlaying && 'animate-pulse')} />
           </div>
-          <Link href="/radio" className="flex-1 min-w-0">
-            <span className="text-xs font-semibold text-white/90 truncate block">{trackLabel}</span>
+          <Link href="/radio" className="flex-1 min-w-0 leading-tight py-0.5">
+            <span className="block text-xs font-bold text-purple-300 truncate">
+              {currentItem?.username ?? 'CYBAZONE RADIO'}
+            </span>
+            {currentItem?.title && (
+              <span className="block text-[11px] text-white/70 truncate">{currentItem.title}</span>
+            )}
           </Link>
           <button
             onClick={(e) => { e.preventDefault(); togglePlay(); }}
