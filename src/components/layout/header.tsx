@@ -352,7 +352,7 @@ function MobileNav({ hasAdminAccess }: { hasAdminAccess: boolean }) {
             <SheetDescription className="sr-only">Main navigation links for CYBA.</SheetDescription>
             <SheetClose asChild>
               <Link href="/" className="flex items-center">
-                <Image src="/cybazone-logo.png" alt="CYBAZONE" width={160} height={32} />
+                <Image src="/cybazone-logo-sharp.png" alt="CYBAZONE" width={160} height={40} />
               </Link>
             </SheetClose>
           </SheetHeader>
@@ -597,7 +597,7 @@ export function Header() {
           <div className="flex flex-1 items-center justify-center">
             {/* Mobile: full logo (icon + wordmark) takes the prominent center spot in the header */}
             <Link href="/" className="md:hidden">
-              <Image src="/cybazone-logo.png" alt="CYBAZONE" width={140} height={28} priority />
+              <Image src="/cybazone-logo-sharp.png" alt="CYBAZONE" width={140} height={35} priority />
             </Link>
           </div>
 
@@ -605,7 +605,7 @@ export function Header() {
           <div className="hidden md:flex items-center justify-end gap-3">
             {/* Full logo (icon + wordmark) — sits between the launcher and the wallet */}
             <Link href="/" className="shrink-0">
-              <Image src="/cybazone-logo.png" alt="CYBAZONE" width={180} height={36} priority />
+              <Image src="/cybazone-logo-sharp.png" alt="CYBAZONE" width={180} height={45} priority />
             </Link>
             <AuthButton userProfile={userProfile} />
           </div>
