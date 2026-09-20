@@ -19,6 +19,12 @@ function shuffleArray<T>(arr: T[]): T[] {
   return a;
 }
 
+/** Stable identity for a queue item, independent of its (possibly still-loading) title —
+ *  used to shuffle/look up tracks without freezing their displayed data at shuffle time. */
+function itemKey(item: RadioQueueItem): string {
+  return `${item.type}-${item.type === 'youtube' ? item.videoId : item.mediaUrl}`;
+}
+
 interface RadioContextValue {
   hasQueue: boolean;
   /** True when there are real member submissions (vs. only the admin fallback playlist) —
@@ -71,18 +77,54 @@ export function RadioProvider({ children }: { children: ReactNode }) {
     videoId?: string; mediaUrl?: string; sourceType?: 'youtube' | 'upload'; username?: string; title?: string;
   }>(radioSubsQuery);
 
+  // Most submissions never have a manually-entered title — fetch the real title straight from
+  // YouTube via its no-auth oEmbed endpoint so tracks actually show a name instead of just the
+  // submitter's username. Cached by videoId so each one is only fetched once.
+  //
+  // The effect below keys off a joined STRING of video ids, not `radioSubmissions` itself —
+  // Firestore's onSnapshot delivers a new array reference on essentially every emission (cache
+  // hit, then server-confirmed, etc.) even when the actual data is unchanged, which made this
+  // effect re-run and cancel its own in-flight fetches before they ever reached
+  // setYoutubeTitles(). A joined string of ids only changes when the real *set* of videos does,
+  // so the effect (and its fetches) now only reruns when there's actually new work to do.
+  const [youtubeTitles, setYoutubeTitles] = useState<Record<string, string>>({});
+  const submissionVideoIdsKey = useMemo(() => Array.from(new Set(
+    (radioSubmissions ?? [])
+      .filter(s => s.sourceType !== 'upload' && s.videoId)
+      .map(s => s.videoId!),
+  )).join(','), [radioSubmissions]);
+
+  useEffect(() => {
+    const ids = submissionVideoIdsKey ? submissionVideoIdsKey.split(',').filter(id => !(id in youtubeTitles)) : [];
+    if (ids.length === 0) return;
+    let cancelled = false;
+    ids.forEach(async (id) => {
+      try {
+        const res = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${id}`)}&format=json`);
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (cancelled || !data?.title) return;
+        setYoutubeTitles(prev => ({ ...prev, [id]: data.title }));
+      } catch {
+        // Non-critical — falls back to the submission's own title field, if any.
+      }
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submissionVideoIdsKey]);
+
   const submissionItems: RadioQueueItem[] = useMemo(() => (radioSubmissions ?? [])
     .map((s): RadioQueueItem | null => {
       if (s.sourceType === 'upload' && s.mediaUrl) {
         return { type: 'upload', mediaUrl: s.mediaUrl, username: s.username, title: s.title };
       }
       if (s.videoId) {
-        return { type: 'youtube', videoId: s.videoId, username: s.username, title: s.title };
+        return { type: 'youtube', videoId: s.videoId, username: s.username, title: youtubeTitles[s.videoId] ?? s.title };
       }
       return null;
     })
     .filter((x): x is RadioQueueItem => x !== null),
-  [radioSubmissions]);
+  [radioSubmissions, youtubeTitles]);
 
   const useQueue = submissionItems.length > 0;
   const hasQueue = useQueue || !!(radioStation?.active && radioStation?.playlistId);
@@ -91,7 +133,13 @@ export function RadioProvider({ children }: { children: ReactNode }) {
   const videoElRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<any>(null);
 
-  const [shuffledQueue, setShuffledQueue] = useState<RadioQueueItem[]>([]);
+  // Shuffled order is stored as stable KEYS, not the item objects themselves — items are looked
+  // back up from the latest `submissionItems` on every render below. Storing full objects here
+  // meant the shuffle snapshot froze each track's data (title, etc.) at whatever it was the
+  // moment shuffling happened — since YouTube titles arrive asynchronously via oEmbed shortly
+  // after tracks first load, that snapshot almost always predates the real titles, so tracks
+  // displayed the username fallback forever even once the real title had actually arrived.
+  const [shuffledKeys, setShuffledKeys] = useState<string[]>([]);
   const [queueIndex, setQueueIndex] = useState(0);
   const [isShuffled, setIsShuffled] = useState(true);
   const [isRepeating, setIsRepeating] = useState(false);
@@ -99,11 +147,15 @@ export function RadioProvider({ children }: { children: ReactNode }) {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (useQueue) { setShuffledQueue(shuffleArray(submissionItems)); setQueueIndex(0); }
+    if (useQueue) { setShuffledKeys(shuffleArray(submissionItems.map(itemKey))); setQueueIndex(0); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [useQueue, submissionItems.length]);
 
-  const orderedQueue = isShuffled ? shuffledQueue : submissionItems;
+  const orderedQueue = useMemo(() => {
+    if (!isShuffled) return submissionItems;
+    const byKey = new Map(submissionItems.map(it => [itemKey(it), it]));
+    return shuffledKeys.map(k => byKey.get(k)).filter((it): it is RadioQueueItem => !!it);
+  }, [isShuffled, shuffledKeys, submissionItems]);
   const currentItem = useQueue ? (orderedQueue[queueIndex] ?? null) : null;
 
   // Refs mirroring state that the long-lived YT player event callbacks (set up inside an effect
@@ -207,7 +259,7 @@ export function RadioProvider({ children }: { children: ReactNode }) {
   const toggleShuffle = () => {
     setIsShuffled(prev => {
       const next = !prev;
-      if (next) setShuffledQueue(shuffleArray(submissionItems));
+      if (next) setShuffledKeys(shuffleArray(submissionItems.map(itemKey)));
       return next;
     });
     setQueueIndex(0);
